@@ -91,6 +91,10 @@ section#form { padding: 24px 28px 80px; max-width: 860px; }
   padding-left: 10px; border-left: 2px solid var(--line);
 }
 .field.is-unconfirmed input, .field.is-unconfirmed textarea { background: var(--warn-soft); }
+.unconf-note {
+  margin-top: 5px; font-size: 12px; color: var(--warn);
+  padding-left: 10px; border-left: 2px solid var(--warn);
+}
 
 input[type="text"], input[type="number"], input[type="date"], textarea, select {
   width: 100%; padding: 8px 10px;

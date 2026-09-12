@@ -72,7 +72,7 @@ export const BLOCKS: Block[] = [
       { path: "basics.employees", label: "従業員数", type: "number", required: true },
       { path: "basics.averageAge", label: "平均年齢", type: "number" },
       { path: "basics.address", label: "所在地", type: "text", required: true },
-      { path: "basics.tel", label: "電話番号", type: "text", required: true },
+      { path: "basics.tel", label: "電話番号", type: "text", help: "名刺・現行サイトから取る。取材時間を使わない" },
       { path: "basics.currentUrl", label: "現在のサイトURL", type: "text" },
       {
         path: "basics.businessSummary",
@@ -110,7 +110,14 @@ export const BLOCKS: Block[] = [
       "ここでサイト全体の設計が決まる。綺麗なサイトを作るのではなく、今足りていない引き合いを取るサイトを作るため。" +
       "「増やしたい仕事」と「来てほしくない仕事」が分かると、サイトの役割が集客から選別に変わる。",
     fields: [
-      { path: "inquiry.monthlyInquiries", label: "月間の問い合わせ件数", type: "number", required: true, help: "今、問い合わせは月に何件ありますか" },
+      {
+        path: "inquiry.monthlyInquiries",
+        label: "月間の問い合わせ件数",
+        type: "text",
+        required: true,
+        help: "今、問い合わせは月に何件ありますか",
+        placeholder: "答えのとおりに。「月1〜2件」のような幅のある回答でよい",
+      },
       { path: "inquiry.channels", label: "問い合わせの流入経路", type: "tags", required: true, help: "どこから来ていますか（紹介／展示会／検索／飛び込み）" },
       { path: "inquiry.recentNewClientOrigin", label: "直近の新規取引のきっかけ", type: "textarea", required: true, help: "直近で新しく始まった取引は、どうやって始まりましたか" },
       { path: "inquiry.lostDealReasons", label: "失注の理由", type: "tags", required: true, help: "失注するとき、理由は何が多いですか（価格／納期／技術／信用）" },
@@ -130,6 +137,13 @@ export const BLOCKS: Block[] = [
         required: true,
         options: ["集客", "選別", "採用", "信用構築"],
         help: "上の回答から決める。複数可",
+      },
+      {
+        path: "inquiry.outlookConcern",
+        label: "受注の先行きへの不安",
+        type: "textarea",
+        required: true,
+        help: "今のお取引先からの発注量は、来年・再来年も同じくらい続きそうですか。変化の兆しはありますか",
       },
       { path: "inquiry.targetKeywords", label: "想定検索キーワード", type: "tags", required: true, help: "商談前調査と取材から確定する" },
     ],
@@ -214,6 +228,14 @@ export const BLOCKS: Block[] = [
       { path: "strengths.workOthersAvoid", label: "同業がやりたがらないが得意な仕事", type: "textarea", help: "同業他社がやりたがらない仕事で、御社が得意なものは" },
       { path: "strengths.defectRate", label: "不良率", type: "text", help: "不良率はどのくらいですか（数字が良ければ強力な武器になる）" },
       { path: "strengths.hardestJob", label: "技術的に最も難しかった仕事", type: "textarea", help: "技術的に一番難しかった仕事は何ですか" },
+      {
+        path: "strengths.followUpFindings",
+        label: "追い質問で判明したこと",
+        type: "textarea",
+        required: true,
+        help: "台本の定型質問では出てこなかったが、追い質問で出てきた強み。"
+          + "第1回モック取材では「治具の内製」がここで出た。取材の価値の大半がここにある",
+      },
     ],
   },
 

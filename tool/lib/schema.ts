@@ -48,8 +48,8 @@ export interface CompanyBasics {
 // ── ブロック2：引き合いの実態 ★サイト設計の根拠 ─────────────
 
 export interface InquiryReality {
-  /** 現在の月間問い合わせ件数 */
-  monthlyInquiries: number;
+  /** 現在の月間問い合わせ件数。「月1〜2件」のような幅のある回答をそのまま持つ */
+  monthlyInquiries: string;
   /** 流入経路。実態を聞く */
   channels: string[];
   /** 直近の新規取引がどう始まったか */
@@ -62,6 +62,12 @@ export interface InquiryReality {
   wantMoreOf: string;
   /** 来てほしくない問い合わせ。サイトを「選別」装置にするための核心 */
   wantLessOf: string;
+  /**
+   * 受注の先行きへの不安。代表挨拶とトップページで効く。
+   * 一般的に聞いても出てこない。地域の具体的な動きを調べて、こちらから振ること（docs/06）
+   */
+  outlookConcern: string;
+
   /** 上記から決まるサイトの役割。複数可 */
   goals: SiteGoal[];
   /** 想定検索キーワード。商談前調査と取材から確定する */
@@ -113,6 +119,12 @@ export interface Strengths {
   defectRate?: string;
   /** 技術的に最も難しかった仕事 */
   hardestJob?: string;
+
+  /**
+   * 台本の定型質問では出てこなかったが、追い質問で判明した強み。
+   * 第1回モック取材では「治具の内製」がここで出た。取材の価値の大半がここにある（docs/15）
+   */
+  followUpFindings?: string;
 }
 
 // ── ブロック4：加工事例 ★最も問い合わせに繋がる ─────────────
@@ -214,6 +226,19 @@ export interface Project {
    * 必ず NEEDS_REVIEW_MARKER を残し、人間が確認するまでビルドを通さない（D-013）。
    */
   unconfirmed?: string[];
+
+  /**
+   * 未確認項目について、社長が実際に何と言ったかのメモ（パス → 生の発言）。
+   *
+   * 第1回モック取材で、精度を聞いたところ「ミクロン単位ですね」という答えだった。
+   * これは公差値ではないので値としては記録できないが、**この発言自体は捨ててはいけない。**
+   * 工場長への確認時に「社長はミクロン単位とおっしゃっていました」と言えるかどうかで、
+   * 確認の精度が変わる。
+   *
+   * なお、ここに入った発言を原稿に転記してはならない。「ミクロン単位の精度」は
+   * BANNED_PHRASES と同種の無内容な表現であり、検索でも一件も拾われない。
+   */
+  unconfirmedNotes?: Record<string, string>;
 
   /** 取材の録音・文字起こしへの参照。原稿生成の補助素材 */
   transcriptPath?: string;

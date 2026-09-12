@@ -74,13 +74,30 @@ addEventListener("beforeunload", (e) => {
 // ── 未確認マーク ────────────────────────────────────────────
 const isUnconfirmed = (path) => (state.project?.unconfirmed ?? []).includes(path);
 
+/**
+ * 未確認マークを付け外しする。
+ *
+ * 付けるときは「社長が実際に何と言ったか」も控える。
+ * 第1回モック取材で精度を聞いたときの答えは「ミクロン単位ですね」だった。
+ * 公差値ではないので項目の値にはできないが、この発言自体は捨ててはいけない。
+ * 工場長への確認時に「社長はこうおっしゃっていました」と言えるかで確認の精度が変わる。
+ */
 function toggleUnconfirmed(path) {
   const list = (state.project.unconfirmed ??= []);
+  const notes = (state.project.unconfirmedNotes ??= {});
   const i = list.indexOf(path);
-  if (i >= 0) list.splice(i, 1);
-  else list.push(path);
+  if (i >= 0) {
+    list.splice(i, 1);
+    delete notes[path];
+  } else {
+    list.push(path);
+    const note = prompt("その場で何とおっしゃいましたか（空欄でも可）", notes[path] ?? "");
+    if (note && note.trim()) notes[path] = note.trim();
+  }
   scheduleSave();
 }
+
+const unconfirmedNote = (path) => state.project?.unconfirmedNotes?.[path] ?? "";
 
 // ── 描画：メーター／ナビ／不足項目 ──────────────────────────
 function renderMeters(c) {
@@ -171,8 +188,7 @@ function renderField(field) {
     toggle.setAttribute("aria-pressed", String(isUnconfirmed(field.path)));
     toggle.onclick = () => {
       toggleUnconfirmed(field.path);
-      wrap.classList.toggle("is-unconfirmed");
-      toggle.setAttribute("aria-pressed", String(isUnconfirmed(field.path)));
+      renderBlock();
     };
     head.append(toggle);
   }
@@ -186,6 +202,13 @@ function renderField(field) {
   }
 
   wrap.append(renderInput(field, field.path, state.project));
+
+  if (isUnconfirmed(field.path) && unconfirmedNote(field.path)) {
+    const note = document.createElement("div");
+    note.className = "unconf-note";
+    note.textContent = `その場の回答：「${unconfirmedNote(field.path)}」`;
+    wrap.append(note);
+  }
   return wrap;
 }
 
