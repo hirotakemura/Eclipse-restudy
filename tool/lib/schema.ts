@@ -206,6 +206,15 @@ export interface Project {
   executive?: ExecutiveMessage;
   terms: ProductionTerms;
 
+  /**
+   * 取材で聞いたが、その場で確認できなかった項目のパス（例: "capability.tolerance"）。
+   * 単なる未入力と明確に区別する。
+   *
+   * ここに入っている項目について、生成側は数値・型番・固有名詞を絶対に補完してはならない。
+   * 必ず NEEDS_REVIEW_MARKER を残し、人間が確認するまでビルドを通さない（D-013）。
+   */
+  unconfirmed?: string[];
+
   /** 取材の録音・文字起こしへの参照。原稿生成の補助素材 */
   transcriptPath?: string;
   /** 商談前調査の結果。提案書の「現状診断」にも使う */

@@ -5,6 +5,7 @@
   "description": "ヒアリング入力からWebサイトを生成する自社制作基盤",
   "type": "module",
   "scripts": {
+    "start": "node server.mjs",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
