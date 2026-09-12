@@ -6,6 +6,12 @@
  *
  * 台本を変更したら、このファイルも必ず合わせて変更すること。
  * `path` は lib/schema.ts の Project 型のドットパスと一致させる。
+ *
+ * 【placeholder に具体的な数値・型番を書かないこと】
+ * 精度・納期・設備型番のような「それらしい値」を例示すると、未入力の欄に
+ * 値が見えている状態になり、取材中に入力済みと誤認される。
+ * これらはまさに生成側で捏造してはならない項目であり（D-013）、
+ * 入力の指示だけを書き、実在しそうな値は置かない。
  */
 
 export type FieldType =
@@ -57,11 +63,11 @@ export const BLOCKS: Block[] = [
       "冒頭で必ず伝える：「今日の90分で、サイトに載せる文章の材料を全ていただきます。" +
       "この後、御社に原稿を書いていただくことはありません。こちらで全部書いて、確認だけお願いする形です。」",
     fields: [
-      { path: "basics.name", label: "会社名（正式名称）", type: "text", required: true, placeholder: "有限会社 松原精機" },
+      { path: "basics.name", label: "会社名（正式名称）", type: "text", required: true, placeholder: "登記どおりに。「株式会社」の位置まで正確に" },
       { path: "basics.nameKana", label: "会社名（かな）", type: "text" },
       { path: "basics.representative", label: "代表者名", type: "text", required: true },
-      { path: "basics.generation", label: "何代目か", type: "text", help: "事業承継の文脈は代表挨拶で効く", placeholder: "三代目" },
-      { path: "basics.founded", label: "創業", type: "text", required: true, placeholder: "1972年（昭和47年）" },
+      { path: "basics.generation", label: "何代目か", type: "text", help: "事業承継の文脈は代表挨拶で効く" },
+      { path: "basics.founded", label: "創業", type: "text", required: true, placeholder: "西暦と元号の両方を聞く" },
       { path: "basics.capital", label: "資本金", type: "text" },
       { path: "basics.employees", label: "従業員数", type: "number", required: true },
       { path: "basics.averageAge", label: "平均年齢", type: "number" },
@@ -144,9 +150,23 @@ export const BLOCKS: Block[] = [
       { path: "capability.processes", label: "加工法・工法", type: "tags", required: true, placeholder: "5軸加工, ワイヤーカット" },
       { path: "capability.maxSize", label: "対応サイズ（最大）", type: "text" },
       { path: "capability.minSize", label: "対応サイズ（最小）", type: "text" },
-      { path: "capability.tolerance", label: "対応精度", type: "text", required: true, help: "どのくらいの精度まで対応できますか", placeholder: "±5μm" },
-      { path: "capability.lotSize", label: "対応ロット", type: "text", required: true, placeholder: "1個〜" },
-      { path: "capability.shortestLeadTime", label: "最短納期", type: "text", required: true },
+      {
+        path: "capability.tolerance",
+        label: "対応精度",
+        type: "text",
+        required: true,
+        help: "どのくらいの精度まで対応できますか",
+        placeholder: "聞き取った数値をそのまま。答えが曖昧なら「未確認」を付ける",
+      },
+      { path: "capability.lotSize", label: "対応ロット", type: "text", required: true, placeholder: "聞き取った内容をそのまま" },
+      {
+        path: "capability.shortestLeadTime",
+        label: "最短納期",
+        type: "text",
+        required: true,
+        help: "標準納期と最短納期の両方を聞く。即答できない場合は「未確認」を付ける",
+        placeholder: "聞き取った内容をそのまま",
+      },
       { path: "capability.prototypeRatio", label: "試作と量産の比率", type: "text" },
       {
         path: "capability.equipment",
@@ -156,8 +176,8 @@ export const BLOCKS: Block[] = [
         minItems: 3,
         help: "メーカー名と型番まで。型番そのものが検索される。分からなければ工場長に確認する",
         itemFields: [
-          { path: "maker", label: "メーカー", type: "text", placeholder: "DMG MORI" },
-          { path: "model", label: "型番", type: "text", placeholder: "NTX2000" },
+          { path: "maker", label: "メーカー", type: "text" },
+          { path: "model", label: "型番", type: "text" },
           { path: "count", label: "台数", type: "number" },
           { path: "note", label: "備考", type: "text" },
         ],
