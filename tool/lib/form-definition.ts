@@ -160,8 +160,15 @@ export const BLOCKS: Block[] = [
       "カタログ的な「高品質・短納期」では一件も検索に引っかからない。" +
       "具体の数字と固有名詞を取り切ることが、そのままSEOになる。",
     fields: [
-      { path: "capability.materials", label: "対応材質", type: "tags", required: true, help: "対応できる材質を全部挙げてください", placeholder: "ステンレス, チタン, インコネル" },
-      { path: "capability.processes", label: "加工法・工法", type: "tags", required: true, placeholder: "5軸加工, ワイヤーカット" },
+      { path: "capability.materials", label: "対応材質", type: "tags", required: true, help: "対応できる材質を全部挙げてください", placeholder: "聞き取ったとおりに。カンマ区切りでまとめて追加できる" },
+      {
+        path: "capability.processes",
+        label: "加工法・工法",
+        type: "tags",
+        required: true,
+        help: "どういう加工ができますか。分からなければ工場長に確認する",
+        placeholder: "聞き取ったとおりに。カンマ区切りでまとめて追加できる",
+      },
       { path: "capability.maxSize", label: "対応サイズ（最大）", type: "text" },
       { path: "capability.minSize", label: "対応サイズ（最小）", type: "text" },
       {
@@ -196,7 +203,7 @@ export const BLOCKS: Block[] = [
           { path: "note", label: "備考", type: "text" },
         ],
       },
-      { path: "capability.certifications", label: "資格・認証", type: "tags", required: true, placeholder: "ISO9001, JIS, 特殊工程" },
+      { path: "capability.certifications", label: "資格・認証", type: "tags", required: true, help: "ISOのほか、特殊工程の資格などがあれば", placeholder: "聞き取ったとおりに" },
       { path: "capability.operatingHours", label: "稼働体制", type: "text", placeholder: "2交代, 24時間, 土日対応可" },
     ],
   },
