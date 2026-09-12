@@ -201,9 +201,33 @@ export interface ProductionTerms {
 
 // ── 案件データ全体 ────────────────────────────────────────
 
+/**
+ * 汎用フォーム（198,000円の商品）で使う項目。
+ * 製造業フォームの capability / strengths に相当するものを、業種を問わない形に置き換えたもの。
+ */
+export interface GeneralBusiness {
+  /** 対応できる地域。出張の可否を含む */
+  serviceArea: string;
+  /** 主なサービス・商品 */
+  offerings: { name: string; detail: string; price?: string }[];
+  /** どういう顧客が多いか */
+  idealCustomer: string;
+  /** 同業と比べてどこが違うか */
+  reasonChosen: string;
+}
+
 export interface Project {
   /** 案件ID。ディレクトリ名になる */
   id: string;
+
+  /**
+   * どのフォームで聞き取るか。案件の商品を決める。
+   * 省略時は製造業向けとして扱う（既存案件との互換のため）。
+   *
+   * **汎用フォームで製造業の案件を受けないこと。** 対応材質・精度・設備型番といった
+   * 製造業の検索を受け止める項目が汎用フォームには無く、技術ページが作れない（D-035）。
+   */
+  formSet?: "manufacturing" | "general";
   /** 入力の進捗。対面で埋めるため、途中保存できることが前提 */
   status: "hearing" | "generating" | "reviewing" | "published" | "archived";
   hearingDate?: string;
@@ -214,6 +238,8 @@ export interface Project {
   capability: Capability;
   strengths: Strengths;
   cases: CaseStudy[];
+  /** 汎用フォームの案件でのみ使う */
+  general?: GeneralBusiness;
   recruitment?: Recruitment;
   executive?: ExecutiveMessage;
   terms: ProductionTerms;

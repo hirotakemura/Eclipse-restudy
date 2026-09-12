@@ -10,6 +10,7 @@
 const $ = (sel) => document.querySelector(sel);
 
 const state = {
+  sets: {},
   blocks: [],
   project: null,
   activeBlock: null,
@@ -413,7 +414,8 @@ async function loadProjectList(selectId) {
   sel.replaceChildren();
   sel.append(new Option("案件を選択…", ""));
   for (const p of list) {
-    sel.append(new Option(`${p.name || p.id}（${p.filledPct}%）`, p.id));
+    const kind = p.formSet === "general" ? "汎用" : "製造業";
+    sel.append(new Option(`［${kind}］${p.name || p.id}（${p.filledPct}%）`, p.id));
   }
   if (selectId) sel.value = selectId;
 }
@@ -423,7 +425,11 @@ async function openProject(id) {
   if (!res.ok) return alert("案件を読み込めませんでした");
   const data = await res.json();
   state.project = data.project;
-  state.activeBlock ??= state.blocks[0]?.id;
+  // 案件ごとにフォームが違う（製造業 90分 / 汎用 30分）
+  const set = state.sets[state.project.formSet ?? "manufacturing"] ?? state.sets.manufacturing;
+  state.blocks = set.blocks;
+  state.activeBlock = set.blocks[0]?.id ?? null;
+  document.title = `KOBO — ${set.label}`;
   $("#empty").hidden = true;
   $("#main").hidden = false;
   renderMeters(data.completion);
@@ -436,8 +442,9 @@ async function openProject(id) {
 // ── 起動 ────────────────────────────────────────────────────
 (async function init() {
   const form = await (await fetch("/api/form")).json();
-  state.blocks = form.blocks;
-  state.activeBlock = form.blocks[0]?.id ?? null;
+  state.sets = form.sets;
+  state.blocks = form.sets.manufacturing.blocks;
+  state.activeBlock = state.blocks[0]?.id ?? null;
   await loadProjectList();
 
   $("#project-select").onchange = (e) => {
@@ -448,10 +455,16 @@ async function openProject(id) {
     const id = prompt("案件ID（英数字・ハイフン。例: matsubara-seiki）");
     if (!id) return;
     const name = prompt("会社名（後から変更できます）") ?? "";
+    const lines = Object.values(state.sets)
+      .map((s, i) => `${i + 1}. ${s.label}　${s.description}（取材${s.interviewMinutes}分）`)
+      .join("\n");
+    const pick = prompt(`どちらの商品ですか。番号で答えてください。\n\n${lines}`, "1");
+    if (pick === null) return;
+    const formSet = pick.trim() === "2" ? "general" : "manufacturing";
     const res = await fetch("/api/projects", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id, name }),
+      body: JSON.stringify({ id, name, formSet }),
     });
     if (!res.ok) return alert((await res.json()).error);
     await loadProjectList(id);

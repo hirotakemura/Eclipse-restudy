@@ -31,7 +31,7 @@ if (process.features.typescript !== "strip") {
   process.exit(1);
 }
 
-const { BLOCKS, TOTAL_MINUTES } = await import("./lib/form-definition.ts");
+const { FORM_SETS, getFormSet } = await import("./lib/form-definition.ts");
 const { computeCompletion } = await import("./lib/completion.ts");
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -82,13 +82,16 @@ async function writeJsonAtomic(path, data) {
   await rename(tmp, path);
 }
 
+/** 充足率は、その案件が使っているフォームセットで計算する */
 function withCompletion(project) {
-  return { project, completion: computeCompletion(project, BLOCKS, project.unconfirmed ?? []) };
+  const { blocks } = getFormSet(project.formSet);
+  return { project, completion: computeCompletion(project, blocks, project.unconfirmed ?? []) };
 }
 
-function emptyProject(id, name) {
+function emptyProject(id, name, formSet) {
   return {
     id,
+    formSet: formSet === "general" ? "general" : "manufacturing",
     status: "hearing",
     hearingDate: new Date().toISOString().slice(0, 10),
     basics: { name: name ?? "" },
@@ -113,11 +116,13 @@ async function listProjects() {
     if (!existsSync(file)) continue;
     try {
       const project = JSON.parse(await readFile(file, "utf8"));
-      const completion = computeCompletion(project, BLOCKS, project.unconfirmed ?? []);
+      const { blocks } = getFormSet(project.formSet);
+      const completion = computeCompletion(project, blocks, project.unconfirmed ?? []);
       const { mtime } = await stat(file);
       out.push({
         id: entry.name,
         name: project.basics?.name ?? entry.name,
+        formSet: project.formSet ?? "manufacturing",
         status: project.status ?? "hearing",
         filledPct: completion.filledPct,
         coveredPct: completion.coveredPct,
@@ -150,7 +155,7 @@ const server = createServer(async (req, res) => {
 
   try {
     if (path === "/api/form") {
-      return json(res, 200, { blocks: BLOCKS, totalMinutes: TOTAL_MINUTES });
+      return json(res, 200, { sets: FORM_SETS });
     }
 
     if (path === "/api/projects" && req.method === "GET") {
@@ -158,13 +163,13 @@ const server = createServer(async (req, res) => {
     }
 
     if (path === "/api/projects" && req.method === "POST") {
-      const { id, name } = await readBody(req);
+      const { id, name, formSet } = await readBody(req);
       if (!id || !ID_RE.test(id)) {
         return json(res, 400, { error: "案件IDは英数字・ハイフン・アンダースコアのみ（1〜64文字）" });
       }
       const file = join(projectDir(id), "project.json");
       if (existsSync(file)) return json(res, 409, { error: "その案件IDは既にあります" });
-      const project = emptyProject(id, name);
+      const project = emptyProject(id, name, formSet);
       await writeJsonAtomic(file, project);
       return json(res, 201, withCompletion(project));
     }
