@@ -1,0 +1,13 @@
+{
+  "name": "kobo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ヒアリング入力からWebサイトを生成する自社制作基盤",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

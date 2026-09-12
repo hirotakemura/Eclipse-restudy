@@ -1,0 +1,8 @@
+node_modules/
+
+# 顧客の非公開情報が入るため、絶対にコミットしない
+projects/*
+!projects/.gitkeep
+
+.env
+.env.local
