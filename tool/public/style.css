@@ -75,6 +75,27 @@ section#form { padding: 24px 28px 80px; max-width: 860px; }
   font-size: 13px; color: #5a4520;
 }
 
+/* ── 追い質問（取材中ずっと出しておく） ────── */
+.followups {
+  margin: 0 0 28px; border: 1px solid var(--accent);
+  border-radius: var(--radius); overflow: hidden;
+}
+.followups-head {
+  background: var(--accent); color: #fff;
+  padding: 5px 14px; font-size: 12px; font-weight: 600; letter-spacing: .04em;
+}
+.followup {
+  display: grid; grid-template-columns: 210px 1fr; gap: 14px;
+  padding: 8px 14px; font-size: 13.5px; line-height: 1.65;
+  border-top: 1px solid var(--line);
+}
+.followup:first-of-type { border-top: 0; }
+.fu-trigger { color: var(--warn); font-weight: 600; }
+.fu-ask { color: var(--text); }
+@media (max-width: 760px) {
+  .followup { grid-template-columns: 1fr; gap: 2px; }
+}
+
 /* ── 項目 ─────────────────────────────────── */
 .field { margin-bottom: 22px; }
 .field-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }

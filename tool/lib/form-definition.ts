@@ -41,6 +41,23 @@ export interface Field {
   minItems?: number;
 }
 
+/**
+ * 追い質問。「相手がこう言ったら、こう聞く」。
+ *
+ * 第1回モック取材で最大の強みだった「治具の内製」は、定型質問では一切出ず、
+ * 社長の「薄物は歪む」を受けた技術的な追い質問でのみ出た（docs/15 第4章）。
+ *
+ * **この質問は分野知識がないと思いつかない。**
+ * 取材者が製造業に詳しいとは限らないので、知識は人ではなく道具に持たせる。
+ * 取材中は画面に出しっぱなしにして、聞こえたら掘る。
+ */
+export interface FollowUp {
+  /** 相手がこう言ったら */
+  trigger: string;
+  /** こう聞く */
+  ask: string;
+}
+
 export interface Block {
   id: string;
   /** 取材台本のブロック番号 */
@@ -48,6 +65,8 @@ export interface Block {
   title: string;
   minutes: number;
   note?: string;
+  /** 取材中、画面に出しておく追い質問 */
+  followUps?: FollowUp[];
   fields: Field[];
 }
 

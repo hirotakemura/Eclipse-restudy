@@ -160,6 +160,30 @@ function renderBlock() {
     form.append(note);
   }
 
+  // 追い質問は取材中ずっと画面に出しておく。
+  // 分野知識がなくても掘れるようにするのが目的なので、畳まない（docs/15 改善B）
+  if (block.followUps?.length) {
+    const box = document.createElement("div");
+    box.className = "followups";
+    const head = document.createElement("div");
+    head.className = "followups-head";
+    head.textContent = "聞こえたら、そのまま掘る";
+    box.append(head);
+    for (const f of block.followUps) {
+      const row = document.createElement("div");
+      row.className = "followup";
+      const trig = document.createElement("span");
+      trig.className = "fu-trigger";
+      trig.textContent = f.trigger;
+      const ask = document.createElement("span");
+      ask.className = "fu-ask";
+      ask.textContent = f.ask;
+      row.append(trig, ask);
+      box.append(row);
+    }
+    form.append(box);
+  }
+
   for (const field of block.fields) form.append(renderField(field));
 }
 
