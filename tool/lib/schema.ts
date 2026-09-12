@@ -318,6 +318,9 @@ export function collectFactTokens(p: Project): string[] {
  * 生成後に検出したら書き直させる。
  */
 export const BANNED_PHRASES = [
+  // 「ミクロン単位」は、答えてもらえなかったときの常套句であり、かつ無内容。
+  // 調達担当者は「±5μm」で検索するので、この言葉では一件も拾われない（docs/15 罠1）
+  "ミクロン単位",
   "高品質",
   "高い技術力",
   "豊富な実績",
