@@ -14,8 +14,25 @@ import { existsSync } from "node:fs";
 import { join, dirname, extname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { BLOCKS, TOTAL_MINUTES } from "./lib/form-definition.ts";
-import { computeCompletion } from "./lib/completion.ts";
+// lib/*.ts を直接読むため、Node の型ストリッピングが要る。
+// 対応していない環境で「Unknown file extension .ts」と出ると原因が分かりにくいので、
+// 先に確認して、何をすればよいかを日本語で出す。
+if (process.features.typescript !== "strip") {
+  const [major, minor] = process.versions.node.split(".").map(Number);
+  console.error(`\nKOBO を起動できません。Node.js ${process.versions.node} を使用中です。\n`);
+  if (major > 22 || (major === 22 && minor >= 6)) {
+    console.error("このバージョンでは、型ストリッピングを明示的に有効にする必要があります：\n");
+    console.error("    node --experimental-strip-types server.mjs\n");
+    console.error("または package.json の start を書き換えてください。\n");
+  } else {
+    console.error("Node.js 22.18 以降にアップデートしてください。\n");
+    console.error("    https://nodejs.org/  （LTS版で問題ありません）\n");
+  }
+  process.exit(1);
+}
+
+const { BLOCKS, TOTAL_MINUTES } = await import("./lib/form-definition.ts");
+const { computeCompletion } = await import("./lib/completion.ts");
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(ROOT, "public");
