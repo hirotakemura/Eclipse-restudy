@@ -12,7 +12,8 @@
     "build:site": "node build-site.mjs",
     "dev:site": "node build-site.mjs --dev",
     "preview:site": "node preview-site.mjs",
-    "import:photos": "node import-photos.mjs"
+    "import:photos": "node import-photos.mjs",
+    "dns": "node dns-snapshot.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
