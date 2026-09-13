@@ -1,0 +1,165 @@
+/*
+  製造業向けサイトの基本スタイル。
+
+  **写真が1枚も無くても成立すること**を前提にしている。
+  中小製造業の現場写真は、取材時点で使えるものが揃わないことが多い（docs/06 ブロック6）。
+  写真待ちでサイトが止まらないよう、文字と表だけで読める設計にしておく。
+*/
+:root {
+  --ink: #17202a;
+  --ink-soft: #5b6673;
+  --line: #d9dee4;
+  --bg: #fff;
+  --bg-soft: #f4f6f8;
+  --accent: #10456f;      /* 濃い青。工業系で浮かない色 */
+  --accent-dark: #0b3252;
+  --accent-soft: #e8eff5;
+  --max: 1040px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  font-size: 17px;
+  line-height: 1.85;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-text-size-adjust: 100%;
+}
+img { max-width: 100%; height: auto; }
+a { color: var(--accent); }
+
+/* ── ヘッダー ───────────────────────────── */
+.site-header { border-bottom: 1px solid var(--line); }
+.bar {
+  max-width: var(--max); margin: 0 auto; padding: 14px 20px;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.logo { font-size: 20px; font-weight: 700; color: var(--ink); text-decoration: none; letter-spacing: .02em; }
+.head-contact { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.tel { text-decoration: none; color: var(--ink); text-align: right; line-height: 1.3; }
+.tel-label { display: block; font-size: 11px; color: var(--ink-soft); }
+.tel-num { display: block; font-size: 21px; font-weight: 700; letter-spacing: .02em; }
+.btn {
+  display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+  padding: 11px 20px; border-radius: 4px; font-weight: 600; white-space: nowrap;
+}
+.btn:hover { background: var(--accent-dark); }
+.btn-lg { padding: 15px 28px; font-size: 17px; }
+
+.site-nav { background: var(--bg-soft); border-top: 1px solid var(--line); }
+.site-nav ul {
+  max-width: var(--max); margin: 0 auto; padding: 0 12px;
+  display: flex; flex-wrap: wrap; list-style: none; gap: 2px;
+}
+.site-nav a {
+  display: block; padding: 12px 14px; text-decoration: none; color: var(--ink);
+  font-size: 15px; font-weight: 600;
+}
+.site-nav a:hover { background: var(--accent-soft); }
+.site-nav a[aria-current="page"] { color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); }
+
+/* ── 本文の枠 ───────────────────────────── */
+main { display: block; }
+.inner { max-width: var(--max); margin: 0 auto; padding: 0 20px; }
+.section { padding: 52px 0; }
+.section + .section { border-top: 1px solid var(--line); }
+h1 { font-size: 31px; line-height: 1.45; margin: 0 0 18px; letter-spacing: .01em; }
+h2 { font-size: 24px; line-height: 1.5; margin: 0 0 16px; }
+h3 { font-size: 19px; margin: 30px 0 8px; }
+p { margin: 0 0 16px; }
+.lead { font-size: 19px; color: var(--ink-soft); margin-bottom: 28px; }
+
+/* ページ冒頭 */
+.page-head { background: var(--bg-soft); border-bottom: 1px solid var(--line); padding: 40px 0; }
+.page-head h1 { margin: 0; }
+.page-head p { margin: 10px 0 0; color: var(--ink-soft); }
+
+/* ── トップの見出し ─────────────────────── */
+.hero { padding: 56px 0 46px; }
+.hero h1 { font-size: 36px; }
+.hero .facts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.hero .facts span {
+  background: var(--accent-soft); color: var(--accent-dark);
+  padding: 7px 14px; border-radius: 999px; font-size: 15px; font-weight: 600;
+}
+
+/* ── 表 ─────────────────────────────────── */
+.table-wrap { overflow-x: auto; margin: 0 0 26px; }
+table { width: 100%; border-collapse: collapse; font-size: 16px; }
+caption { text-align: left; font-weight: 700; padding: 0 0 8px; }
+th, td { border: 1px solid var(--line); padding: 12px 14px; text-align: left; vertical-align: top; }
+th { background: var(--bg-soft); font-weight: 600; white-space: nowrap; width: 220px; }
+thead th { width: auto; }
+
+/* ── 事例カード ─────────────────────────── */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.case-card {
+  display: flex; flex-direction: column; gap: 6px;
+  border: 1px solid var(--line); border-left: 4px solid var(--accent);
+  padding: 18px 20px; text-decoration: none; color: var(--ink); background: var(--bg);
+}
+.case-card:hover { background: var(--bg-soft); }
+.case-industry { font-size: 13px; color: var(--ink-soft); }
+.case-title { font-size: 18px; font-weight: 700; line-height: 1.5; }
+.case-challenge {
+  font-size: 15px; color: var(--ink-soft); line-height: 1.7;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.case-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.case-tags em { font-style: normal; font-size: 13px; background: var(--bg-soft); padding: 3px 9px; border-radius: 3px; }
+
+/* ── 事例本文 ───────────────────────────── */
+.case-body h2 { border-left: 4px solid var(--accent); padding-left: 12px; margin-top: 36px; }
+.note-box { background: var(--bg-soft); border-left: 4px solid var(--accent); padding: 16px 20px; margin: 0 0 26px; }
+
+/* ── 生成原稿 ───────────────────────────── */
+.prose h2 { margin-top: 38px; }
+.prose ul, .prose ol { padding-left: 1.4em; }
+.prose li { margin-bottom: 6px; }
+.prose table { margin: 20px 0; }
+
+/* ── 問い合わせ導線 ─────────────────────── */
+.cta { background: var(--accent); color: #fff; padding: 46px 0; }
+.cta h2 { margin: 0 0 10px; }
+.cta p { margin: 0 0 14px; }
+.cta .btn { background: #fff; color: var(--accent-dark); }
+.cta .btn:hover { background: var(--accent-soft); }
+.cta-lines { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: baseline; margin-bottom: 22px; }
+.tel-big { font-size: 30px; font-weight: 700; color: #fff; text-decoration: none; letter-spacing: .02em; }
+.cta .mail { color: #fff; font-size: 17px; }
+
+/* ── フッター ───────────────────────────── */
+.site-footer { background: var(--bg-soft); border-top: 1px solid var(--line); padding: 34px 0 26px; font-size: 15px; }
+.f-name { font-weight: 700; font-size: 17px; margin-bottom: 4px; }
+.f-nav { list-style: none; display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 0; margin: 18px 0 0; }
+.copy { color: var(--ink-soft); font-size: 13px; margin: 18px 0 0; }
+
+/* ── スマホ ─────────────────────────────── */
+@media (max-width: 720px) {
+  body { font-size: 16px; }
+  .bar { padding: 12px 16px; gap: 10px; }
+  .logo { font-size: 18px; }
+  .head-contact { width: 100%; margin-left: 0; justify-content: space-between; }
+  .tel { text-align: left; }
+  .tel-num { font-size: 19px; }
+  .inner { padding: 0 16px; }
+  .hero h1 { font-size: 27px; }
+  h1 { font-size: 25px; }
+  h2 { font-size: 21px; }
+  .section { padding: 40px 0; }
+  /* 表は横スクロールさせず、縦積みにする。指で横に動かす表は読まれない */
+  th { width: auto; white-space: normal; }
+  table, tbody, tr, th, td { display: block; width: 100%; }
+  tr { border: 1px solid var(--line); margin-bottom: -1px; }
+  th, td { border: 0; }
+  th { background: var(--bg-soft); padding: 8px 14px; font-size: 14px; }
+  td { padding: 10px 14px; }
+  .tel-big { font-size: 26px; }
+  /* 長いボタン名で画面が横に伸びないよう、狭い画面では折り返す */
+  .btn { white-space: normal; }
+}
+@media print {
+  .site-nav, .cta, .btn { display: none !important; }
+}

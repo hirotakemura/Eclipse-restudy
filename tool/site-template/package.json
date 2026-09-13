@@ -1,0 +1,14 @@
+{
+  "name": "kobo-site-template",
+  "private": true,
+  "type": "module",
+  "description": "KOBO — 製造業向けサイトテンプレート。案件データを流し込んで静的サイトを書き出す",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "astro": "^7.3.2"
+  }
+}

@@ -1,0 +1,61 @@
+---
+/**
+ * トップページ。
+ *
+ * 調達担当者が10秒で「この会社は自分の案件を受けられるか」を判断できるようにする。
+ * **判断に使われるのは、対応材質・加工法・ロット・納期の4つ。**
+ * 会社の理念や社長の想いは、判断したあとで読まれる（docs/06 ブロック2）。
+ */
+import Base from "../layouts/Base.astro";
+import Prose from "../components/Prose.astro";
+import CaseCard from "../components/CaseCard.astro";
+import { project, companyName, cases } from "../lib/site";
+
+const cap = project.capability ?? ({} as any);
+const facts = [
+  cap.materials?.length ? `材質：${cap.materials.slice(0, 5).join("・")}` : null,
+  cap.processes?.length ? `加工：${cap.processes.slice(0, 5).join("・")}` : null,
+  cap.lotSize ? `ロット：${cap.lotSize}` : null,
+  cap.shortestLeadTime ? `納期：${cap.shortestLeadTime}` : null,
+  cap.certifications?.length ? cap.certifications.join("・") : null,
+].filter(Boolean) as string[];
+
+const declined = project.strengths?.wonAfterOthersDeclined;
+const desc = [project.basics?.address, cap.processes?.join("・"), cap.materials?.join("・")]
+  .filter(Boolean).join("／");
+---
+<Base title="トップ" description={`${companyName}｜${desc}`}>
+  <section class="hero">
+    <div class="inner">
+      <h1>{companyName}</h1>
+      <p class="lead">{project.basics?.businessSummary}</p>
+      {facts.length > 0 && (
+        <div class="facts">{facts.map((f) => <span>{f}</span>)}</div>
+      )}
+    </div>
+  </section>
+
+  <Prose slug="index" />
+
+  {declined && (
+    <section class="section">
+      <div class="inner">
+        <h2>他社様で難しいと言われた案件</h2>
+        <div class="note-box">{declined}</div>
+        <p><a href="/strengths/">なぜ受けられるのか（強み・技術）</a></p>
+      </div>
+    </section>
+  )}
+
+  {cases.length > 0 && (
+    <section class="section">
+      <div class="inner">
+        <h2>加工事例</h2>
+        <div class="cards">
+          {cases.slice(0, 6).map((c, i) => <CaseCard index={i} item={c} />)}
+        </div>
+        {cases.length > 6 && <p style="margin-top:20px"><a href="/cases/">加工事例をすべて見る</a></p>}
+      </div>
+    </section>
+  )}
+</Base>

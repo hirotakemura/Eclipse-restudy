@@ -1,0 +1,51 @@
+---
+/**
+ * 加工事例の個別ページ。**最も読まれ、最も問い合わせに繋がる。**
+ * 調達担当者は「自分の案件と似た仕事をやったことがあるか」だけを見ている。
+ *
+ * **`confidentialityNotes` は絶対に出力しない。**
+ * あれは「何を伏せるか」を我々が控えた項目であって、掲載する内容ではない。
+ */
+import Base from "../../layouts/Base.astro";
+import Prose from "../../components/Prose.astro";
+import { cases, companyName } from "../../lib/site";
+import { hasDraft } from "../../lib/draft";
+
+export function getStaticPaths() {
+  return (cases ?? []).map((item, i) => ({
+    params: { n: String(i + 1) },
+    props: { item, index: i },
+  }));
+}
+const { item, index } = Astro.props;
+const slug = `case-${index + 1}`;
+const tags = [...(item.materials ?? []), ...(item.processes ?? [])];
+const sections = [
+  ["ご相談の内容", item.challenge],
+  ["対応した内容", item.solution],
+  ["結果", item.result],
+].filter(([, v]) => v) as [string, string][];
+---
+<Base title={`加工事例：${item.title}`} description={`${item.clientIndustry}｜${item.partDescription ?? ""}`}>
+  <div class="page-head"><div class="inner">
+    <p>{item.clientIndustry}</p>
+    <h1>{item.title}</h1>
+  </div></div>
+  <section class="section"><div class="inner case-body">
+    {item.partDescription && <div class="note-box">{item.partDescription}</div>}
+    <Prose slug={slug} />
+    {!hasDraft(slug) && sections.map(([title, body]) => (
+      <>
+        <h2>{title}</h2>
+        <p>{body}</p>
+      </>
+    ))}
+    {tags.length > 0 && (
+      <>
+        <h2>材質・加工法</h2>
+        <p class="case-tags">{tags.map((t: string) => <em>{t}</em>)}</p>
+      </>
+    )}
+    <p style="margin-top:34px"><a href="/cases/">加工事例の一覧に戻る</a></p>
+  </div></section>
+</Base>

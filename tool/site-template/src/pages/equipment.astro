@@ -1,0 +1,41 @@
+---
+/**
+ * 設備一覧。
+ *
+ * **設備の型番そのものが検索される。**「この設備を持つ会社を探している」という検索が実在する。
+ * だからこそ、型番は推測で書かない。聞き取ったデータをそのまま出す（D-095）。
+ */
+import Base from "../layouts/Base.astro";
+import Prose from "../components/Prose.astro";
+import { project, companyName } from "../lib/site";
+
+const equipment = (project.capability?.equipment ?? []).filter((e: any) => e.maker || e.model);
+const total = equipment.reduce((s: number, e: any) => s + (Number(e.count) || 0), 0);
+---
+<Base title="設備一覧" description={`${companyName}の保有設備一覧（メーカー・型番・台数）`}>
+  <div class="page-head"><div class="inner">
+    <h1>設備一覧</h1>
+    {total > 0 && <p>保有設備 {total}台</p>}
+  </div></div>
+  <section class="section"><div class="inner">
+    <Prose slug="equipment" />
+    {equipment.length > 0 ? (
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">設備</th><th scope="col">メーカー</th><th scope="col">台数</th></tr></thead>
+          <tbody>
+            {equipment.map((e: any) => (
+              <tr>
+                <th scope="row">{e.model || e.maker}</th>
+                <td>{e.model ? e.maker : ""}{e.note ? `${e.maker ? "／" : ""}${e.note}` : ""}</td>
+                <td>{e.count ? `${e.count}台` : ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      <p>設備の詳細はお問い合わせください。</p>
+    )}
+  </div></section>
+</Base>

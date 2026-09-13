@@ -1,0 +1,44 @@
+---
+/**
+ * 会社概要。読み物ではなく、発注前の確認のための表。
+ * 表は聞き取ったデータをそのまま出す（D-095）。
+ */
+import Base from "../layouts/Base.astro";
+import Table from "../components/Table.astro";
+import { project, rows, companyName, tel, email } from "../lib/site";
+
+const b = project.basics ?? ({} as any);
+const profile = rows([
+  ["会社名", b.name],
+  ["代表者", b.representative],
+  ["創業", b.founded],
+  ["資本金", b.capital],
+  ["従業員数", b.employees ? `${b.employees}名` : ""],
+  ["所在地", b.address],
+  ["電話番号", tel],
+  ["メールアドレス", email],
+  ["事業内容", b.businessSummary],
+  ["主要取引先の業界", b.clientIndustries],
+]);
+const history = (b.history ?? []).filter((h: any) => h.year || h.event);
+---
+<Base title="会社概要" description={`${companyName}の会社概要・沿革`}>
+  <div class="page-head"><div class="inner"><h1>会社概要</h1></div></div>
+  <section class="section"><div class="inner">
+    <Table rows={profile} />
+    {history.length > 0 && (
+      <>
+        <h2>沿革</h2>
+        <div class="table-wrap">
+          <table>
+            <tbody>
+              {history.map((h: any) => (
+                <tr><th scope="row">{h.year}</th><td>{h.event}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
+    )}
+  </div></section>
+</Base>

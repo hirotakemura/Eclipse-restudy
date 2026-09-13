@@ -1,0 +1,18 @@
+---
+/**
+ * 生成した原稿を流し込む枠。
+ *
+ * 原稿が無い段階でも構成を確認できるよう、無ければ何も出さない（落ちない）。
+ * サイトの骨格は聞き取ったデータのほうで、原稿はそこに散文を足すもの。
+ */
+import { draft } from "../lib/draft";
+interface Props { slug: string }
+const { slug } = Astro.props;
+const mod = draft(slug);
+const Content = mod?.Content;
+---
+{Content && (
+  <div class="prose">
+    <Content />
+  </div>
+)}

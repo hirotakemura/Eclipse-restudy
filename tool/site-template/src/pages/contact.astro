@@ -1,0 +1,41 @@
+---
+/**
+ * お問い合わせ。
+ *
+ * **電話番号とメールアドレスを必ず併記する（D-060）。**
+ * 中小製造業の担当者は電話を使う。フォームだけに依存させない。
+ * 相談時に用意していただけると早い情報も先に案内しておく。
+ */
+import Base from "../layouts/Base.astro";
+import { project, companyName, tel, telHref, email } from "../lib/site";
+---
+<Base title="お問い合わせ" description={`${companyName}へのお問い合わせ。お電話・メールで承ります`}>
+  <div class="page-head"><div class="inner">
+    <h1>お問い合わせ</h1>
+    <p>可否のご確認だけでも構いません。お気軽にご連絡ください。</p>
+  </div></div>
+  <section class="section"><div class="inner">
+    <h2>ご連絡先</h2>
+    <div class="table-wrap">
+      <table><tbody>
+        {tel && <tr><th scope="row">電話</th><td><a href={`tel:${telHref}`}>{tel}</a></td></tr>}
+        {email && <tr><th scope="row">メール</th><td><a href={`mailto:${email}`}>{email}</a></td></tr>}
+        {project.basics?.address && <tr><th scope="row">所在地</th><td>{project.basics.address}</td></tr>}
+        {project.capability?.operatingHours && (
+          <tr><th scope="row">稼働体制</th><td>{project.capability.operatingHours}</td></tr>
+        )}
+      </tbody></table>
+    </div>
+
+    <h2>ご相談の際にお知らせいただきたいこと</h2>
+    <p>下記が分かると、可否と概算のお返事が早くなります。分かる範囲で構いません。</p>
+    <ul>
+      <li>図面（PDF・DXFなど。お手元にあるものでかまいません）</li>
+      <li>材質</li>
+      <li>数量</li>
+      <li>ご希望の納期</li>
+      <li>用途・使われ方（精度の要否の判断に使います）</li>
+    </ul>
+    <p>図面がまだ固まっていない段階のご相談も承ります。</p>
+  </div></section>
+</Base>

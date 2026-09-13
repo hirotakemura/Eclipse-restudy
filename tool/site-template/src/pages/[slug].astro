@@ -1,0 +1,54 @@
+---
+/**
+ * 採用情報・代表挨拶。
+ *
+ * **サイトの役割（集客／選別／採用／信用構築）に応じて、出したり出さなかったりする。**
+ * 採用の予定がない会社に採用ページを作っても、更新されないページが1枚増えるだけ。
+ */
+import Base from "../layouts/Base.astro";
+import Prose from "../components/Prose.astro";
+import { project, hasRecruit, hasMessage, companyName } from "../lib/site";
+import { hasDraft } from "../lib/draft";
+
+export function getStaticPaths() {
+  const paths = [];
+  if (hasRecruit) paths.push({ params: { slug: "recruit" }, props: { kind: "recruit" } });
+  if (hasMessage) paths.push({ params: { slug: "message" }, props: { kind: "message" } });
+  return paths;
+}
+const { kind } = Astro.props;
+const r = project.recruitment ?? ({} as any);
+const e = project.executive ?? ({} as any);
+
+const title = kind === "recruit" ? "採用情報" : "代表挨拶";
+const blocks = kind === "recruit"
+  ? ([
+      ["募集している職種", (r.neededRoles ?? []).join("、")],
+      ["職場について", (r.workplaceAppeal ?? []).join("、")],
+      ["定着の状況", r.retentionNotes],
+    ].filter(([, v]) => v) as [string, string][])
+  : ([
+      ["これからの5年", e.vision],
+      ["社員に伝えたいこと", e.messageToStaff],
+    ].filter(([, v]) => v) as [string, string][]);
+---
+<Base title={title} description={`${companyName}の${title}`}>
+  <div class="page-head"><div class="inner">
+    <h1>{title}</h1>
+    {kind === "message" && project.basics?.representative && (
+      <p>代表 {project.basics.representative}</p>
+    )}
+  </div></div>
+  <section class="section"><div class="inner">
+    <Prose slug={kind} />
+    {!hasDraft(kind) && blocks.map(([h, body]) => (
+      <>
+        <h2>{h}</h2>
+        <p>{body}</p>
+      </>
+    ))}
+    {kind === "recruit" && (
+      <p style="margin-top:30px">ご応募・ご質問は<a href="/contact/">お問い合わせ</a>よりご連絡ください。</p>
+    )}
+  </div></section>
+</Base>

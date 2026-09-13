@@ -1,0 +1,37 @@
+---
+/**
+ * 対応可能範囲。**SEOの本体。**
+ * 調達担当者は「材質 × 加工法 × 条件」で検索する。この表があるかで検索に出るかが決まる。
+ *
+ * 表は聞き取ったデータをそのまま出す。生成を通さない（D-095）。
+ */
+import Base from "../layouts/Base.astro";
+import Prose from "../components/Prose.astro";
+import Table from "../components/Table.astro";
+import { project, rows, companyName } from "../lib/site";
+
+const cap = project.capability ?? ({} as any);
+const spec = rows([
+  ["対応材質", cap.materials],
+  ["加工法・工法", cap.processes],
+  ["対応サイズ（最大）", cap.maxSize],
+  ["対応サイズ（最小）", cap.minSize],
+  ["対応精度", cap.tolerance],
+  ["対応ロット", cap.lotSize],
+  ["最短納期", cap.shortestLeadTime],
+  ["試作と量産の比率", cap.prototypeRatio],
+  ["資格・認証", cap.certifications],
+  ["稼働体制", cap.operatingHours],
+]);
+---
+<Base title="対応可能範囲" description={`${companyName}の対応材質・加工法・精度・ロット・納期の一覧`}>
+  <div class="page-head"><div class="inner">
+    <h1>対応可能範囲</h1>
+    <p>材質・加工法・サイズ・精度・ロット・納期の一覧です。</p>
+  </div></div>
+  <section class="section"><div class="inner">
+    <Prose slug="capability" />
+    <Table rows={spec} />
+    <p>記載のない条件についても、まずはご相談ください。可否だけでもお答えします。</p>
+  </div></section>
+</Base>

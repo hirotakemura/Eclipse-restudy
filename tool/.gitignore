@@ -6,3 +6,9 @@ projects/*
 
 .env
 .env.local
+
+# サイトテンプレートに流し込む案件データ。顧客の情報そのものなのでコミットしない
+site-template/src/site-data/*
+!site-template/src/site-data/.gitkeep
+site-template/dist/
+site-template/.astro/

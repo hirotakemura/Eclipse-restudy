@@ -1,0 +1,102 @@
+---
+/**
+ * 全ページ共通の枠。
+ *
+ * **電話番号を全ページの見える位置に置く（D-060）。**
+ * 中小製造業の調達担当者は電話を使う。フォームだけに依存させない。
+ * これは撤退設計でもある：我々の側で何かが止まっても、
+ * 電話とメールが載っていれば、お客様の商売は止まらない（docs/17）。
+ */
+import "../styles/site.css";
+import { companyName, tel, telHref, email, address, nav, project } from "../lib/site";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+const { title, description = "" } = Astro.props;
+const here = Astro.url.pathname;
+const isHome = here === "/" || here === "";
+const pageTitle = isHome ? `${companyName}｜${title}` : `${title}｜${companyName}`;
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: companyName,
+  telephone: tel || undefined,
+  address: address || undefined,
+  foundingDate: project.basics?.founded || undefined,
+  url: Astro.site?.href,
+};
+---
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{pageTitle}</title>
+  {description && <meta name="description" content={description} />}
+  <link rel="canonical" href={new URL(here, Astro.site).href}>
+  <meta property="og:title" content={pageTitle}>
+  <meta property="og:type" content="website">
+  {description && <meta property="og:description" content={description} />}
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="bar">
+      <a class="logo" href="/">{companyName}</a>
+      <div class="head-contact">
+        {tel && (
+          <a class="tel" href={`tel:${telHref}`}>
+            <span class="tel-label">お電話でのお問い合わせ</span>
+            <span class="tel-num">{tel}</span>
+          </a>
+        )}
+        <a class="btn" href="/contact/">お問い合わせ</a>
+      </div>
+    </div>
+    <nav class="site-nav" aria-label="メインメニュー">
+      <ul>
+        {nav.map((item) => (
+          <li>
+            <a href={item.href} aria-current={here === item.href ? "page" : undefined}>{item.label}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </header>
+
+  <main>
+    <slot />
+  </main>
+
+  <section class="cta">
+    <div class="inner">
+      <h2>図面をお持ちでしたら、そのままご相談ください</h2>
+      <p>他社様で難しいと言われた案件も、一度ご相談ください。可否だけでもお答えします。</p>
+      <p class="cta-lines">
+        {tel && <a class="tel-big" href={`tel:${telHref}`}>{tel}</a>}
+        {email && <a class="mail" href={`mailto:${email}`}>{email}</a>}
+      </p>
+      <a class="btn btn-lg" href="/contact/">お問い合わせはこちら</a>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <p class="f-name">{companyName}</p>
+      <p>
+        {address}<br>
+        {tel && <>TEL <a href={`tel:${telHref}`}>{tel}</a></>}
+        {tel && email && <> ／ </>}
+        {email && <a href={`mailto:${email}`}>{email}</a>}
+      </p>
+      <ul class="f-nav">
+        {nav.map((item) => <li><a href={item.href}>{item.label}</a></li>)}
+      </ul>
+      <p class="copy">© {new Date().getFullYear()} {companyName}</p>
+    </div>
+  </footer>
+</body>
+</html>

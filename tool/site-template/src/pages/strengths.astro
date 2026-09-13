@@ -1,0 +1,41 @@
+---
+/**
+ * 強み・技術。**サイトで最も差がつくページ。**
+ * 取材の追い質問で引き出した、社長自身が言語化できていなかった強みをここで言葉にする。
+ */
+import Base from "../layouts/Base.astro";
+import Prose from "../components/Prose.astro";
+import { project, companyName } from "../lib/site";
+import { hasDraft } from "../lib/draft";
+
+const s = project.strengths ?? ({} as any);
+/** 原稿がまだ無い段階では、聞き取った内容をそのまま見出し付きで出す */
+const blocks = [
+  ["他社様で難しいと言われた案件", s.wonAfterOthersDeclined],
+  ["お客様からよくいただく言葉", s.praiseFromClients],
+  ["同業が敬遠しがちな仕事", s.workOthersAvoid],
+  ["技術的に最も難しかった仕事", s.hardestJob],
+  ["取材で詳しくうかがった点", s.followUpFindings],
+].filter(([, v]) => v) as [string, string][];
+---
+<Base title="強み・技術" description={`${companyName}が他社で断られた案件を受けられる理由`}>
+  <div class="page-head"><div class="inner">
+    <h1>強み・技術</h1>
+    <p>なぜ他社様で難しいと言われた案件をお受けできるのか。</p>
+  </div></div>
+  <section class="section"><div class="inner">
+    <Prose slug="strengths" />
+    {!hasDraft("strengths") && blocks.map(([title, body]) => (
+      <>
+        <h2>{title}</h2>
+        <p>{body}</p>
+      </>
+    ))}
+    {s.defectRate && (
+      <>
+        <h2>品質</h2>
+        <p>不良率：{s.defectRate}</p>
+      </>
+    )}
+  </div></section>
+</Base>

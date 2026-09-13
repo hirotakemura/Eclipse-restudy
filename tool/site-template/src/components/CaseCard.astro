@@ -1,0 +1,15 @@
+---
+import { caseHref } from "../lib/site";
+interface Props { index: number; item: any }
+const { index, item } = Astro.props;
+---
+<a class="case-card" href={caseHref(index)}>
+  <span class="case-industry">{item.clientIndustry}</span>
+  <span class="case-title">{item.title}</span>
+  {item.challenge && <span class="case-challenge">{item.challenge}</span>}
+  {Boolean(item.materials?.length || item.processes?.length) && (
+    <span class="case-tags">
+      {[...(item.materials ?? []), ...(item.processes ?? [])].map((t: string) => <em>{t}</em>)}
+    </span>
+  )}
+</a>
