@@ -317,6 +317,14 @@ html[data-tables="horizontal"] th,
 html[data-tables="horizontal"] td { border: 0; border-bottom: var(--line-width) solid var(--table-line); }
 html[data-tables="stripe"] th,
 html[data-tables="stripe"] td { border: 0; }
+/*
+  **縞の色だけに頼らない**（D-192）。
+  白地と薄地の差は全6配色で 1.08〜1.10:1 しかなく、実測すると**ほぼ見分けがつかない。**
+  「行数が多い表で目が迷わない」ために選ぶ型なのに、区切りが見えないのでは意味がない。
+  行の境に罫線を1本入れ、縞は補助にする。
+*/
+html[data-tables="stripe"] tbody tr + tr th,
+html[data-tables="stripe"] tbody tr + tr td { border-top: var(--line-width) solid var(--table-line); }
 html[data-tables="stripe"] tbody tr:nth-child(odd) { background: var(--bg-soft); }
 html[data-tables="stripe"] tbody tr:nth-child(odd) th { background: var(--accent-soft); }
 html[data-tables="stripe"] thead th { border-bottom: 2px solid var(--accent); }
@@ -407,3 +415,6 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
 .point p:last-child { margin-bottom: 0; }
 .point-sub { font-weight: 700; font-size: 15px; color: var(--accent-dark); }
 @media (max-width: 760px) { .points { grid-template-columns: 1fr; } }
+
+/* 検査に使っていない色を静かに増やさないための印（D-191）。
+   ここに色を足したら contrast.test.mjs にも組み合わせを足すこと。 */

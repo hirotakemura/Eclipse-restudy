@@ -28,6 +28,11 @@ export interface Palette {
    * 「写真が無くても、文字と表だけで読める」と謳っている以上、
    * その表の罫線が見えないのは通らない。対応材質・設備一覧は調達担当者が最も見る部分で、
    * ここだけは背景に対して 3:1 を確保する（`contrast.test.mjs` で検査）。
+   *
+   * **基準にするのは薄い背景（`bgSoft`）のほう**（D-191）。
+   * 既定の表では**行見出しの列が薄い背景**になっており、その罫線は薄地に接している。
+   * スマホで表を縦積みにしたときも同じ。
+   * 白地だけで測っていたので、**そこでは 2.8:1 まで落ちていた。**
    */
   tableLine: string;
 }
@@ -36,34 +41,34 @@ export const PALETTES: Palette[] = [
   {
     id: "ai", label: "藍", note: "製造業の既定。堅い・実直。青は業種を問わず外さない",
     accent: "#10456f", accentDark: "#0b3252", accentSoft: "#e8eff5",
-    ink: "#17202a", inkSoft: "#5b6673", bg: "#ffffff", bgSoft: "#f4f6f8", line: "#d9dee4", tableLine: "#929599",
+    ink: "#17202a", inkSoft: "#5b6673", bg: "#ffffff", bgSoft: "#f4f6f8", line: "#d9dee4", tableLine: "#898c90",
   },
   {
     id: "hagane", label: "鋼", note: "金属加工・機械。無彩色に近く、設備写真が映える",
     accent: "#3d4852", accentDark: "#272f36", accentSoft: "#eceef0",
-    ink: "#1c1f22", inkSoft: "#5d646b", bg: "#ffffff", bgSoft: "#f3f4f5", line: "#dcdee0", tableLine: "#909192",
+    ink: "#1c1f22", inkSoft: "#5d646b", bg: "#ffffff", bgSoft: "#f3f4f5", line: "#dcdee0", tableLine: "#8a8b8c",
   },
   {
     id: "fukamidori", label: "深緑", note: "食品・環境・農業まわり。清潔さと落ち着き",
     accent: "#1f6f4a", accentDark: "#17573a", accentSoft: "#e6f1ea",
-    ink: "#1b241f", inkSoft: "#586460", bg: "#ffffff", bgSoft: "#f3f7f4", line: "#d8e0da", tableLine: "#8d928e",
+    ink: "#1b241f", inkSoft: "#586460", bg: "#ffffff", bgSoft: "#f3f7f4", line: "#d8e0da", tableLine: "#898e8a",
   },
   {
     id: "enji", label: "臙脂", note: "老舗・職人仕事。和の色。創業が古い会社に効く",
     accent: "#8d2f36", accentDark: "#6d2329", accentSoft: "#f6eaea",
-    ink: "#231a1a", inkSoft: "#6b5b5b", bg: "#fffdfc", bgSoft: "#f8f4f2", line: "#e3d9d6", tableLine: "#999290",
+    ink: "#231a1a", inkSoft: "#6b5b5b", bg: "#fffdfc", bgSoft: "#f8f4f2", line: "#e3d9d6", tableLine: "#918b89",
   },
   {
     id: "sumi", label: "墨", note: "設計・デザイン寄り。写真が少なくても締まる",
     accent: "#1d1d1d", accentDark: "#000000", accentSoft: "#ededed",
-    ink: "#141414", inkSoft: "#5e5e5e", bg: "#ffffff", bgSoft: "#f4f4f4", line: "#dcdcdc", tableLine: "#949494",
+    ink: "#141414", inkSoft: "#5e5e5e", bg: "#ffffff", bgSoft: "#f4f4f4", line: "#dcdcdc", tableLine: "#8b8b8b",
   },
   {
     id: "kohaku", label: "琥珀",
     // 【2026-09-13 修正】#b06a10 はリンク・ボタンでWCAG AA（4.5:1）を落としていた
     note: "生活サービス・住宅まわり。硬すぎず、親しみが要るとき。※黄〜橙は加齢で見分けづらくなる色",
     accent: "#94580c", accentDark: "#7a4809", accentSoft: "#fbefdd",
-    ink: "#241d14", inkSoft: "#6a6055", bg: "#fffdfa", bgSoft: "#f8f4ee", line: "#e6ddd0", tableLine: "#969088",
+    ink: "#241d14", inkSoft: "#6a6055", bg: "#fffdfa", bgSoft: "#f8f4ee", line: "#e6ddd0", tableLine: "#908a83",
   },
 ];
 
