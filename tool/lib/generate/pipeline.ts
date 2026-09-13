@@ -24,7 +24,7 @@ export interface PageResult {
   retries: number;
   /** error が残っているか。true なら人間が直すまで先に進めない */
   blocked: boolean;
-  usage: { input: number; output: number; cacheRead: number };
+  usage: { input: number; output: number; cacheRead: number; cacheWrite: number };
 }
 
 export interface GenerateOptions {
@@ -85,7 +85,7 @@ export async function generateSite(
     let markdown = "";
     let findings: Finding[] = [];
     let retries = 0;
-    const usage = { input: 0, output: 0, cacheRead: 0 };
+    const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 
     for (;;) {
       const stream = client.messages.stream({
@@ -100,6 +100,8 @@ export async function generateSite(
       usage.input += message.usage.input_tokens;
       usage.output += message.usage.output_tokens;
       usage.cacheRead += message.usage.cache_read_input_tokens ?? 0;
+      // **キャッシュへの書き込みには割増がある。** 数えていないと費用を低く見せる（D-196）
+      usage.cacheWrite += message.usage.cache_creation_input_tokens ?? 0;
 
       markdown = message.content
         .filter((b): b is Anthropic.TextBlock => b.type === "text")
@@ -127,17 +129,56 @@ export async function generateSite(
   return results;
 }
 
-/** 1ドル=155円で概算。為替は変動する */
+/**
+ * 1ドル=155円で概算。**為替は変動する。**
+ *
+ * 単価（Claude Opus 5・2026年9月時点）：
+ *   入力              $5 / 100万トークン
+ *   出力              $25 / 100万トークン　※**考えている分も出力として課金される**
+ *   キャッシュ読み出し  $0.5 / 100万トークン（入力の 0.1倍）
+ *   キャッシュ書き込み  $6.25 / 100万トークン（入力の 1.25倍・5分の保持）
+ *
+ * **書き込みの割増を数えていなかった**ので、費用を低く見せていた（D-196）。
+ */
+const PRICE = { input: 5, output: 25, cacheRead: 0.5, cacheWrite: 6.25 } as const;
+
 export function estimateCost(results: PageResult[], usdJpy = 155): number {
   const t = results.reduce(
     (a, r) => ({
       input: a.input + r.usage.input,
       output: a.output + r.usage.output,
       cacheRead: a.cacheRead + r.usage.cacheRead,
+      cacheWrite: a.cacheWrite + r.usage.cacheWrite,
     }),
-    { input: 0, output: 0, cacheRead: 0 },
+    { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
   );
-  // Claude Opus 5: 入力 $5 / 出力 $25 / 100万トークン。キャッシュ読み出しは入力より安い
-  const usd = (t.input / 1e6) * 5 + (t.output / 1e6) * 25 + (t.cacheRead / 1e6) * 0.5;
+  const usd =
+    (t.input / 1e6) * PRICE.input +
+    (t.output / 1e6) * PRICE.output +
+    (t.cacheRead / 1e6) * PRICE.cacheRead +
+    (t.cacheWrite / 1e6) * PRICE.cacheWrite;
   return usd * usdJpy;
+}
+
+/** 何にいくらかかったかの内訳。**合計だけ見せない** */
+export function costBreakdown(results: PageResult[], usdJpy = 155): string {
+  const t = results.reduce(
+    (a, r) => ({
+      input: a.input + r.usage.input,
+      output: a.output + r.usage.output,
+      cacheRead: a.cacheRead + r.usage.cacheRead,
+      cacheWrite: a.cacheWrite + r.usage.cacheWrite,
+    }),
+    { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+  );
+  const yen = (tokens: number, price: number) => Math.round((tokens / 1e6) * price * usdJpy);
+  const rows: [string, number, number][] = [
+    ["入力（毎回送る分）", t.input, PRICE.input],
+    ["出力（考えている分を含む）", t.output, PRICE.output],
+    ["キャッシュ読み出し", t.cacheRead, PRICE.cacheRead],
+    ["キャッシュ書き込み", t.cacheWrite, PRICE.cacheWrite],
+  ];
+  return rows
+    .map(([label, tokens, price]) => `    ${label.padEnd(16)} ${String(tokens).padStart(8)}トークン　約${yen(tokens, price)}円`)
+    .join("\n");
 }

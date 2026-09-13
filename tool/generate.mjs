@@ -54,7 +54,7 @@ if (key && !key.startsWith("sk-ant-")) {
   process.exit(1);
 }
 
-const { generateSite, estimateCost } = await import("./lib/generate/pipeline.ts");
+const { generateSite, estimateCost, costBreakdown } = await import("./lib/generate/pipeline.ts");
 const project = JSON.parse(fs.readFileSync(file, "utf8"));
 
 console.log(`\n${project.basics?.name ?? id} の原稿を生成します`);
@@ -146,7 +146,9 @@ for (const r of results) {
 }
 
 console.log(`\n  書き出し先: ${outDir}`);
-console.log(`  生成費の概算: ${Math.round(estimateCost(results)).toLocaleString()}円`);
+console.log(`  生成費の概算: ${Math.round(estimateCost(results)).toLocaleString()}円　（1ドル=155円）`);
+// **合計だけ見せない。** どこにいくらかかったかが分からないと、下げようがない
+console.log(costBreakdown(results));
 
 if (marks) {
   console.log(`\n  ${marks}ページに未確認の箇所が残っています。**これは正しい動作です。**`);
