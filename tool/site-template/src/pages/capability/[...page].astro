@@ -54,22 +54,22 @@ export function getStaticPaths() {
   </div></div>
 
   {sections.map((sec) => {
-    if (sec.kind === "prose") return <Band width={sec.width} emphasis={sec.emphasis}><Prose slug="capability" /></Band>;
+    if (sec.kind === "prose") return <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif}><Prose slug="capability" /></Band>;
 
     if (sec.kind === "figures") return (
-      <Band width={sec.width} emphasis={sec.emphasis} heading={sec.heading}>
+      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} heading={sec.heading}>
         <Figures figures={analysis.figures} />
       </Band>
     );
 
     if (sec.kind === "materials") return (
-      <Band width={sec.width} emphasis={sec.emphasis} heading={sec.heading}>
+      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} heading={sec.heading}>
         <Materials materials={cap.materials ?? []} processes={cap.processes ?? []} />
       </Band>
     );
 
     if (sec.kind === "specTable") return (
-      <Band width={sec.width} emphasis={sec.emphasis} heading={sec.heading}>
+      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} heading={sec.heading}>
         <Table rows={spec} />
         <p>記載のない条件についても、まずはご相談ください。可否だけでもお答えします。</p>
       </Band>

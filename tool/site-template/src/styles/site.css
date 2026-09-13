@@ -418,3 +418,171 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
 
 /* 検査に使っていない色を静かに増やさないための印（D-191）。
    ここに色を足したら contrast.test.mjs にも組み合わせを足すこと。 */
+
+/* ══════════════════════════════════════════════════════════
+   面・組み方・地紋・動き（D-202）
+
+   **直す前は、本文の帯がすべて白だった。**
+   トップの帯7つのうち背景があるのは2つだけで、配色を変えても
+   「白地に文字」が続く見え方になっていた（docs/22）。
+
+   暗い面は作らない（D-199）。明るい面の中で差を作る。
+   地紋も方眼もCSSで描く。**画像を足して表示を遅くしない。**
+   ══════════════════════════════════════════════════════════ */
+
+/* ── 面 ─────────────────────────────────── */
+.band[data-surface="plain"] { background: var(--bg); }
+.band[data-surface="soft"] { background: var(--bg-soft); }
+
+/* アクセント地。**白抜きになるので、中の色を全部引き受ける** */
+.band[data-surface="accent"] { background: var(--accent); color: #fff; }
+.band[data-surface="accent"] h2,
+.band[data-surface="accent"] h3 { color: #fff; }
+.band[data-surface="accent"] a { color: #fff; }
+/*
+  万一アクセント地に札が乗っても、文字が消えないようにしておく。
+  構成の側でも使わせないが（lib/design/sections.ts）、**片方だけに頼らない**
+*/
+.band[data-surface="accent"] .case-card { background: rgba(255,255,255,.08); color: #fff; border-color: rgba(255,255,255,.4); }
+.band[data-surface="accent"] .case-card:hover { background: rgba(255,255,255,.16); }
+.band[data-surface="accent"] .case-industry,
+.band[data-surface="accent"] .case-challenge { color: rgba(255,255,255,.85); }
+.band[data-surface="accent"] .case-tags em { background: rgba(255,255,255,.18); color: #fff; }
+.band[data-surface="accent"] .point,
+.band[data-surface="accent"] .machine,
+.band[data-surface="accent"] .chips span { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.45); }
+.band[data-surface="accent"] .declined { border-left-color: #fff; }
+.band[data-surface="accent"] .figures > div { border-color: rgba(255,255,255,.4); }
+.band[data-surface="accent"] .figures dt { color: rgba(255,255,255,.85); }
+
+/* 方眼。図面の下地。**線は薄く。本文の邪魔をしない** */
+.band[data-surface="grid"] {
+  background:
+    repeating-linear-gradient(0deg, transparent 0 39px, var(--line) 39px 40px),
+    repeating-linear-gradient(90deg, transparent 0 39px, var(--line) 39px 40px),
+    var(--bg);
+}
+
+/* 上下の太罫。数値を見せる帯を締める */
+.band[data-surface="rule"] {
+  background: var(--bg);
+  border-top: 3px solid var(--accent);
+  border-bottom: 1px solid var(--line);
+}
+
+/* 紙の地。細かな粒。老舗・手仕事の会社に */
+.band[data-surface="paper"] {
+  background:
+    radial-gradient(circle at 20% 30%, rgba(0,0,0,.02) 0 1px, transparent 1px),
+    radial-gradient(circle at 70% 60%, rgba(0,0,0,.02) 0 1px, transparent 1px),
+    var(--bg-soft);
+  background-size: 7px 7px, 11px 11px;
+}
+
+/* 隣り合う帯の地が同じときだけ、罫で切る */
+.band + .band { border-top: 0; }
+.band[data-surface="plain"] + .band[data-surface="plain"],
+.band[data-surface="soft"] + .band[data-surface="soft"] { border-top: 1px solid var(--line); }
+
+/* ── 組み方 ─────────────────────────────── */
+.band[data-layout="split"] > .inner {
+  display: grid; grid-template-columns: minmax(200px, 1fr) 2.2fr; gap: 32px 40px; align-items: start;
+}
+.band[data-layout="split"] > .inner > h2 { grid-column: 1; margin: 0; }
+.band[data-layout="split"] > .inner > .band-body { grid-column: 2; }
+
+/* 非対称。**片側に寄せて、反対側に余白を取る** */
+.band[data-layout="offset"] > .inner > .band-body { margin-left: 12%; }
+.band[data-layout="offset"] > .inner > h2 { margin-left: 0; }
+
+/* 読み物。大きな見出し・広い余白 */
+.band[data-layout="editorial"] { padding: calc(var(--section) * 1.5) 0; }
+.band[data-layout="editorial"] > .inner > h2 { font-size: 32px; margin-bottom: 26px; }
+.band[data-layout="editorial"] > .inner > .band-body { max-width: 46em; }
+
+.band[data-layout="fullbleed"] > .inner { max-width: none; padding: 0 24px; }
+
+@media (max-width: 860px) {
+  /* **スマホでの畳み方は語彙の定義どおり**（lib/design/system/layout.ts） */
+  .band[data-layout="split"] > .inner { display: block; }
+  .band[data-layout="split"] > .inner > h2 { margin-bottom: 16px; }
+  .band[data-layout="offset"] > .inner > .band-body { margin-left: 0; }
+  .band[data-layout="editorial"] { padding: var(--section) 0; }
+  .band[data-layout="editorial"] > .inner > h2 { font-size: 24px; }
+  .band[data-surface="grid"] { background-size: 28px 28px, 28px 28px; }
+}
+
+/* ── 地紋 ───────────────────────────────── */
+/* 寸法線。数値の両端に引く。**公差が聞き取れている会社だけ**（lib/design/system/motif.ts） */
+.band[data-motif="dimension"] .figures dd::before,
+.band[data-motif="dimension"] .figures dd::after {
+  content: ""; display: inline-block; width: 10px; height: 1px;
+  background: var(--accent); vertical-align: middle; margin: 0 8px;
+}
+/* 断面。薄物・難加工の会社に。見出しの下に細い層を敷く */
+.band[data-motif="section"] > .inner > h2 {
+  padding-bottom: 10px;
+  border-bottom: 3px double var(--line);
+}
+/* 工程線。工程の工夫が強みの会社に */
+.band[data-motif="process"] > .inner > .band-body { position: relative; padding-left: 18px; }
+.band[data-motif="process"] > .inner > .band-body::before {
+  content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 2px;
+  background: linear-gradient(var(--accent), transparent);
+}
+
+/* ── 動き ───────────────────────────────── */
+/*
+  **素のHTMLは最初から見えている**（ご指示③）。
+  隠すのは「動きを許している環境」の中だけ。JSは使わない。
+  印刷・JS無効・クロールで本文が消えないこと。
+*/
+@media (prefers-reduced-motion: no-preference) {
+  html[data-motion="subtle"] .band,
+  html[data-motion="standard"] .band {
+    animation: kobo-rise .5s ease-out both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 40%;
+  }
+  html[data-motion="standard"] .figures dd { animation: kobo-rise .6s ease-out both; animation-timeline: view(); }
+}
+@keyframes kobo-rise {
+  from { opacity: .35; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@media print {
+  .band { animation: none !important; opacity: 1 !important; transform: none !important; }
+}
+
+/* ── 最初の画面の型（D-202）────────────────────
+   **6つ中5つは写真が無くても成立する。** 写真ゼロでも型ごとに違って見えるように */
+
+/* 数字を大きく。**本文の中に埋めない**（ご指示§5） */
+.hero-kicker { font-size: 15px; color: var(--ink-soft); margin: 0 0 26px; letter-spacing: .08em; }
+.hero-figure-label { font-size: 14px; color: var(--ink-soft); margin: 0 0 4px; letter-spacing: .1em; }
+.hero-figure {
+  font-family: var(--font-head); font-weight: 700; line-height: 1.1;
+  font-size: clamp(34px, 6vw, 68px); margin: 0 0 22px; color: var(--accent-dark);
+  max-width: none;
+}
+.hero-sub { font-size: 21px; line-height: 1.7; font-weight: 400; color: var(--ink); max-width: var(--measure); }
+
+/* 余白と文字だけ。材料が少なくても成立し、静かで格が出る */
+html[data-hero="type"] .hero { padding: 96px 0 78px; }
+.hero-type { font-size: clamp(32px, 5.5vw, 60px); line-height: 1.3; margin: 0 0 32px; }
+.hero-type-lead { font-size: 19px; max-width: 34em; }
+
+/* 技術の地紋。方眼の上に見出しを置く */
+html[data-hero="motif"] .hero {
+  background:
+    repeating-linear-gradient(0deg, transparent 0 31px, var(--line) 31px 32px),
+    repeating-linear-gradient(90deg, transparent 0 31px, var(--line) 31px 32px),
+    var(--bg);
+  padding: 72px 0 60px;
+}
+.hero-motif { font-size: clamp(26px, 3.4vw, 40px); line-height: 1.5; max-width: 22em; }
+
+@media (max-width: 860px) {
+  html[data-hero="type"] .hero { padding: 56px 0 44px; }
+  html[data-hero="motif"] .hero { background-size: 24px 24px, 24px 24px; padding: 48px 0 40px; }
+}

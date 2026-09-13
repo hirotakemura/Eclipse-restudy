@@ -27,22 +27,30 @@ const OUT = path.join("projects", "qa");
 /** 書き出したHTMLから、構造の指紋を取る */
 function signature(html) {
   const nav = /data-nav="([a-z]+)"/.exec(html);
+  const motion = /data-motion="([a-z]+)"/.exec(html);
   const palette = /--accent:(#[0-9a-f]{6})/.exec(html);
-  const bands = [...html.matchAll(/<section class="section band" data-width="([a-z]+)" data-emphasis="([a-z]+)"[^>]*>([\s\S]*?)(?=<section class="section band"|<section class="cta"|<footer)/g)]
+  const bands = [...html.matchAll(/<section class="section band"([^>]*)>([\s\S]*?)(?=<section class="section band"|<section class="cta"|<footer)/g)]
     .map((m) => {
-      const head = /<h2[^>]*>([^<]*)</.exec(m[3]);
-      return `${head ? head[1].trim() : "(見出しなし)"}:${m[1]}/${m[2]}`;
+      const at = (k) => (new RegExp(`data-${k}="([a-z]+)"`).exec(m[1]) ?? [, "-"])[1];
+      const head = /<h2[^>]*>([^<]*)</.exec(m[2]);
+      return `${head ? head[1].trim() : "(見出しなし)"}:${at("width")}/${at("emphasis")}/${at("surface")}/${at("layout")}`;
     });
   const hero = /<dl class="spec-first"/.test(html) ? "spec"
     : /class="hero-photo"/.test(html) ? "photo" : "headline";
-  return { hero, bands, nav: nav ? nav[1] : "?", accent: palette ? palette[1] : "?" };
+  return { hero, bands, nav: nav ? nav[1] : "?", accent: palette ? palette[1] : "?", motion: motion ? motion[1] : "?" };
+}
+
+// 前回の検証用案件を消してから作り直す。**古い型のフォルダを残さない**
+for (const f of fs.existsSync("projects") ? fs.readdirSync("projects") : []) {
+  if (f.startsWith("qa-")) fs.rmSync(path.join("projects", f), { recursive: true, force: true });
 }
 
 const project = JSON.parse(fs.readFileSync(SRC, "utf8"));
 console.log(`\n  ${project.basics?.name}　（写真をすべて外して、型だけを変えます）\n`);
 
 const results = [];
-for (const d of DIRECTIONS) {
+// 製造業の6つを比べる（汎用は別集合・D-198）
+for (const d of DIRECTIONS.filter((x) => x.plan === "manufacturing")) {
   const id = `qa-${d.id}`;
   const dir = path.join("projects", id);
   fs.rmSync(dir, { recursive: true, force: true });
@@ -76,7 +84,7 @@ for (const d of DIRECTIONS) {
 
 console.log("━━━ 型ごとの構成（写真ゼロ）━━━\n");
 for (const { d, sig } of results) {
-  console.log(`  ${d.label}（${d.id}）　最初の画面: ${sig.hero}／メニュー: ${sig.nav}／色: ${sig.accent}`);
+  console.log(`  ${d.label}（${d.id}）　最初の画面: ${sig.hero}／メニュー: ${sig.nav}／色: ${sig.accent}／動き: ${sig.motion}`);
   for (const b of sig.bands) console.log(`      ${b}`);
   console.log("");
 }

@@ -24,9 +24,9 @@ import Timeline from "../components/sections/Timeline.astro";
 import People from "../components/sections/People.astro";
 import { cardGrid } from "../lib/cards";
 import { analyze } from "../../../lib/design/analysis.ts";
-import { composeTop } from "../../../lib/design/sections.ts";
+import { composeTop, resolveHero } from "../../../lib/design/sections.ts";
 import { project, companyName, cases, photoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen } from "../lib/site";
-import { heroId } from "../lib/theme";
+import { heroId, theme } from "../lib/theme";
 import { hasDraft } from "../lib/draft";
 
 const cap = (project as any).capability ?? {};
@@ -36,7 +36,19 @@ const basics = (project as any).basics ?? {};
 /** **見立ても構成も、サニタイズ済みのデータから作る。** 未確認の項目は先に落ちている */
 const analysis = analyze(project as any);
 // **原稿がまだ無い段階で、空の帯を出さない。** 罫線と余白だけの帯は壊れて見える
-const sections = composeTop(project as any, analysis, { hero: heroId, hasProse: hasDraft("index") });
+/**
+ * **型（方向性）を必ず渡す。**
+ * 渡し忘れていたため、段階2で作った「型が構成を変える」が
+ * **トップページにだけ届いていなかった**（D-203）。
+ * 強み・技術などのページでは渡していたので、机上の確認では気づけなかった。
+ */
+/** 選んだ型に材料が無ければ、その型の次の候補へ落とす（D-203） */
+const hero = resolveHero(heroId, analysis, theme.direction);
+const sections = composeTop(project as any, analysis, {
+  hero,
+  direction: theme.direction,
+  hasProse: hasDraft("index"),
+});
 
 /**
  * 10秒で「自分の用は足りるか」を判断してもらうための札。
@@ -79,16 +91,42 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
 <Base title="トップ" description={`${companyName}｜${desc}`}>
   {sections.map((s) => {
     if (s.kind === "hero") return (
-      <section class="hero">
+      <section class="hero" data-motif={s.motif !== "none" ? s.motif : undefined}>
         <div class="inner">
-          <h1>{companyName}</h1>
-          <p class="lead">{basics.businessSummary}</p>
-          {heroId === "spec" && specs.length > 0 ? (
-            <dl class="spec-first">
-              {specs.map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
-            </dl>
+          {/*
+            最初の画面は6通り（lib/design/system/hero.ts）。
+            **6つ中5つは写真が無くても成立する。** 写真ゼロの会社でも型ごとに違って見えるように（ご指示②）
+          */}
+          {hero === "figure" && analysis.heroFigure ? (
+            <>
+              <p class="hero-kicker">{companyName}</p>
+              <p class="hero-figure-label">{analysis.heroFigure.label}</p>
+              <p class="hero-figure">{analysis.heroFigure.value}</p>
+              <h1 class="hero-sub">{basics.businessSummary}</h1>
+            </>
+          ) : hero === "type" ? (
+            <>
+              <h1 class="hero-type">{companyName}</h1>
+              <p class="lead hero-type-lead">{basics.businessSummary}</p>
+            </>
+          ) : hero === "motif" ? (
+            <>
+              <p class="hero-kicker">{companyName}</p>
+              <h1 class="hero-motif">{basics.businessSummary}</h1>
+              {facts.length > 0 && <div class="facts">{facts.slice(0, 3).map((f) => <span>{f}</span>)}</div>}
+            </>
           ) : (
-            facts.length > 0 && <div class="facts">{facts.map((f) => <span>{f}</span>)}</div>
+            <>
+              <h1>{companyName}</h1>
+              <p class="lead">{basics.businessSummary}</p>
+              {hero === "spec" && specs.length > 0 ? (
+                <dl class="spec-first">
+                  {specs.map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
+                </dl>
+              ) : (
+                facts.length > 0 && <div class="facts">{facts.map((f) => <span>{f}</span>)}</div>
+              )}
+            </>
           )}
           <Figure photo={photoOf("外観")} className="hero-photo" eager={true} />
         </div>
@@ -96,17 +134,17 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
     );
 
     if (s.kind === "prose") return (
-      <Band width={s.width} emphasis={s.emphasis}><Prose slug={s.slug ?? "index"} /></Band>
+      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif}><Prose slug={s.slug ?? "index"} /></Band>
     );
 
     if (s.kind === "figures") return (
-      <Band width={s.width} emphasis={s.emphasis} heading="対応できる条件">
+      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} heading="対応できる条件">
         <Figures figures={analysis.figures} />
       </Band>
     );
 
     if (s.kind === "declined") return (
-      <Band width={s.width} emphasis={s.emphasis} heading={s.heading}>
+      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} heading={s.heading}>
         <Declined text={isGeneral ? reasonChosen : st.wonAfterOthersDeclined}
                   href="/strengths/"
                   linkLabel={isGeneral ? "くわしく見る" : "なぜ受けられるのか（強み・技術）"} />
@@ -114,43 +152,43 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
     );
 
     if (s.kind === "technique") return (
-      <Band width={s.width} emphasis={s.emphasis} heading={s.heading}>
+      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} heading={s.heading}>
         <Technique text={st.followUpFindings} praise={st.praiseFromClients} href="/strengths/" />
       </Band>
     );
 
     if (s.kind === "materials") return (
-      <Band width={s.width} emphasis={s.emphasis} heading={s.heading}>
+      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} heading={s.heading}>
         <Materials materials={cap.materials ?? []} processes={cap.processes ?? []} href="/capability/" />
       </Band>
     );
 
     if (s.kind === "equipment") return (
-      <Band width={s.width} emphasis={s.emphasis} heading={s.heading}>
+      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} heading={s.heading}>
         <Equipment equipment={cap.equipment ?? []} href="/equipment/" />
       </Band>
     );
 
     if (s.kind === "timeline") return (
-      <Band width={s.width} emphasis={s.emphasis} heading={s.heading}>
+      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} heading={s.heading}>
         <Timeline history={basics.history ?? []} founded={basics.founded} />
       </Band>
     );
 
     if (s.kind === "people") return (
-      <Band width={s.width} emphasis={s.emphasis} heading={s.heading}>
+      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} heading={s.heading}>
         <People vision={(project as any).executive?.vision} representative={basics.representative} href="/message/" />
       </Band>
     );
 
     if (s.kind === "gallery") return (
-      <Band width={s.width} emphasis={s.emphasis}>
+      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif}>
         <Gallery photos={photosOf("工場・設備")} heading={s.heading} />
       </Band>
     );
 
     if (s.kind === "cases") return (
-      <Band width={s.width} emphasis={s.emphasis} heading={isGeneral ? "実績" : s.heading}>
+      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} heading={isGeneral ? "実績" : s.heading}>
         <div class={`cards${topCards.orphan ? " has-orphan" : ""}`} style={`--cols:${topCards.cols}`}>
           {shownCases.map((c, i) => <CaseCard index={i} item={c} />)}
         </div>

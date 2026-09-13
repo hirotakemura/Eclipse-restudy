@@ -440,8 +440,10 @@ function renderTheme(field, read, write) {
     if (h.needs === "figure") {
       // 「数字を大きく」は、大きく出せる数字が1つ以上要る
       const cap = p.capability ?? {};
-      const has = cap.tolerance || cap.shortestLeadTime || cap.lotSize;
-      return has ? h : { ...h, disabled: true, note: "精度・納期・ロットのどれかを聞き取ってから選べます" };
+      // **一言で言い切れる値でなければ、大きく出さない**（lib/design/analysis.ts と同じ判定・D-203）
+      const short = (v) => typeof v === "string" && v.trim().length > 0 && v.trim().length <= 14 && !/[。、]/.test(v);
+      const has = short(cap.tolerance) || short(cap.shortestLeadTime) || short(cap.lotSize);
+      return has ? h : { ...h, disabled: true, note: "「±0.01mm」のように短く言い切れる数字を聞き取ってから選べます" };
     }
     if (h.needs === "motif") {
       // 「技術の地紋」は、地紋の根拠になる聞き取りが要る

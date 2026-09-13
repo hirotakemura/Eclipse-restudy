@@ -19,6 +19,8 @@
 import type { Project } from "../schema.ts";
 import type { Analysis, ShowBy, Strand } from "./analysis.ts";
 import { getDirection, type Tone } from "./direction.ts";
+import type { SurfaceId, LayoutId, MotifId, MediaId } from "./system/index.ts";
+import { MOTIFS } from "./system/index.ts";
 
 /** セクションの幅。**全部同じ幅にしない**のが今回の主眼 */
 export type Width =
@@ -48,6 +50,14 @@ export interface Section {
     | "prose"; // 生成した散文
   width: Width;
   emphasis: Emphasis;
+  /** 帯の地。**直す前は全部の帯が白だった**（docs/22） */
+  surface: SurfaceId;
+  /** 中身の並べ方。**直す前は1カラムしか無かった** */
+  layout: LayoutId;
+  /** 写真の扱い。預かっていなければ none */
+  media: MediaId;
+  /** 地紋。根拠が無ければ none */
+  motif: MotifId;
   heading?: string;
   /** `prose` のとき、どの原稿を流すか */
   slug?: string;
@@ -79,7 +89,7 @@ function applyDirection(strands: Strand[], directionId: string | undefined): Str
  * **同じセクションでも、型が違えば出方が変わる。**
  * 「老舗・職人」で条件の数字を画面いっぱいに出しても、その会社の売りにはならない。
  */
-function applyTone(section: Omit<Section, "why">, tone: Tone): Omit<Section, "why"> {
+function applyTone(section: Base, tone: Tone): Base {
   if (tone === "story") {
     if (section.kind === "figures") return { ...section, width: "normal", emphasis: "normal" };
     if (section.kind === "timeline" || section.kind === "people") return { ...section, emphasis: "lead" };
@@ -92,7 +102,9 @@ function applyTone(section: Omit<Section, "why">, tone: Tone): Omit<Section, "wh
 }
 
 /** 見せ方ごとの、既定の出し方 */
-const BY_STRAND: Record<ShowBy, Omit<Section, "why"> | null> = {
+type Base = Omit<Section, "why" | "surface" | "layout" | "media" | "motif">;
+
+const BY_STRAND: Record<ShowBy, Base | null> = {
   declined: { kind: "declined", width: "narrow", emphasis: "lead", heading: "他社様で難しいと言われた案件" },
   technique: { kind: "technique", width: "narrow", emphasis: "normal", heading: "どうやって受けているか" },
   numbers: { kind: "figures", width: "full", emphasis: "lead" },
@@ -102,6 +114,67 @@ const BY_STRAND: Record<ShowBy, Omit<Section, "why"> | null> = {
   people: { kind: "people", width: "narrow", emphasis: "quiet", heading: "代表より" },
   history: { kind: "timeline", width: "narrow", emphasis: "quiet", heading: "沿革" },
 };
+
+
+/**
+ * 帯の地・組み方・写真・地紋を決める。
+ *
+ * **型が「好み」を出し、会社の材料が「できること」を出す。** その重なりを取る。
+ * 材料が無ければ既定に落ちる。**無いものを飾りで埋めない。**
+ *
+ * 面は同じものを続けない。**隣り合う帯が同じ地だと、境目が見えない。**
+ */
+function decorate(
+  base: Base,
+  d: ReturnType<typeof getDirection>,
+  a: Analysis,
+  index: number,
+  prevSurface: SurfaceId | null,
+): Omit<Section, "why"> {
+  // 面：型の候補から順に選び、直前と同じにならないものを取る
+  const candidates = d.surfaces.filter((x) => x !== prevSurface);
+  const pool = candidates.length ? candidates : d.surfaces;
+  let surface: SurfaceId = pool[index % pool.length] ?? "plain";
+  // 散文の帯は、読ませる場所なので白か薄地に留める
+  if (base.kind === "prose" || base.kind === "technique") {
+    surface = surface === "accent" ? "plain" : surface;
+  }
+  // 数字の帯は締めたい。型が許していれば罫の面を優先する
+  if (base.kind === "figures" && d.surfaces.includes("rule")) surface = "rule";
+  // 写真の帯に地紋を敷かない
+  if (base.kind === "gallery") surface = "plain";
+  /**
+   * **アクセント地は白抜きになるので、札を並べる帯には使わない。**
+   * 実際に、事例カード（白い箱）を青地に置いたときに**見出しが白×白で消えた**（D-203）。
+   * 短く強い内容（引用・数字）だけに使う。
+   */
+  const CARDS: Section["kind"][] = ["cases", "points", "equipment", "equipmentTable", "specTable", "gallery"];
+  if (surface === "accent" && CARDS.includes(base.kind)) {
+    surface = d.surfaces.find((x) => x !== "accent" && x !== prevSurface) ?? "plain";
+  }
+
+  // 組み方：狭い帯は積むしかない。広い帯でだけ型の好みを効かせる
+  let layout: LayoutId = "stack";
+  if (base.width !== "narrow") {
+    layout = d.layouts.find((l) => l !== "fullbleed" || a.hasRealPhotos) ?? "stack";
+  } else if (d.layouts.includes("editorial") && base.emphasis === "lead") {
+    layout = "editorial";
+  }
+
+  // 写真：預かっていなければ none。**無理に写真中心にしない**
+  const media: MediaId = !a.hasRealPhotos ? "none" : base.kind === "gallery" ? "full" : "none";
+
+  // 地紋：根拠のあるものだけ。強い帯にだけ敷く
+  const motif: MotifId = base.emphasis === "lead" ? pickMotif(d.motifs, a) : "none";
+
+  return { ...base, surface, layout, media, motif };
+}
+
+/** 型の候補のうち、**聞き取りに裏づけのある**最初のものを取る（ご指示§7） */
+export function pickMotif(candidates: MotifId[], a: Analysis): MotifId {
+  const available = new Set(a.motifs);
+  return candidates.find((m) => m !== "none" && available.has(m)) ?? "none";
+}
 
 /**
  * トップページの構成を決める。
@@ -135,7 +208,20 @@ export function composeTop(
    */
   const coveredByHero: Section["kind"][] = hero === "spec" ? ["figures"] : [];
 
-  const out: Section[] = [{ kind: "hero", width: "normal", emphasis: "lead", why: "型で選ばれた最初の画面" }];
+  const d = getDirection(direction);
+  let prev: SurfaceId | null = null;
+  let n = 0;
+  const put = (base: Base, why: string) => {
+    const sec = decorate(applyTone(base, tone), d, a, n++, prev);
+    prev = sec.surface;
+    out.push({ ...sec, why });
+  };
+  const out: Section[] = [];
+  out.push({
+    kind: "hero", width: "normal", emphasis: "lead",
+    surface: d.surfaces[0] ?? "plain", layout: "stack", media: a.hasRealPhotos ? "full" : "none",
+    motif: pickMotif(d.motifs, a), why: "型で選ばれた最初の画面",
+  });
 
   // 見立ての上位。材料の無いものは analyze() の時点で落ちている
   const picked = applyDirection(a.strands, direction)
@@ -143,22 +229,22 @@ export function composeTop(
     .slice(0, maxStrands);
 
   const first = picked[0];
-  if (first) out.push({ ...applyTone(BY_STRAND[first.id]!, tone), why: first.why });
+  if (first) put(BY_STRAND[first.id]!, first.why);
 
   /**
    * 生成した散文は、**1位の直後**に置く。
    * 会社を一言で言う材料（他社が断った案件など）を見たあとに読むほうが入る。
    */
   if (has.prose) {
-    out.push({ kind: "prose", width: "narrow", emphasis: "normal", slug: "index", why: "生成した紹介文" });
+    put({ kind: "prose", width: "narrow", emphasis: "normal", slug: "index" }, "生成した紹介文");
   }
 
   // 事例は上に。**最も問い合わせに繋がる**
   if (has.cases) {
-    out.push({ kind: "cases", width: "wide", emphasis: "normal", heading: "加工事例", why: "最も問い合わせに繋がる" });
+    put({ kind: "cases", width: "wide", emphasis: "normal", heading: "加工事例" }, "最も問い合わせに繋がる");
   }
 
-  for (const s of picked.slice(1)) out.push({ ...applyTone(BY_STRAND[s.id]!, tone), why: s.why });
+  for (const s of picked.slice(1)) put(BY_STRAND[s.id]!, s.why);
 
   return dedupe(out);
 }
@@ -208,7 +294,14 @@ export function composePage(
   const st = p.strengths ?? {};
   const has = (v: unknown) => typeof v === "string" && v.trim().length > 0;
   const out: Section[] = [];
-  const add = (sec: Omit<Section, "why">, why: string) => out.push({ ...applyTone(sec, tone), why });
+  const d = getDirection(direction);
+  let prev: SurfaceId | null = null;
+  let n = 0;
+  const add = (base: Base, why: string) => {
+    const sec = decorate(applyTone(base, tone), d, a, n++, prev);
+    prev = sec.surface;
+    out.push({ ...sec, why });
+  };
 
   if (hasProse) add({ kind: "prose", width: "narrow", emphasis: "normal", slug }, "生成した本文");
 
@@ -281,4 +374,28 @@ export function describeForWriter(sections: Section[]): string {
       return `${i + 1}. ${head}　… ${SHOWS[s.kind]}`;
     })
     .join("\n");
+}
+
+/**
+ * 実際に使える最初の画面を選ぶ。
+ *
+ * **選んだ型に材料が無ければ、その型の次の候補へ落とす。**
+ * 「数字を大きく」を選んでも短い数字が聞き取れていなければ、
+ * 画面いっぱいに長い文が出るだけになる（D-203）。
+ * 黙って既定に戻すのではなく、**その型が向いている順**に落とす。
+ */
+export function resolveHero(
+  chosen: string | undefined,
+  a: Analysis,
+  directionId: string | undefined,
+): string {
+  const d = getDirection(directionId);
+  const ok = (h: string): boolean => {
+    if (h === "photo") return a.hasRealPhotos;
+    if (h === "figure") return a.heroFigure !== null;
+    if (h === "motif") return a.motifs.length > 0;
+    return true;
+  };
+  if (chosen && ok(chosen)) return chosen;
+  return d.heroes.find(ok) ?? "headline";
 }

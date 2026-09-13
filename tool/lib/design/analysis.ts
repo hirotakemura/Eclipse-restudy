@@ -20,6 +20,7 @@
  */
 
 import type { Project } from "../schema.ts";
+import type { MotifId } from "./system/index.ts";
 
 /** 何で見せる会社か */
 export type ShowBy =
@@ -58,6 +59,18 @@ export interface Analysis {
   profitable: string;
   /** 実写の写真があるか。仮の画像しか無い案件で「写真で見せる」を選ばせない */
   hasRealPhotos: boolean;
+  /**
+   * 敷いてよい地紋。**聞き取りに裏づけのあるものだけ**（ご指示§7）。
+   * 「工場っぽい歯車アイコン」を機械的に入れないための歯止め。
+   */
+  motifs: MotifId[];
+  /**
+   * 最初の画面に「1つだけ」大きく出す数字。
+   *
+   * **本文の中に埋めない**（ご指示§5）。精度 → 納期 → ロットの順で、
+   * いちばん判断に効くものを選ぶ。無ければ null（そのときは数字のHeroを選ばせない）。
+   */
+  heroFigure: Figure | null;
 }
 
 const text = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
@@ -165,8 +178,35 @@ export function analyze(project: Project): Analysis {
     .filter(([, v]) => v)
     .map(([label, value]) => ({ label: label as string, value: value as string }));
 
+  /**
+   * 地紋の材料。**根拠の無い地紋は敷かない。**
+   * 公差が聞けていないのに寸法線を引くのは、絵として嘘になる。
+   */
+  const motifs: MotifId[] = [];
+  if (text(cap.tolerance)) motifs.push("dimension");
+  if (text(st.followUpFindings)) { motifs.push("grid"); motifs.push("process"); }
+  if (text(st.wonAfterOthersDeclined)) motifs.push("section");
+  if (len(cap.materials) >= 3) motifs.push("grain");
+
+  /**
+   * **一言で言い切れる値でなければ、大きく出さない。**
+   *
+   * 松原精機の最短納期は「標準7日。急ぎの場合は最短3日」で、これを画面いっぱいに
+   * 出すと**数字ではなく長い文**になる（実際にそうなった・D-203）。
+   * 短く言い直すのは**こちらが値を作ること**になるので、しない（D-181）。
+   * 短い値が聞き取れていなければ、この型は選ばない。
+   */
+  const short = (v: string) => v.length > 0 && v.length <= 14 && !/[。、]/.test(v);
+  const heroFigure: Figure | null =
+    short(text(cap.tolerance)) ? { label: "対応精度", value: text(cap.tolerance) }
+    : short(text(cap.shortestLeadTime)) ? { label: "最短納期", value: text(cap.shortestLeadTime) }
+    : short(text(cap.lotSize)) ? { label: "対応ロット", value: text(cap.lotSize) }
+    : null;
+
   return {
     strands: rank(strands),
+    motifs,
+    heroFigure,
     figures,
     seeking,
     avoiding,

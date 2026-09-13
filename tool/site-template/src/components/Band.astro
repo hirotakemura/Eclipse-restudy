@@ -2,20 +2,30 @@
 /**
  * セクションの帯。
  *
- * **幅と強さを属性で受ける。** 構造は `lib/design/sections.ts` が決め、
- * ここは受け取ったとおりに描くだけにする。
+ * **幅・地・組み方・地紋を属性で受ける。**
+ * 何をどう出すかは `lib/design/sections.ts` が決め、ここは受け取ったとおりに描くだけ。
  * `.section` も付けるので、章の区切り（data-sections）と見出しの飾り（data-headings）はそのまま効く。
  */
 interface Props {
   width?: "narrow" | "normal" | "wide" | "full";
   emphasis?: "lead" | "normal" | "quiet";
+  surface?: string;
+  layout?: string;
+  motif?: string;
   heading?: string;
 }
-const { width = "normal", emphasis = "normal", heading } = Astro.props;
+const { width = "normal", emphasis = "normal", surface = "plain", layout = "stack", motif = "none", heading } = Astro.props;
 ---
-<section class="section band" data-width={width} data-emphasis={emphasis}>
+<section
+  class="section band"
+  data-width={width}
+  data-emphasis={emphasis}
+  data-surface={surface}
+  data-layout={layout}
+  data-motif={motif !== "none" ? motif : undefined}
+>
   <div class="inner">
     {heading && <h2>{heading}</h2>}
-    <slot />
+    <div class="band-body"><slot /></div>
   </div>
 </section>
