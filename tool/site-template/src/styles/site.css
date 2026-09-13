@@ -342,3 +342,57 @@ html[data-tables="stripe"] thead th { border-bottom: 2px solid var(--accent); }
 .spec-first dt { font-size: 13px; color: var(--ink-soft); margin-bottom: 3px; }
 .spec-first dd { margin: 0; font-weight: 600; font-size: 17px; line-height: 1.6; }
 html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
+
+/* ── セクションの幅と強さ（段階1・D-180）──────────────
+   **全セクションを同じ幅にしない。** 直す前は全13ページ・全セクションが
+   1040px 固定で、配色を変えても同じ顔に見える原因になっていた（docs/21）。
+   幅は「何を見せるか」で決める。散文は狭く、表と写真は広く、数字は画面いっぱいに。
+   なお `.band` は `.section` も兼ねるので、章の区切り・見出しの飾りはそのまま効く。 */
+.band[data-width="narrow"] > .inner { max-width: 760px; }
+.band[data-width="wide"] > .inner { max-width: 1280px; }
+.band[data-width="full"] > .inner { max-width: 1440px; }
+
+/* 強さ。**重要情報と補助情報を同じ大きさで出さない** */
+.band[data-emphasis="lead"] > .inner > h2 { font-size: 28px; }
+.band[data-emphasis="quiet"] { padding: calc(var(--section) * 0.6) 0; }
+.band[data-emphasis="quiet"] > .inner > h2 { font-size: 20px; color: var(--ink-soft); }
+
+/* 判断に使う数字。**表にせず、読める大きさで出す** */
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0; }
+.figures > div { padding: 26px 28px; border-left: var(--line-width) solid var(--line); }
+.figures > div:first-child { border-left: 0; }
+.figures dt { font-size: 14px; color: var(--ink-soft); letter-spacing: .06em; margin-bottom: 10px; }
+.figures dd { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.45; font-family: var(--font-head); }
+@media (max-width: 760px) {
+  .figures { grid-template-columns: 1fr; }
+  .figures > div { border-left: 0; border-top: var(--line-width) solid var(--line); }
+  .figures > div:first-child { border-top: 0; }
+}
+
+/* 他社様が断った案件。**引用として、本文より大きく** */
+.declined { border-left: 5px solid var(--accent); padding: 4px 0 4px 26px; margin: 0 0 26px; }
+.declined p { font-size: 21px; line-height: 1.75; font-weight: 600; margin: 0; max-width: var(--measure); }
+
+/* 対応材質。表にせず、分類として並べる */
+.chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 22px; }
+.chips span {
+  border: var(--line-width) solid var(--table-line); border-radius: var(--radius);
+  padding: 11px 18px; font-size: 17px; font-weight: 600;
+}
+
+/* 設備。型番が分かっているものを前に出す */
+.machines { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.machine { border: var(--line-width) solid var(--line); border-top: 4px solid var(--accent); padding: 20px 22px; }
+.machine .model { font-size: 20px; font-weight: 700; font-family: var(--font-head); }
+.machine .maker { font-size: 15px; color: var(--ink-soft); margin-top: 4px; }
+.machine .count { font-size: 15px; margin-top: 10px; }
+
+/* 沿革 */
+.timeline { border-left: var(--line-width) solid var(--line); padding-left: 24px; margin: 0; }
+.timeline > div { position: relative; padding-bottom: 22px; }
+.timeline > div::before {
+  content: ""; position: absolute; left: -29px; top: 8px;
+  width: 9px; height: 9px; border-radius: 50%; background: var(--accent);
+}
+.timeline dt { font-weight: 700; font-family: var(--font-head); }
+.timeline dd { margin: 4px 0 0; color: var(--ink-soft); max-width: var(--measure); }

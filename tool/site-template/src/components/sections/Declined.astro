@@ -1,0 +1,15 @@
+---
+/**
+ * 他社様で難しいと言われた案件。
+ *
+ * **この会社を一言で言うもの。** 本文と同じ大きさで並べない。
+ */
+interface Props { text: string; href?: string; linkLabel?: string }
+const { text, href, linkLabel } = Astro.props;
+---
+{text && (
+  <>
+    <div class="declined"><p>{text}</p></div>
+    {href && <p><a href={href}>{linkLabel}</a></p>}
+  </>
+)}

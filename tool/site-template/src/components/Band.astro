@@ -1,0 +1,21 @@
+---
+/**
+ * セクションの帯。
+ *
+ * **幅と強さを属性で受ける。** 構造は `lib/design/sections.ts` が決め、
+ * ここは受け取ったとおりに描くだけにする。
+ * `.section` も付けるので、章の区切り（data-sections）と見出しの飾り（data-headings）はそのまま効く。
+ */
+interface Props {
+  width?: "narrow" | "normal" | "wide" | "full";
+  emphasis?: "lead" | "normal" | "quiet";
+  heading?: string;
+}
+const { width = "normal", emphasis = "normal", heading } = Astro.props;
+---
+<section class="section band" data-width={width} data-emphasis={emphasis}>
+  <div class="inner">
+    {heading && <h2>{heading}</h2>}
+    <slot />
+  </div>
+</section>

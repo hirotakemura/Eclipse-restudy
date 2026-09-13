@@ -2,26 +2,45 @@
 /**
  * トップページ。
  *
- * 調達担当者が10秒で「この会社は自分の案件を受けられるか」を判断できるようにする。
- * **判断に使われるのは、対応材質・加工法・ロット・納期の4つ。**
- * 会社の理念や社長の想いは、判断したあとで読まれる（docs/06 ブロック2）。
+ * **骨格をこのファイルが決めない。**
+ * 何をどの順で、どの幅・どの強さで出すかは `lib/design/sections.ts` が案件データから決める。
+ * ここは返ってきた配列を描くだけにする（D-180）。
+ *
+ * 直す前は、全ページが「`.section` 1つ・幅1040px」の同じ形だった。
+ * 配色や書体を変えても同じ顔に見えるのは、装飾しか変わっていなかったから（docs/21）。
  */
 import Base from "../layouts/Base.astro";
+import Band from "../components/Band.astro";
 import Prose from "../components/Prose.astro";
 import CaseCard from "../components/CaseCard.astro";
-import { cardGrid } from "../lib/cards";
-import { project, companyName, cases, photoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen, caseHref } from "../lib/site";
-import { heroId } from "../lib/theme";
 import Figure from "../components/Figure.astro";
 import Gallery from "../components/Gallery.astro";
+import Figures from "../components/sections/Figures.astro";
+import Declined from "../components/sections/Declined.astro";
+import Technique from "../components/sections/Technique.astro";
+import Materials from "../components/sections/Materials.astro";
+import Equipment from "../components/sections/Equipment.astro";
+import Timeline from "../components/sections/Timeline.astro";
+import People from "../components/sections/People.astro";
+import { cardGrid } from "../lib/cards";
+import { analyze } from "../../../lib/design/analysis.ts";
+import { composeTop } from "../../../lib/design/sections.ts";
+import { project, companyName, cases, photoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen } from "../lib/site";
+import { heroId } from "../lib/theme";
+import { hasDraft } from "../lib/draft";
 
-const cap = project.capability ?? ({} as any);
+const cap = (project as any).capability ?? {};
+const st = (project as any).strengths ?? {};
+const basics = (project as any).basics ?? {};
+
+/** **見立ても構成も、サニタイズ済みのデータから作る。** 未確認の項目は先に落ちている */
+const analysis = analyze(project as any);
+// **原稿がまだ無い段階で、空の帯を出さない。** 罫線と余白だけの帯は壊れて見える
+const sections = composeTop(project as any, analysis, { hero: heroId, hasProse: hasDraft("index") });
 
 /**
  * 10秒で「自分の用は足りるか」を判断してもらうための札。
- *
- * 製造業なら「材質・加工法・ロット・納期」、
- * 汎用なら「対応エリアと、何を扱っているか」。**業種が違っても、見る人の問いは同じ。**
+ * 製造業なら「材質・加工法・ロット・納期」、汎用なら「対応エリアと、何を扱っているか」。
  */
 const facts = (isGeneral
   ? [
@@ -37,10 +56,7 @@ const facts = (isGeneral
     ]
 ).filter(Boolean) as string[];
 
-/**
- * 「対応範囲を先に出す」型のときに、最初の画面に置く項目。
- * **札（facts）より情報量を増やす。**判断に使う数字をそのまま見せる
- */
+/** 「対応範囲を先に出す」型のときに、最初の画面に置く項目 */
 const specs = (isGeneral
   ? [
       ["対応エリア", serviceArea],
@@ -56,78 +72,108 @@ const specs = (isGeneral
     ]
 ).filter(([, v]) => v) as [string, string][];
 
-const declined = project.strengths?.wonAfterOthersDeclined;
-const desc = [project.basics?.address, cap.processes?.join("・"), cap.materials?.join("・")]
-  .filter(Boolean).join("／");
 const shownCases = cases.slice(0, 6);
 const topCards = cardGrid(shownCases.length);
+const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("・")].filter(Boolean).join("／");
 ---
 <Base title="トップ" description={`${companyName}｜${desc}`}>
-  <section class="hero">
-    <div class="inner">
-      <h1>{companyName}</h1>
-      <p class="lead">{project.basics?.businessSummary}</p>
-      {heroId === "spec" && specs.length > 0 ? (
-        <dl class="spec-first">
-          {specs.map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
-        </dl>
-      ) : (
-        facts.length > 0 && <div class="facts">{facts.map((f) => <span>{f}</span>)}</div>
-      )}
-      <Figure photo={photoOf("外観")} className="hero-photo" eager={true} />
-    </div>
-  </section>
+  {sections.map((s) => {
+    if (s.kind === "hero") return (
+      <section class="hero">
+        <div class="inner">
+          <h1>{companyName}</h1>
+          <p class="lead">{basics.businessSummary}</p>
+          {heroId === "spec" && specs.length > 0 ? (
+            <dl class="spec-first">
+              {specs.map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
+            </dl>
+          ) : (
+            facts.length > 0 && <div class="facts">{facts.map((f) => <span>{f}</span>)}</div>
+          )}
+          <Figure photo={photoOf("外観")} className="hero-photo" eager={true} />
+        </div>
+      </section>
+    );
 
-  <Prose slug="index" />
+    if (s.kind === "prose") return (
+      <Band width={s.width} emphasis={s.emphasis}><Prose slug={s.slug ?? "index"} /></Band>
+    );
 
-  {isGeneral && offerings.length > 0 && (
-    <section class="section">
-      <div class="inner">
-        <h2>取り扱い</h2>
-        {offerings.slice(0, 4).map((o: any) => (
-          <div class="offering">
-            <h3>{o.name}</h3>
-            {o.detail && <p>{o.detail}</p>}
-            {o.price && <p class="price"><span>料金の目安</span>{o.price}</p>}
-          </div>
-        ))}
-        <p><a href="/services/">サービス・料金をすべて見る</a></p>
-      </div>
-    </section>
-  )}
+    if (s.kind === "figures") return (
+      <Band width={s.width} emphasis={s.emphasis} heading="対応できる条件">
+        <Figures figures={analysis.figures} />
+      </Band>
+    );
 
-  {isGeneral && reasonChosen && (
-    <section class="section">
-      <div class="inner">
-        <h2>選ばれている理由</h2>
-        <div class="note-box">{reasonChosen}</div>
-        <p><a href="/strengths/">くわしく見る</a></p>
-      </div>
-    </section>
-  )}
+    if (s.kind === "declined") return (
+      <Band width={s.width} emphasis={s.emphasis} heading={s.heading}>
+        <Declined text={isGeneral ? reasonChosen : st.wonAfterOthersDeclined}
+                  href="/strengths/"
+                  linkLabel={isGeneral ? "くわしく見る" : "なぜ受けられるのか（強み・技術）"} />
+      </Band>
+    );
 
-  {!isGeneral && declined && (
-    <section class="section">
-      <div class="inner">
-        <h2>他社様で難しいと言われた案件</h2>
-        <div class="note-box">{declined}</div>
-        <p><a href="/strengths/">なぜ受けられるのか（強み・技術）</a></p>
-      </div>
-    </section>
-  )}
+    if (s.kind === "technique") return (
+      <Band width={s.width} emphasis={s.emphasis} heading={s.heading}>
+        <Technique text={st.followUpFindings} praise={st.praiseFromClients} href="/strengths/" />
+      </Band>
+    );
 
-  {cases.length > 0 && (
-    <section class="section">
-      <div class="inner">
-        <h2>{isGeneral ? "実績" : "加工事例"}</h2>
+    if (s.kind === "materials") return (
+      <Band width={s.width} emphasis={s.emphasis} heading={s.heading}>
+        <Materials materials={cap.materials ?? []} processes={cap.processes ?? []} href="/capability/" />
+      </Band>
+    );
+
+    if (s.kind === "equipment") return (
+      <Band width={s.width} emphasis={s.emphasis} heading={s.heading}>
+        <Equipment equipment={cap.equipment ?? []} href="/equipment/" />
+      </Band>
+    );
+
+    if (s.kind === "timeline") return (
+      <Band width={s.width} emphasis={s.emphasis} heading={s.heading}>
+        <Timeline history={basics.history ?? []} founded={basics.founded} />
+      </Band>
+    );
+
+    if (s.kind === "people") return (
+      <Band width={s.width} emphasis={s.emphasis} heading={s.heading}>
+        <People vision={(project as any).executive?.vision} representative={basics.representative} href="/message/" />
+      </Band>
+    );
+
+    if (s.kind === "gallery") return (
+      <Band width={s.width} emphasis={s.emphasis}>
+        <Gallery photos={photosOf("工場・設備")} heading={s.heading} />
+      </Band>
+    );
+
+    if (s.kind === "cases") return (
+      <Band width={s.width} emphasis={s.emphasis} heading={isGeneral ? "実績" : s.heading}>
         <div class={`cards${topCards.orphan ? " has-orphan" : ""}`} style={`--cols:${topCards.cols}`}>
           {shownCases.map((c, i) => <CaseCard index={i} item={c} />)}
         </div>
         {cases.length > 6 && (
           <p style="margin-top:20px"><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>
         )}
-        <Gallery photos={photosOf("工場・設備").slice(0, 3)} heading="工場・設備" />
-      </div>
-    </section>
+      </Band>
+    );
+
+    return null;
+  })}
+
+  {/* 汎用プランの取り扱い。**製造業には無い項目なので、構成の外に置く** */}
+  {isGeneral && offerings.length > 0 && (
+    <Band width="normal" emphasis="normal" heading="取り扱い">
+      {offerings.slice(0, 4).map((o: any) => (
+        <div class="offering">
+          <h3>{o.name}</h3>
+          {o.detail && <p>{o.detail}</p>}
+          {o.price && <p class="price"><span>料金の目安</span>{o.price}</p>}
+        </div>
+      ))}
+      <p><a href="/services/">サービス・料金をすべて見る</a></p>
+    </Band>
   )}
 </Base>

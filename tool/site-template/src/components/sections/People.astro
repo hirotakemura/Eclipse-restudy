@@ -1,0 +1,11 @@
+---
+/**
+ * 代表より。**補助情報なので弱く置く。**
+ * 調達担当者は、受けられるかを判断したあとにここを読む（docs/06 ブロック2）。
+ */
+interface Props { vision: string; representative?: string; href?: string }
+const { vision, representative, href } = Astro.props;
+---
+{vision && <p>{vision}</p>}
+{representative && <p class="lead">代表 {representative}</p>}
+{href && <p><a href={href}>代表挨拶を読む</a></p>}

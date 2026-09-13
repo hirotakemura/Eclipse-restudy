@@ -1,0 +1,16 @@
+---
+/**
+ * 判断に使う数字。
+ *
+ * **表にしない。** 調達担当者が最初に見るのは「自分のロットと納期で受けてもらえるか」で、
+ * それは表の1行ではなく、読める大きさの数字で出す（docs/21）。
+ * 値は案件データそのまま。**ここで作らない。**
+ */
+interface Props { figures: { label: string; value: string }[] }
+const { figures } = Astro.props;
+---
+{figures.length > 0 && (
+  <dl class="figures">
+    {figures.map((f) => <div><dt>{f.label}</dt><dd>{f.value}</dd></div>)}
+  </dl>
+)}

@@ -1,0 +1,23 @@
+---
+/**
+ * 主な設備。
+ *
+ * **型番が分かっているものだけを前に出す。**
+ * 「メーカー・型番とも未確認」は載せない。載せると、聞けていないことが並ぶだけになる。
+ */
+interface Props { equipment: any[]; href?: string }
+const { equipment, href } = Astro.props;
+const named = equipment.filter((e: any) => e?.model && e?.maker);
+---
+{named.length > 0 && (
+  <div class="machines">
+    {named.map((e: any) => (
+      <div class="machine">
+        <p class="model">{e.model}</p>
+        <p class="maker">{e.maker}</p>
+        {e.count && <p class="count">{e.count}台</p>}
+      </div>
+    ))}
+  </div>
+)}
+{href && <p><a href={href}>設備一覧をすべて見る</a></p>}

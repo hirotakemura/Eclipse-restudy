@@ -25,6 +25,9 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { findInternalLanguage, visibleText, contextFor } from "./lib/internal-language.ts";
 import { internalValues } from "./lib/form-definition.ts";
+import { analyze } from "./lib/design/analysis.ts";
+import { composeTop, explain } from "./lib/design/sections.ts";
+import { resolveTheme } from "./lib/theme.ts";
 
 // npm run dev:site -- <案件ID> の形でも、順番が入れ替わっても拾えるようにする
 const args = process.argv.slice(2);
@@ -101,6 +104,21 @@ if (unconfirmed.length) {
 }
 const unplaced = (project.photos ?? []).filter((p) => !p.category || p.category === "その他").length;
 console.log(`  写真 ${photoCount}枚${unplaced ? `（うち置き場所が未定 ${unplaced}枚。サイトには出ません）` : ""}`);
+
+/**
+ * **なぜこの構成になったのかを、書き出しのたびに見せる。**
+ * 構成をデータから決めるようにした以上（D-180）、決まり方が見えないと
+ * 「なぜこの順番なのか」を社長に説明できない。黙って決めない。
+ */
+{
+  const analysis = analyze(project);
+  const hero = resolveTheme(project.theme).hero.id;
+  const sections = composeTop(project, analysis, { hero, hasProse: drafts > 0 });
+  console.log("\n  ── この会社の見立て ──");
+  for (const s of analysis.strands) console.log(`  ${String(s.score).padStart(3)}  ${s.id.padEnd(10)} ${s.why}`);
+  console.log("\n  ── トップページの構成 ──");
+  for (const line of explain(sections).split("\n")) console.log(`  ${line}`);
+}
 
 // 依存は初回だけ入れる
 if (!fs.existsSync(path.join(templateDir, "node_modules"))) {

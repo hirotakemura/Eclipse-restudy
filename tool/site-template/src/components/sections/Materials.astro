@@ -1,0 +1,16 @@
+---
+/**
+ * 対応できる材質。
+ * **表の1行に押し込まない。** 材質は調達担当者が検索する語そのもの（docs/06 ブロック3）。
+ */
+interface Props { materials: string[]; processes?: string[]; href?: string }
+const { materials, processes = [], href } = Astro.props;
+---
+{materials.length > 0 && <div class="chips">{materials.map((m) => <span>{m}</span>)}</div>}
+{processes.length > 0 && (
+  <>
+    <h3>加工法</h3>
+    <div class="chips">{processes.map((m) => <span>{m}</span>)}</div>
+  </>
+)}
+{href && <p><a href={href}>対応可能範囲をすべて見る</a></p>}

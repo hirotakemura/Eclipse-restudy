@@ -1,0 +1,14 @@
+---
+/**
+ * 沿革。**3件未満では年表にしない**（`analysis.ts` で落としている）。
+ * 薄い年表は、無いより悪い。
+ */
+interface Props { history: { year: string; event: string }[]; founded?: string }
+const { history, founded } = Astro.props;
+---
+{founded && <p>創業 {founded}</p>}
+{history.length > 0 && (
+  <dl class="timeline">
+    {history.map((h) => <div><dt>{h.year}</dt><dd>{h.event}</dd></div>)}
+  </dl>
+)}

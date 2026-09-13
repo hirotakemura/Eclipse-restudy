@@ -10,13 +10,14 @@
     "generate": "node generate.mjs",
     "test:verify": "node verify.test.mjs",
     "test:internal": "node internal-language.test.mjs",
+    "test:design": "node design.test.mjs",
     "build:site": "node build-site.mjs",
     "dev:site": "node build-site.mjs --dev",
     "preview:site": "node preview-site.mjs",
     "import:photos": "node import-photos.mjs",
     "dns": "node dns-snapshot.mjs",
     "test:contrast": "node contrast.test.mjs",
-    "test": "npm run test:verify && npm run test:internal && npm run test:contrast"
+    "test": "npm run test:verify && npm run test:internal && npm run test:design && npm run test:contrast"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
