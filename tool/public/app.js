@@ -172,8 +172,8 @@ function renderNav(c) {
     btn.setAttribute("aria-current", String(block.id === state.activeBlock));
     btn.innerHTML =
       `<span class="nav-title"><span>${escapeHtml(block.title)}</span>` +
-      `<span class="nav-meta">${stat ? `${stat.filled}/${stat.requiredTotal}` : ""}</span></span>` +
-      `<span class="nav-meta">${escapeHtml(block.scriptBlock)}・${block.minutes}分</span>`;
+      `<span class="nav-meta">${stat?.requiredTotal ? `${stat.filled}/${stat.requiredTotal}` : ""}</span></span>` +
+      `<span class="nav-meta">${escapeHtml(block.scriptBlock)}${block.minutes ? `・${block.minutes}分` : ""}</span>`;
     btn.onclick = () => {
       state.activeBlock = block.id;
       renderNav(c);
@@ -204,7 +204,7 @@ function renderBlock() {
   head.className = "block-head";
   head.innerHTML =
     `<h2>${escapeHtml(block.title)}</h2>` +
-    `<div class="script">${escapeHtml(block.scriptBlock)}　想定 ${block.minutes}分</div>`;
+    `<div class="script">${escapeHtml(block.scriptBlock)}${block.minutes ? `　想定 ${block.minutes}分` : ""}</div>`;
   form.append(head);
 
   if (block.note) {
@@ -420,7 +420,6 @@ function renderTheme(field, read, write) {
   /**
    * 「写真を大きく」は写真が要る。「対応範囲を先に」は対応材質などが要る。
    * **材料が無いまま選ぶと、間延びした最初の画面になる。**
-   * 選べないことと、その理由を画面に出す
    */
   const withAvailability = (h) => {
     const p = state.project ?? {};
@@ -437,67 +436,78 @@ function renderTheme(field, read, write) {
     }
     return h;
   };
-  const set = (key, value) => { write({ ...current(), [key]: value }); draw(); };
 
   const preview = document.createElement("div");
   preview.className = "theme-preview";
 
-  const rows = document.createElement("div");
-
-  const draw = () => {
+  /**
+   * **選ぶたびに作り直さない。**
+   * 作り直すと一瞬だけ高さがゼロになり、ブラウザがスクロール位置を切り詰めて
+   * 画面が上に飛ぶ。押した本人は「トップに戻された」と感じる。
+   * 押された印と見本だけを更新する。
+   */
+  const sync = () => {
     const t = current();
-    rows.replaceChildren();
-
-    // 型を押すと4軸がまとめて決まる。そこから1軸だけ直す使い方を想定している
     const presetId = matchPreset(opts.presets, t);
-    rows.append(
-      choiceRow("型から選ぶ", opts.presets ?? [], presetId, (id) => {
-        const preset = (opts.presets ?? []).find((p) => p.id === id);
-        if (preset) { write({ ...preset.theme }); draw(); }
-      }, (p) => {
-        const sw = document.createElement("span");
-        sw.className = "swatch";
-        const pal = opts.palettes.find((x) => x.id === p.theme.palette);
-        sw.style.background = pal?.accent ?? "#ccc";
-        return sw;
-      }),
-    );
-
-    const sep = document.createElement("div");
-    sep.className = "theme-sep";
-    sep.textContent = "1つずつ選ぶ";
-    rows.append(sep);
-
-    rows.append(
-      choiceRow("配色", opts.palettes, t.palette, (v) => set("palette", v), (p) => {
-        const sw = document.createElement("span");
-        sw.className = "swatch";
-        sw.style.background = p.accent;
-        return sw;
-      }),
-      choiceRow("書体", opts.fonts, t.font, (v) => set("font", v), (f) => {
-        const sample = document.createElement("span");
-        sample.className = "font-sample";
-        sample.style.fontFamily = f.body;
-        sample.textContent = "御社の強み";
-        return sample;
-      }),
-      choiceRow("雰囲気", opts.moods, t.mood, (v) => set("mood", v)),
-      // **第2回取材で、実物を並べて社長ご本人に選んでいただく項目**（D-153）
-      choiceRow("本文の文字サイズ", opts.textSizes, t.textSize, (v) => set("textSize", v)),
-      choiceRow("メニューの位置", opts.navs, t.nav, (v) => set("nav", v)),
-      // 最初の画面の型は、材料が無いと成立しない。無いものは選ばせない
-      choiceRow("最初の画面", opts.heroes.map(withAvailability), t.hero, (v) => set("hero", v)),
-      choiceRow("章の区切り", opts.sections, t.sections, (v) => set("sections", v)),
-      choiceRow("見出しの飾り", opts.headings, t.headings, (v) => set("headings", v)),
-      choiceRow("表の罫線", opts.tables, t.tables, (v) => set("tables", v)),
-    );
-
+    for (const row of box.querySelectorAll(".theme-row")) {
+      const key = row.dataset.key;
+      const selected = key === "preset" ? presetId : t[key];
+      for (const btn of row.querySelectorAll(".theme-choice")) {
+        btn.setAttribute("aria-pressed", String(btn.dataset.value === selected));
+      }
+    }
     drawPreview(preview, opts, t);
   };
 
-  draw();
+  const set = (key, value) => { write({ ...current(), [key]: value }); sync(); };
+
+  const t0 = current();
+  const rows = document.createElement("div");
+  rows.append(
+    // 型を押すと全部がまとめて決まる。そこから1軸だけ直す使い方を想定している
+    choiceRow("preset", "型から選ぶ", opts.presets ?? [], (id) => {
+      const preset = (opts.presets ?? []).find((p) => p.id === id);
+      if (preset) { write({ ...preset.theme }); sync(); }
+    }, (p) => {
+      const sw = document.createElement("span");
+      sw.className = "swatch";
+      sw.style.background = opts.palettes.find((x) => x.id === p.theme.palette)?.accent ?? "#ccc";
+      return sw;
+    }),
+  );
+
+  const sep = document.createElement("div");
+  sep.className = "theme-sep";
+  sep.textContent = "1つずつ選ぶ";
+  rows.append(sep);
+
+  rows.append(
+    choiceRow("palette", "配色", opts.palettes, (v) => set("palette", v), (p) => {
+      const sw = document.createElement("span");
+      sw.className = "swatch";
+      sw.style.background = p.accent;
+      return sw;
+    }),
+    choiceRow("font", "書体", opts.fonts, (v) => set("font", v), (f) => {
+      const sample = document.createElement("span");
+      sample.className = "font-sample";
+      sample.style.fontFamily = f.body;
+      sample.textContent = "御社の強み";
+      return sample;
+    }),
+    choiceRow("mood", "雰囲気", opts.moods, (v) => set("mood", v)),
+    // **第2回取材で、実物を並べて社長ご本人に選んでいただく項目**（D-153）
+    choiceRow("textSize", "本文の文字サイズ", opts.textSizes, (v) => set("textSize", v)),
+    choiceRow("nav", "メニューの位置", opts.navs, (v) => set("nav", v)),
+    // 最初の画面の型は、材料が無いと成立しない。無いものは選ばせない
+    choiceRow("hero", "最初の画面", opts.heroes.map(withAvailability), (v) => set("hero", v)),
+    choiceRow("sections", "章の区切り", opts.sections, (v) => set("sections", v)),
+    choiceRow("headings", "見出しの飾り", opts.headings, (v) => set("headings", v)),
+    choiceRow("tables", "表の罫線", opts.tables, (v) => set("tables", v)),
+  );
+
   box.append(rows, preview);
+  sync();
   return box;
 }
 
@@ -508,9 +518,10 @@ function matchPreset(presets, t) {
   )?.id ?? null;
 }
 
-function choiceRow(title, items, selected, onPick, decorate) {
+function choiceRow(key, title, items, onPick, decorate) {
   const row = document.createElement("div");
   row.className = "theme-row";
+  row.dataset.key = key;
   const h = document.createElement("div");
   h.className = "theme-row-title";
   h.textContent = title;
@@ -522,7 +533,8 @@ function choiceRow(title, items, selected, onPick, decorate) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "theme-choice";
-    btn.setAttribute("aria-pressed", String(item.id === selected));
+    btn.dataset.value = item.id;
+    btn.setAttribute("aria-pressed", "false");
     if (item.disabled) { btn.disabled = true; btn.classList.add("is-unavailable"); }
     if (decorate) btn.append(decorate(item));
     const label = document.createElement("span");

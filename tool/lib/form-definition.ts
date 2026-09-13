@@ -75,7 +75,11 @@ export interface Block {
    * 内部向けの言い回しが混ざる見出しには、必ずこちらを付ける。
    */
   customerTitle?: string;
-  minutes: number;
+  /**
+   * 想定の所要時間（分）。
+   * **省略してよい。** お客様が悩まれるのが自然な場面に、時間の目安を置くと急かすことになる（D-167）
+   */
+  minutes?: number;
   note?: string;
   /** 取材中、画面に出しておく追い質問 */
   followUps?: FollowUp[];
@@ -105,14 +109,14 @@ export const FORM_SETS: Record<FormSetId, FormSet> = {
     id: "manufacturing",
     label: "製造業向け（980,000円）",
     description: "BtoB中小製造業。90分の取材で10〜15ページ分の原稿素材を取り切る",
-    interviewMinutes: MANUFACTURING_BLOCKS.reduce((s, b) => s + b.minutes, 0),
+    interviewMinutes: MANUFACTURING_BLOCKS.reduce((s, b) => s + (b.minutes ?? 0), 0),
     blocks: MANUFACTURING_BLOCKS,
   },
   general: {
     id: "general",
     label: "汎用ベーシック（198,000円）",
     description: "サイトがない中小・零細企業。業種を問わず、30分の聞き取りで5ページ分を取る",
-    interviewMinutes: GENERAL_BLOCKS.reduce((s, b) => s + b.minutes, 0),
+    interviewMinutes: GENERAL_BLOCKS.reduce((s, b) => s + (b.minutes ?? 0), 0),
     blocks: GENERAL_BLOCKS,
   },
 };

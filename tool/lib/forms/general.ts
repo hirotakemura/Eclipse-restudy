@@ -233,15 +233,6 @@ export const BLOCKS: Block[] = [
         help: "取引先名・価格など、載せないでほしいものはありますか"
       },
       { path: "terms.inquiryNotifyEmail", label: "問い合わせの通知先メール", type: "text", required: true },
-      {
-        path: "theme",
-        label: "サイトの見た目",
-        customerLabel: "サイトの見た目",
-        type: "theme",
-        help:
-          "その場で選んでいただく。**見本を見せながら決めるのが一番早い。**" +
-          "後から変えられるので、迷ったら既定のままでよい",
-      },
       { path: "terms.photo.hasExisting", label: "使える写真があるか", type: "boolean", help: "無い場合はスマホでの撮影指示書をこちらで作る" },
       {
         path: "photos",
@@ -280,6 +271,33 @@ export const BLOCKS: Block[] = [
         help: "「前の業者に任せている」で構わない。切替前に必ず現在のDNS設定を控えること",
       },
       { path: "terms.targetLaunchDate", label: "公開希望日", type: "date" },
+    ],
+  },
+
+  // ── サイトの見た目 ─────────────────────────────────────
+  /**
+   * **時間の目安を置かない**（D-167）。
+   * お客様がここで悩まれるのは自然なことで、急かす場所ではない。
+   * 制作条件の中に混ぜていたが、見比べながら決める場面なので独立させた。
+   */
+  {
+    id: "design",
+    scriptBlock: "",
+    title: "サイトの見た目",
+    customerTitle: "サイトの見た目",
+    note:
+      "画面をお客様に向けて、一緒に選ぶ。まず「型」を押して、そこから気になる軸だけ直す。" +
+      "決まらなければ既定のままでよい。後から変えられる。",
+    fields: [
+      {
+        path: "theme",
+        label: "サイトの見た目",
+        customerLabel: "サイトの見た目",
+        type: "theme",
+        help:
+          "その場で選んでいただく。**見本を見せながら決めるのが一番早い。**" +
+          "後から変えられるので、迷ったら既定のままでよい",
+      },
     ],
   },
 ];
