@@ -8,7 +8,9 @@
 import fs from "node:fs";
 import { verifyDraft, hasBlockingError } from "./lib/verify.ts";
 
-const project = JSON.parse(fs.readFileSync("projects/matsubara-seiki/project.json", "utf8"));
+// **Git管理下の検証用データを読む。** お客様の案件（projects/）に依存すると、
+// 新しく clone した環境でテストが動かず、案件を消せば壊れる
+const project = JSON.parse(fs.readFileSync("fixtures/mock-manufacturing/project.json", "utf8"));
 
 // ── 検出されなければならない原稿 ──────────────────────────
 const mustDetect = [

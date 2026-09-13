@@ -31,6 +31,25 @@ npm run import:photos -- matsubara-seiki fixtures/mock-matsubara/photos
 
 同じフォルダを2回取り込んでも増えません（同名は上書き）。
 
+### 同じ画面を見て話す（検証用の案件）
+
+```
+npm run demo                      # projects/demo/ を作り直す
+npm run build:site -- demo
+npm run preview:site -- demo
+```
+
+**お客様の案件データ（`projects/`）は Git に入りません**（非公開情報のため）。
+そのため、同じ「松原精機」を見ているつもりでも**手元ごとに中身が違います。**
+配色もメニューも別々なので、画面の話が噛み合わなくなります。
+
+検証用の架空データは `tool/fixtures/` に入れてあるので、
+`npm run demo` を実行すれば**誰の環境でも同じ画面**になります（D-185）。
+
+> `projects/demo/` は毎回作り直されます。**ご自分の案件には影響しません。**
+> 公開前の検査に引っかかる欠陥をわざと残してあるので、
+> 「公開できません」で止まるのが正しい動きです（`fixtures/README.md`）。
+
 ### 書き出したサイトを見る
 
 ```
