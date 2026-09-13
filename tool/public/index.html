@@ -66,8 +66,29 @@
   </div>
 </section>
 
+<!--
+  後日確認リスト。**取材は2回に分ける**（D-147）ので、第1回で埋まらない項目が出るのは前提。
+  これは我々の作業リストであって、お客様にお見せするものではない。
+-->
+<section id="followup" hidden>
+  <div class="fu-head">
+    <h1>後日確認リスト</h1>
+    <p id="fu-sub"></p>
+    <p class="fu-note">
+      第1回で埋まらなかった項目です。<b>第2回取材（工場・技術のご担当）までに、誰に聞くかを決めておきます。</b><br>
+      ここは社内の作業リストです。お客様にお見せする画面ではありません。
+    </p>
+  </div>
+  <div id="fu-body"></div>
+  <div class="fu-actions">
+    <button type="button" id="fu-print">印刷する</button>
+    <button type="button" id="fu-back" class="primary">入力に戻る</button>
+  </div>
+</section>
+
 <footer>
   <div id="missing-summary"></div>
+  <button id="followup-open" type="button" hidden>後日確認リスト</button>
   <button id="close-project" type="button" hidden>入力を終える</button>
   <button id="delete-project" type="button" class="danger" hidden>この案件を削除</button>
 </footer>

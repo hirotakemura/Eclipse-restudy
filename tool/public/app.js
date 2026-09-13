@@ -833,6 +833,97 @@ function renderList(field, read, write) {
 const escapeHtml = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
+// ── 後日確認リスト（社内用） ────────────────────────────────
+/**
+ * 第1回の取材で埋まらなかった項目を並べ、**誰にいつ聞くか**を決めておく画面。
+ *
+ * **取材は2回に分ける**（D-147）。対応精度・公差・設備の型番は社長おひとりでは埋まらない、
+ * というのは第1回モック取材の実測（docs/15）であって、取材が下手だからではない。
+ * 埋まらない項目が出ることを前提にしたうえで、**落とさない仕組み**がこれ。
+ *
+ * マークを押せるだけで、後日の確認を支えるものが無かった（D-150）。
+ */
+function renderFollowup() {
+  const p = state.project;
+  const paths = p.unconfirmed ?? [];
+  const plan = (p.unconfirmedPlan ??= {});
+  const byPath = new Map();
+  for (const block of state.blocks) {
+    for (const f of block.fields) byPath.set(f.path, { field: f, block });
+  }
+
+  $("#fu-sub").textContent =
+    `${p.basics?.name || p.id}　／　未確認 ${paths.length}件` +
+    (p.hearingDate ? `　／　第1回 ${p.hearingDate}` : "");
+
+  const body = $("#fu-body");
+  body.replaceChildren();
+
+  if (!paths.length) {
+    const done = document.createElement("p");
+    done.className = "fu-empty";
+    done.textContent = "未確認の項目はありません。第2回取材で聞くことは、いまのところありません。";
+    body.append(done);
+    return;
+  }
+
+  for (const path of paths) {
+    const found = byPath.get(path);
+    const row = document.createElement("div");
+    row.className = "fu-item";
+
+    const head = document.createElement("div");
+    head.className = "fu-item-head";
+    const title = document.createElement("strong");
+    title.textContent = found?.field.label ?? path;
+    const where = document.createElement("span");
+    where.className = "fu-where";
+    where.textContent = found?.block.title ?? "";
+    head.append(title, where);
+    row.append(head);
+
+    const note = unconfirmedNote(path);
+    if (note) {
+      const q = document.createElement("div");
+      q.className = "fu-quote";
+      q.textContent = `その場の回答：「${note}」`;
+      row.append(q);
+    }
+
+    const label = document.createElement("label");
+    label.className = "fu-ask";
+    label.textContent = "誰に、いつまでに聞くか";
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = plan[path] ?? "";
+    input.placeholder = "例：工場長に第2回取材で／事務の方にメールで今週中";
+    input.oninput = () => {
+      if (input.value.trim()) plan[path] = input.value;
+      else delete plan[path];
+      scheduleSave();
+    };
+    label.append(input);
+    row.append(label);
+    body.append(row);
+  }
+}
+
+function openFollowup() {
+  renderFollowup();
+  document.querySelector("header").hidden = true;
+  document.querySelector("footer").hidden = true;
+  $("#main").hidden = true;
+  $("#followup").hidden = false;
+  scrollTo({ top: 0 });
+}
+
+function closeFollowup() {
+  $("#followup").hidden = true;
+  document.querySelector("header").hidden = false;
+  document.querySelector("footer").hidden = false;
+  $("#main").hidden = false;
+}
+
 // ── 確認画面（お客様にお見せする） ──────────────────────────
 /**
  * 取材の最後に、聞き取った内容をそのままお客様にお見せして確認していただく。
@@ -1055,6 +1146,9 @@ async function showHome(status) {
   state.project = null;
   state.completion = null;
   closeReview();
+  closeFollowup();
+  $("#followup").hidden = true;
+  $("#followup-open").hidden = true;
   $("#main").hidden = true;
   $("#empty").hidden = false;
   $("#close-project").hidden = true;
@@ -1119,6 +1213,7 @@ async function openProject(id) {
   $("#main").hidden = false;
   $("#delete-project").hidden = false;
   $("#close-project").hidden = false;
+  $("#followup-open").hidden = false;
   renderMeters(data.completion);
   renderNav(data.completion);
   renderMissing(data.completion);
@@ -1175,6 +1270,10 @@ async function openProject(id) {
     $("#review-target").textContent = lines.join("\n");
     reviewDialog.showModal();
   };
+  $("#followup-open").onclick = openFollowup;
+  $("#fu-back").onclick = closeFollowup;
+  $("#fu-print").onclick = () => print();
+
   $("#review-cancel").onclick = () => reviewDialog.close();
   $("#review-open").onclick = () => { reviewDialog.close(); openReview(); };
 

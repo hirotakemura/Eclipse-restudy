@@ -324,6 +324,44 @@ footer {
   display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap;
 }
 
+/* ── 後日確認リスト（社内用） ─────────────── */
+/* **お客様にお見せする画面ではない。** 我々の作業リスト */
+#followup {
+  max-width: 820px; margin: 0 auto;
+  padding: 30px max(20px, env(safe-area-inset-left)) 120px max(20px, env(safe-area-inset-right));
+}
+.fu-head h1 { margin: 0 0 4px; font-size: 25px; }
+#fu-sub { margin: 0 0 14px; color: var(--muted); font-size: 15px; }
+.fu-note {
+  margin: 0 0 26px; padding: 13px 16px; background: var(--warn-soft);
+  border-left: 3px solid var(--warn); border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: 14px; color: #5a4520; line-height: 1.8;
+}
+.fu-empty { color: var(--muted); }
+.fu-item { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; background: var(--panel); }
+.fu-item-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.fu-item-head strong { font-size: 17px; }
+.fu-where { font-size: 12px; color: var(--muted); }
+.fu-quote { font-size: 14px; color: var(--warn); padding-left: 11px; border-left: 2px solid var(--warn); margin-bottom: 10px; }
+.fu-ask { display: block; font-size: 13px; color: var(--muted); }
+.fu-ask input { margin-top: 4px; }
+.fu-actions {
+  position: sticky; bottom: 0; display: flex; gap: 12px; justify-content: flex-end;
+  padding: 12px 0 max(12px, env(safe-area-inset-bottom));
+  background: var(--bg); border-top: 1px solid var(--line); margin-top: 22px;
+}
+.fu-actions button {
+  background: var(--panel); border: 1px solid var(--line); color: inherit;
+  border-radius: var(--radius); padding: 11px 20px; cursor: pointer; min-height: var(--tap); font-size: 16px;
+}
+.fu-actions .primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+@media print {
+  .fu-actions, .fu-note { display: none !important; }
+  #followup { padding: 0; }
+  .fu-item { break-inside: avoid; }
+  .fu-ask input { border: 0; border-bottom: 1px solid #999; border-radius: 0; }
+}
+
 /* ── 確認画面（お客様にお見せする） ─────────── */
 /* タブレットを相手に向けて見せる。読めることが最優先なので本文より大きくする */
 #review {
