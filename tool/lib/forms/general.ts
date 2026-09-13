@@ -38,7 +38,9 @@ export const BLOCKS: Block[] = [
       { path: "basics.founded", label: "創業", type: "text", required: true, placeholder: "西暦と元号の両方を聞く" },
       { path: "basics.employees", label: "従業員数", type: "number", required: true, help: "代表ひとりなら 1 と入れる" },
       { path: "basics.address", label: "所在地", type: "text", required: true },
-      { path: "basics.tel", label: "電話番号", type: "text", help: "名刺から取る。取材時間を使わない" },
+      // 公開の必須条件（build-site.mjs の検査）なのに required が付いていなかった（D-173）
+      { path: "basics.tel", label: "電話番号", type: "text", required: true, help: "名刺から取る。取材時間を使わない" },
+      { path: "basics.receptionHours", label: "電話の受付時間", type: "text", placeholder: "平日 9:00〜18:00" },
       { path: "basics.currentUrl", label: "現在のサイトURL", type: "text", help: "無ければ空欄のまま" },
       {
         path: "basics.businessSummary",

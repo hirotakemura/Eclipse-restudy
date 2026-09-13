@@ -43,6 +43,16 @@ export interface Field {
   itemFields?: Field[];
   /** list の要素をいくつ取りたいか（充足率の判定に使う） */
   minItems?: number;
+  /**
+   * **我々が判断するために聞く欄。お客様のサイトには絶対に出さない。**
+   *
+   * 「若手の定着はどうですか」は、採用ページを作るべきかを決めるための質問であって、
+   * 答えをそのまま載せる質問ではない。第1回のレビューでは、その答え
+   * （「人手が足りず受注を絞らざるを得ない」）が採用ページに出ていた（D-170）。
+   *
+   * true を付けた欄の中身が書き出したHTMLに出ていたら、公開を止める。
+   */
+  internal?: boolean;
 }
 
 /**
@@ -128,3 +138,36 @@ export function getFormSet(id: FormSetId | undefined): FormSet {
 /** 後方互換：製造業フォームを既定として直接参照している箇所のため */
 export const BLOCKS = MANUFACTURING_BLOCKS;
 export const TOTAL_MINUTES = FORM_SETS.manufacturing.interviewMinutes;
+
+/**
+ * 社内向けの欄の値を集める。
+ *
+ * **お客様のサイトに出てはいけない文字列の一覧**として使う（`build-site.mjs`）。
+ * 「フォルダにある＝公開してよい」にしないのと同じで、
+ * **「データにある＝載せてよい」にしない。**
+ */
+export function internalValues(project: any, formSet?: FormSetId): string[] {
+  const out: string[] = [];
+  const at = (obj: any, path: string) =>
+    path.split(".").reduce((o, k) => (o == null ? o : o[k]), obj);
+
+  const push = (v: unknown) => {
+    if (typeof v === "string" && v.trim().length > 6) out.push(v.trim());
+  };
+
+  for (const block of getFormSet(formSet).blocks) {
+    for (const field of block.fields) {
+      const value = at(project, field.path);
+      if (field.internal) {
+        push(value);
+        continue;
+      }
+      // list の中の社内メモ欄（設備の「備考」など）
+      const inner = (field.itemFields ?? []).filter((f) => f.internal);
+      if (inner.length && Array.isArray(value)) {
+        for (const row of value) for (const f of inner) push(at(row, f.path));
+      }
+    }
+  }
+  return out;
+}

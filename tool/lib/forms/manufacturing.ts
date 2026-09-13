@@ -36,7 +36,9 @@ export const BLOCKS: Block[] = [
       { path: "basics.employees", label: "従業員数", type: "number", required: true },
       { path: "basics.averageAge", label: "平均年齢", type: "number" },
       { path: "basics.address", label: "所在地", type: "text", required: true },
-      { path: "basics.tel", label: "電話番号", type: "text", help: "名刺・現行サイトから取る。取材時間を使わない" },
+      // 公開の必須条件（build-site.mjs の検査）なのに required が付いていなかった（D-173）
+      { path: "basics.tel", label: "電話番号", type: "text", required: true, help: "名刺・現行サイトから取る。取材時間を使わない" },
+      { path: "basics.receptionHours", label: "電話の受付時間", type: "text", placeholder: "平日 8:00〜17:00" },
       { path: "basics.currentUrl", label: "現在のサイトURL", type: "text" },
       {
         path: "basics.businessSummary",
@@ -188,7 +190,8 @@ export const BLOCKS: Block[] = [
           { path: "maker", label: "メーカー", type: "text" },
           { path: "model", label: "型番", type: "text" },
           { path: "count", label: "台数", type: "number" },
-          { path: "note", label: "備考", customerLabel: "補足", type: "text" },
+          // 銘板の照合待ちなど、**我々の作業メモが入る欄**。表には出さない（D-169）
+          { path: "note", label: "備考（社内メモ）", type: "text", internal: true },
         ],
       },
       { path: "capability.certifications", label: "資格・認証", type: "tags", required: true, help: "ISOのほか、特殊工程の資格などがあれば", placeholder: "聞き取ったとおりに" },
@@ -277,9 +280,13 @@ export const BLOCKS: Block[] = [
           { path: "result", label: "結果", type: "textarea", help: "数字があれば必ず数字で（不良率◯%改善、コスト◯%削減）" },
           { path: "materials", label: "材質", type: "tags" },
           { path: "processes", label: "加工法", type: "tags" },
+          // 事例の説得力は、この3つが数字で埋まっているかで決まる（D-172）
+          { path: "quantity", label: "数量・ロット", type: "text", placeholder: "試作3個／月200個" },
+          { path: "leadTime", label: "納期", type: "text", placeholder: "図面受領から10日" },
+          { path: "declinedReason", label: "他社が断った理由", type: "text", help: "反り／割れ／歪み／穴位置／公差。ここが具体的なほど効く" },
           // 社名を出してよいかは、事例ページを作る前に必ず本人に確認が要る。
           // 確認画面で最も見ていただきたい項目のひとつなので、伝わる言い方にする
-          { path: "confidentialityNotes", label: "秘密保持のメモ", customerLabel: "掲載してよい範囲", type: "text" },
+          { path: "confidentialityNotes", label: "秘密保持のメモ", customerLabel: "掲載してよい範囲", type: "text", internal: true },
         ],
       },
     ],
@@ -298,10 +305,36 @@ export const BLOCKS: Block[] = [
       { path: "recruitment.isHiring", label: "採用の予定があるか", type: "boolean" },
       { path: "recruitment.neededRoles", label: "不足している職種", type: "tags", help: "今、人は足りていますか。どの職種が足りませんか" },
       { path: "recruitment.recentHireOrigin", label: "直近で採用できた人の流入経路", type: "textarea", help: "直近で採用できた人は、どうやって入ってきましたか" },
-      { path: "recruitment.retentionNotes", label: "若手の定着状況", type: "textarea", help: "若手の定着はどうですか" },
+      // **これは我々が採用ページの要否を判断するための欄。答えをそのまま載せない**（D-170）
+      { path: "recruitment.retentionNotes", label: "若手の定着状況", type: "textarea", internal: true, help: "若手の定着はどうですか" },
       { path: "recruitment.workplaceAppeal", label: "訴求できる待遇・環境", type: "tags" },
       { path: "executive.vision", label: "5年後のビジョン", type: "textarea", required: true, help: "5年後、会社をどうしていきたいですか" },
       { path: "executive.messageToStaff", label: "社員に伝えたいこと", type: "textarea", help: "社員に一番伝えたいことは何ですか" },
+    ],
+  },
+
+  // ── 採用の労働条件（取材では聞かない。求人票からの転記）───────
+  {
+    id: "recruitmentTerms",
+    scriptBlock: "",
+    title: "募集要項",
+    customerTitle: "募集要項",
+    note:
+      "**この場で社長に思い出していただく項目ではない。** 求人票・就業規則・ハローワークの求人票の"
+      + "写しをいただいて、後で転記する。取材の時間を使わない（D-171）。"
+      + "ここが空のままなら、採用ページは作らない。**条件の書いていない求人は、応募されない。**",
+    fields: [
+      { path: "recruitment.terms.employmentType", label: "雇用形態", type: "text", placeholder: "正社員／契約社員／パート" },
+      { path: "recruitment.terms.salary", label: "給与", type: "text", help: "求人票の記載をそのまま。幅がある場合は幅で" },
+      { path: "recruitment.terms.workingHours", label: "勤務時間", type: "text", placeholder: "8:00〜17:00（休憩60分）" },
+      { path: "recruitment.terms.holidays", label: "休日・休暇", type: "text", placeholder: "週休2日／年間休日◯日" },
+      { path: "recruitment.terms.allowances", label: "諸手当", type: "tags", placeholder: "通勤／資格／残業／家族" },
+      { path: "recruitment.terms.insurance", label: "社会保険", type: "text", placeholder: "健康・厚生年金・雇用・労災" },
+      { path: "recruitment.terms.qualifications", label: "応募資格・必要な経験", type: "textarea", help: "未経験可かどうかは必ず。ここで応募数が変わる" },
+      { path: "recruitment.terms.selection", label: "選考の流れ", type: "text", placeholder: "書類→面接1回→内定" },
+      { path: "recruitment.terms.documents", label: "応募書類", type: "text", placeholder: "履歴書・職務経歴書" },
+      { path: "recruitment.terms.contact", label: "採用の問い合わせ先", type: "text", help: "代表電話と違う場合のみ。受付時間も添える" },
+      { path: "recruitment.terms.factoryTour", label: "工場見学の可否", type: "text", help: "見学できると書けるだけで応募のハードルが下がる" },
     ],
   },
 

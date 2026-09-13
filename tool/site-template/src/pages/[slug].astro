@@ -23,11 +23,34 @@ const r = project.recruitment ?? ({} as any);
 const e = project.executive ?? ({} as any);
 
 const title = kind === "recruit" ? "採用情報" : "代表挨拶";
+
+/**
+ * 労働条件。**条件の書いていない求人は、応募されない**（D-171）。
+ * 聞けていない項目は行ごと出さない。空欄の並んだ表のほうが不信を招く。
+ */
+const rt = (r.terms ?? {}) as any;
+const conditions = ([
+  ["雇用形態", rt.employmentType],
+  ["給与", rt.salary],
+  ["勤務時間", rt.workingHours],
+  ["休日・休暇", rt.holidays],
+  ["諸手当", (rt.allowances ?? []).join("、")],
+  ["社会保険", rt.insurance],
+  ["応募資格", rt.qualifications],
+  ["選考の流れ", rt.selection],
+  ["応募書類", rt.documents],
+  ["お問い合わせ", rt.contact],
+  ["工場見学", rt.factoryTour],
+] as [string, string][]).filter(([, v]) => v);
 const blocks = kind === "recruit"
   ? ([
+      /**
+       * `retentionNotes`（若手の定着状況）は**我々が採用ページの要否を判断するための欄**で、
+       * 載せる欄ではない。第1回は「人手が足りず受注を絞らざるを得ない」が
+       * そのまま採用ページに出ていた。求職者にも、見込み客にも、見せる話ではない（D-170）。
+       */
       ["募集している職種", (r.neededRoles ?? []).join("、")],
       ["職場について", (r.workplaceAppeal ?? []).join("、")],
-      ["定着の状況", r.retentionNotes],
     ].filter(([, v]) => v) as [string, string][])
   : ([
       ["これからの5年", e.vision],
@@ -50,6 +73,20 @@ const blocks = kind === "recruit"
         <p>{body}</p>
       </>
     ))}
+    {kind === "recruit" && conditions.length > 0 && (
+      <>
+        <h2>募集要項</h2>
+        <div class="table-wrap">
+          <table>
+            <tbody>
+              {conditions.map(([h, v]) => (
+                <tr><th scope="row">{h}</th><td>{v}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
+    )}
     {kind === "recruit" && <Gallery photos={photosOf("働く人")} />}
     {kind === "recruit" && (
       <p style="margin-top:30px">ご応募・ご質問は<a href="/contact/">お問い合わせ</a>よりご連絡ください。</p>

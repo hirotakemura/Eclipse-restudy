@@ -16,14 +16,14 @@ const blocks = (isGeneral
       ["他社様でお断りされた案件で、お受けできたもの", s.wonAfterOthersDeclined],
       ["お客様からよくいただく言葉", s.praiseFromClients],
       ["どういうお客様が多いか", idealCustomer],
-      ["取材で詳しくうかがった点", s.followUpFindings],
+      ["とくに力を入れているところ", s.followUpFindings],
     ]
   : [
       ["他社様で難しいと言われた案件", s.wonAfterOthersDeclined],
       ["お客様からよくいただく言葉", s.praiseFromClients],
       ["同業が敬遠しがちな仕事", s.workOthersAvoid],
       ["技術的に最も難しかった仕事", s.hardestJob],
-      ["取材で詳しくうかがった点", s.followUpFindings],
+      ["とくに力を入れているところ", s.followUpFindings],
     ]
 ).filter(([, v]) => v) as [string, string][];
 

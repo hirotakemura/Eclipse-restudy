@@ -17,6 +17,7 @@
 
 import type { Project } from "./schema.ts";
 import { BANNED_PHRASES, NEEDS_REVIEW_MARKER } from "./schema.ts";
+import { findInternalLanguage } from "./internal-language.ts";
 
 export type Severity = "error" | "warn";
 
@@ -26,7 +27,8 @@ export type FindingKind =
   | "fabricated-cert" // 出典のない認証・規格
   | "unverified-number" // 出典のないその他の数値
   | "banned-phrase" // 無内容な表現
-  | "unresolved-marker"; // {{要確認}} が残っている
+  | "unresolved-marker" // {{要確認}} が残っている
+  | "internal-language"; // 社内語（作業メモ・確認事項）が本文に入っている
 
 export interface Finding {
   severity: Severity;
@@ -197,6 +199,21 @@ export function verifyDraft(
       message: opts.forPublish
         ? "未確認の箇所が残ったままです。公開できません"
         : "未確認の箇所があります。工場長への確認事項に入れてください",
+    });
+  }
+
+  /**
+   * 社内語。**マークの付け忘れは、マークを探しても見つからない**（D-169）。
+   * ここは出典との照合ではない。案件データに書いてあっても、
+   * 「現地で銘板と照合して確定させること」は顧客向けの文章ではない。
+   */
+  for (const hit of findInternalLanguage(draft)) {
+    findings.push({
+      severity: hit.severity === "block" ? "error" : "warn",
+      kind: "internal-language",
+      found: hit.found,
+      context: contextOf(draft, hit.index, hit.found.length),
+      message: hit.why,
     });
   }
 

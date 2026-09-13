@@ -23,6 +23,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { findInternalLanguage, visibleText, contextFor } from "./lib/internal-language.ts";
+import { internalValues } from "./lib/form-definition.ts";
 
 // npm run dev:site -- <案件ID> の形でも、順番が入れ替わっても拾えるようにする
 const args = process.argv.slice(2);
@@ -147,12 +149,44 @@ if (!domain) console.log(`  ※ ドメイン未定のため ${siteUrl} で書き
  */
 const NEEDS_REVIEW = "{{要確認}}";
 const leaked = [];
+const suspect = [];
 const notes = Object.values(project.unconfirmedNotes ?? {}).filter(Boolean);
+/**
+ * **社内向けの欄（`internal: true`）の中身が、ページに出ていないか。**
+ * 「若手の定着はどうですか」の答えが、そのまま採用ページに出ていた（D-170）。
+ */
+const internal = internalValues(project, project.formSet);
 for (const f of html) {
   const body = fs.readFileSync(path.join(outDir, String(f)), "utf8");
   if (body.includes(NEEDS_REVIEW)) leaked.push([String(f), "未確認マーカーが残っている"]);
   for (const n of notes) {
     if (n.length > 6 && body.includes(n)) leaked.push([String(f), `未確認欄の控えが出ている：「${n}」`]);
+  }
+  for (const v of internal) {
+    if (body.includes(v)) leaked.push([String(f), `社内向けの欄の中身が出ている：「${v.slice(0, 40)}…」`]);
+  }
+  /**
+   * **マークの付け忘れは、マークを探しても見つからない。**
+   * 「{{要確認}}」が付いていない社内語（「現地で銘板と照合して確定させること」など）が
+   * 公開判定を素通りし、実際に設備一覧のページに出た（D-169）。言葉のほうを見る。
+   */
+  const shown = visibleText(body);
+  for (const hit of findInternalLanguage(shown)) {
+    const line = `${hit.why}：「${contextFor(shown, hit.index, hit.found.length).trim()}」`;
+    (hit.severity === "block" ? leaked : suspect).push([String(f), line]);
+  }
+}
+
+/**
+ * 写真。**プレースホルダの画像が入ったまま「公開してよい」と言わない。**
+ * 第1回は仮のSVGが9枚あり、枚数の上では埋まって見えていた。
+ */
+const placeholders = [];
+if (fs.existsSync(photoDst)) {
+  for (const f of fs.readdirSync(photoDst)) {
+    if (!/\.svg$/i.test(f)) continue;
+    const svg = fs.readFileSync(path.join(photoDst, f), "utf8");
+    if (/仮の(?:画像|写真)|ダミー|差し替え前提|placeholder/i.test(svg)) placeholders.push(f);
   }
 }
 
@@ -163,6 +197,7 @@ if (!b.name) missing.push("会社名");
 if (!b.tel) missing.push("電話番号");
 if (!b.address) missing.push("所在地");
 if (!project.terms?.inquiryNotifyEmail) missing.push("問い合わせの通知先メール");
+if (placeholders.length) missing.push(`実物の写真（仮の画像が${placeholders.length}枚のまま）`);
 
 const move = (to) => {
   fs.rmSync(to, { recursive: true, force: true });
@@ -178,8 +213,9 @@ if (leaked.length || missing.length) {
   for (const [f, why] of leaked) console.log(`  ✗ ${f}  ${why}`);
   if (missing.length) {
     console.log(`  ✗ 聞き取りが埋まっていない：${missing.join("・")}`);
-    console.log("     電話番号のないBtoB製造業サイトは、作った意味がありません。");
+    if (!b.tel) console.log("     電話番号のないBtoB製造業サイトは、作った意味がありません。");
   }
+  for (const [f, why] of suspect) console.log(`  △ ${f}  ${why}`);
   console.log("\n  KOBOで該当の項目を埋めてから、もう一度実行してください。");
   console.log(`\n  中身の確認はできます：  npm run preview:site -- ${id}`);
   console.log(`  （確認用の書き出し: ${path.relative(process.cwd(), draftDir)}）\n`);
@@ -189,4 +225,9 @@ if (leaked.length || missing.length) {
 // 検査を通った。公開してよいものとして site/ に置き、古い確認用は消す
 move(siteDir);
 fs.rmSync(draftDir, { recursive: true, force: true });
+// 止めるほどではないが、人の目で見てほしいもの。**黙って通さない**
+if (suspect.length) {
+  console.log("\n  ── 目で確かめてください（止めはしません） ──");
+  for (const [f, why] of suspect) console.log(`  △ ${f}  ${why}`);
+}
 console.log("\n  公開してよい状態です。");

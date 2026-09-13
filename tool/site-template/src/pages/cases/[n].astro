@@ -28,6 +28,18 @@ const sections = [
   ["対応した内容", item.solution],
   ["結果", item.result],
 ].filter(([, v]) => v) as [string, string][];
+
+/**
+ * 事例の説得力は、**数字が入っているか**で決まる（D-172）。
+ * 材質・数量・納期・他社が断った理由。聞けていない行は出さない。
+ */
+const spec = ([
+  ["材質", (item.materials ?? []).join("・")],
+  ["数量・ロット", item.quantity],
+  ["納期", item.leadTime],
+  ["加工法", (item.processes ?? []).join("・")],
+  ["他社様でお断りになった理由", item.declinedReason],
+] as [string, string][]).filter(([, v]) => v);
 ---
 <Base title={`加工事例：${item.title}`} description={`${item.clientIndustry}｜${item.partDescription ?? ""}`}>
   <div class="page-head"><div class="inner">
@@ -36,6 +48,13 @@ const sections = [
   </div></div>
   <section class="section"><div class="inner case-body">
     {item.partDescription && <div class="note-box">{item.partDescription}</div>}
+    {spec.length > 0 && (
+      <div class="table-wrap">
+        <table>
+          <tbody>{spec.map(([h, v]) => <tr><th scope="row">{h}</th><td>{v}</td></tr>)}</tbody>
+        </table>
+      </div>
+    )}
     <Gallery photos={photosOfCase(index + 1)} />
     <Prose slug={slug} />
     {!hasDraft(slug) && sections.map(([title, body]) => (

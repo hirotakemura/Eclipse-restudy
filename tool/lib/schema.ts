@@ -37,6 +37,8 @@ export interface CompanyBasics {
   averageAge?: number;
   address: string;
   tel: string;
+  /** 電話の受付時間。BtoBは電話で相談が来る（D-173） */
+  receptionHours?: string;
   currentUrl?: string;
   /** 主力事業と売上比率。自由記述 */
   businessSummary: string;
@@ -143,7 +145,13 @@ export interface CaseStudy {
   result: string;
   materials?: string[];
   processes?: string[];
-  /** 秘密保持で伏せる必要がある項目のメモ */
+  /** 数量・ロット。「試作3個」「月200個」（D-172） */
+  quantity?: string;
+  /** 納期。「図面受領から10日」（D-172） */
+  leadTime?: string;
+  /** 他社が断った理由。反り／割れ／歪み／穴位置／公差（D-172） */
+  declinedReason?: string;
+  /** 秘密保持で伏せる必要がある項目のメモ。**社内向け**（D-170） */
   confidentialityNotes?: string;
 }
 
@@ -155,10 +163,33 @@ export interface Recruitment {
   neededRoles: string[];
   /** 直近で採用できた人の流入経路 */
   recentHireOrigin?: string;
-  /** 若手の定着状況 */
+  /**
+   * 若手の定着状況。**社内向け**（採用ページを作るべきかの判断材料）。
+   * そのままサイトに載せない（D-170）
+   */
   retentionNotes?: string;
   /** 訴求できる待遇・環境 */
   workplaceAppeal?: string[];
+  /** 労働条件。求人票・就業規則から転記する（D-171） */
+  terms?: RecruitmentTerms;
+}
+
+/**
+ * 労働条件。**取材の場で口頭で取る項目ではない。**
+ * ここが空のまま採用ページを作ると、求人として成立しない。
+ */
+export interface RecruitmentTerms {
+  employmentType?: string;
+  salary?: string;
+  workingHours?: string;
+  holidays?: string;
+  allowances?: string[];
+  insurance?: string;
+  qualifications?: string;
+  selection?: string;
+  documents?: string;
+  contact?: string;
+  factoryTour?: string;
 }
 
 export interface ExecutiveMessage {
