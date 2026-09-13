@@ -213,6 +213,16 @@ export const BLOCKS: Block[] = [
     customerTitle: "制作にあたっての条件",
     minutes: 2,
     note: "次のアクション日を明言する：「1週間後に構成案と原稿をお送りします」",
+    followUps: [
+      {
+        trigger: "今のドメインをそのまま使いたい",
+        ask: "そのドメインで、メールもお使いですか。info@◯◯ のようなアドレスです",
+      },
+      {
+        trigger: "メールも使っている",
+        ask: "どちらでメールを受けておられますか。切替の前に、今の設定をこちらで控えます",
+      },
+    ],
     fields: [
       {
         path: "terms.ngItems",
@@ -231,6 +241,24 @@ export const BLOCKS: Block[] = [
         label: "ドメイン取得を代行するか",
         type: "boolean",
         help: "名義と支払いは必ず顧客（D-011）。代行するのは手続きだけ",
+      },
+      {
+        path: "terms.domain.mailInUse",
+        label: "そのドメインでメールを使っているか",
+        customerLabel: "現在のドメインでメールをお使いか",
+        type: "boolean",
+        help:
+          "既存ドメインがある案件では必ず聞く。info@◯◯ のようなアドレスです。" +
+          "**DNSを切り替えるときにMXレコードを引き継がないと、会社のメールが止まります。**" +
+          "サイトが数時間見えないより、メールが止まるほうがはるかに重大な事故になります",
+      },
+      {
+        path: "terms.domain.mailProvider",
+        label: "メールをどこで受けているか",
+        customerLabel: "メールのご利用先",
+        type: "text",
+        placeholder: "分かる範囲で。現在の業者名・サービス名",
+        help: "「前の業者に任せている」で構わない。切替前に必ず現在のDNS設定を控えること",
       },
       { path: "terms.targetLaunchDate", label: "公開希望日", type: "date" },
     ],

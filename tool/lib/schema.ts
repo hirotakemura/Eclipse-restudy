@@ -190,6 +190,14 @@ export interface ProductionTerms {
     desired?: string;
     /** 名義は必ず顧客。代行の要否だけ持つ */
     registrationDelegated: boolean;
+    /**
+     * そのドメインでメールを使っているか。
+     * **DNS切替でMXを引き継ぎ損ねると、会社のメールが止まる。**
+     * サイトが数時間見えないことより重大な事故になる
+     */
+    mailInUse?: boolean;
+    /** メールをどこで受けているか。分かる範囲で */
+    mailProvider?: string;
   };
   /** 問い合わせの通知先メールアドレス */
   inquiryNotifyEmail: string;
