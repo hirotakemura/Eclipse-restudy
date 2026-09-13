@@ -14,14 +14,28 @@
 **ヒアリングフォームは依存パッケージなしで動きます**（工場のネットは不安定なため、オフラインで動く必要がある）。
 原稿生成のみ Anthropic SDK とネット接続が必要ですが、こちらは工場ではなく机の上で動かすものです。
 
-### 起動
+### 起動：Finderから `start.command` をダブルクリック（いちばん簡単）
+
+`tool/start.command` をダブルクリックすると、最新のコードを取ってきて起動します。
+**ターミナルでフォルダを移動する必要はありません。** 終わるときは Control + C。
+
+サイトの書き出しは `tool/build-site.command` をダブルクリック。案件を番号で選べます。
+
+> 初回だけ「開発元を確認できないため開けません」と出ることがあります。
+> その場合は**右クリック →「開く」**を選ぶと、以降は普通に開けるようになります。
+
+### 起動：ターミナルから
 
 ```
 git clone https://github.com/hirotakemura/Eclipse-restudy.git
-cd Eclipse-restudy/tool
+cd Eclipse-restudy/tool      # ← ここに移動していないと npm は動きません
 npm install     # 初回のみ。TypeScriptの型検査用で、起動自体には不要
 npm start       # → http://localhost:5173
 ```
+
+> **`Could not read package.json: /Users/あなた/package.json` と出たら、移動できていません。**
+> `cd ~/Eclipse-restudy/tool` のように、`tool` の中まで入ってから実行してください。
+> 置き場所が分からなくなったら：`find ~ -maxdepth 3 -type d -name "Eclipse-restudy"`
 
 ブラウザで http://localhost:5173 を開き、**「＋ 新規案件」**から始めてください。
 案件IDは英数字とハイフン（例: `matsubara-seiki`）。
