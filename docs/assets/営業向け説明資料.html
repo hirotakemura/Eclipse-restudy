@@ -1,0 +1,332 @@
+<title>町工場のホームページ事業</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Roboto+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #f6f5f2;
+  --panel: #ffffff;
+  --ink: #15191d;
+  --ink-2: #55606b;
+  --rule: #d9d7d0;
+  --rule-strong: #9a978e;
+  --ai: #10456f;          /* 藍：図面の青 */
+  --ai-soft: #e7eef5;
+  --shu: #a4392c;         /* 朱：要相談の印。この色は未決にしか使わない */
+  --shu-soft: #f7e9e6;
+  --midori: #1f6f4a;
+  --head: "Zen Kaku Gothic New", system-ui, sans-serif;
+  --body: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  --mono: "Roboto Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #14181c; --panel: #1b2026; --ink: #eef1f3; --ink-2: #a3adb6;
+    --rule: #2c343c; --rule-strong: #5d6873;
+    --ai: #79b0dc; --ai-soft: #1d2c38; --shu: #e4897a; --shu-soft: #35231f; --midori: #7cc4a1;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #14181c; --panel: #1b2026; --ink: #eef1f3; --ink-2: #a3adb6;
+  --rule: #2c343c; --rule-strong: #5d6873;
+  --ai: #79b0dc; --ai-soft: #1d2c38; --shu: #e4897a; --shu-soft: #35231f; --midori: #7cc4a1;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: var(--body); font-size: 16px; line-height: 1.9;
+  -webkit-text-size-adjust: 100%;
+}
+.wrap { max-width: 860px; margin: 0 auto; padding-block: 0; padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+
+/* 表紙 */
+.cover { padding-block: 64px 44px; border-bottom: 3px solid var(--ai); }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .18em; color: var(--ai); margin: 0 0 18px; }
+h1 { font-family: var(--head); font-weight: 700; font-size: clamp(30px, 6vw, 46px); line-height: 1.3; margin: 0 0 14px; text-wrap: balance; }
+.cover p { margin: 0; color: var(--ink-2); max-width: 40em; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 26px; font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); }
+
+/* 節 */
+section { padding-block: 46px; border-bottom: 1px solid var(--rule); }
+section:last-of-type { border-bottom: 0; }
+.no { font-family: var(--mono); font-size: 12px; color: var(--rule-strong); letter-spacing: .12em; }
+h2 { font-family: var(--head); font-weight: 700; font-size: clamp(21px, 4vw, 27px); line-height: 1.45; margin: 4px 0 18px; text-wrap: balance; }
+h3 { font-family: var(--head); font-weight: 500; font-size: 17px; margin: 26px 0 8px; }
+p { margin: 0 0 15px; max-width: 40em; }
+.lead { font-size: 17.5px; }
+strong { font-weight: 700; }
+ul { margin: 0 0 15px; padding-left: 1.25em; max-width: 40em; }
+li { margin-bottom: 7px; }
+
+/* 要相談の印。**この色と形は未決にしか使わない** */
+.todo {
+  display: inline-block; font-family: var(--mono); font-size: 11.5px; font-weight: 500;
+  color: var(--shu); background: var(--shu-soft); border: 1px solid var(--shu);
+  padding: 1px 8px; border-radius: 2px; letter-spacing: .06em; white-space: nowrap;
+  vertical-align: 2px;
+}
+.todo-line { border-left: 3px solid var(--shu); padding: 4px 0 4px 14px; margin: 0 0 16px; max-width: 40em; }
+.todo-line p:last-child { margin-bottom: 0; }
+
+/* 表 */
+.tw { overflow-x: auto; margin: 0 0 18px; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; min-width: 420px; }
+th, td { border: 1px solid var(--rule-strong); padding: 10px 13px; text-align: left; vertical-align: top; }
+thead th { background: var(--ai-soft); color: var(--ink); font-family: var(--head); font-weight: 500; }
+tbody th { background: color-mix(in srgb, var(--paper) 70%, var(--panel)); font-weight: 500; white-space: nowrap; }
+td.num, th.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* 3つ並べる */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.card { background: var(--panel); border: 1px solid var(--rule); padding: 18px 20px; }
+.card h3 { margin: 0 0 6px; font-size: 16px; color: var(--ai); }
+.card p { margin: 0; font-size: 14.5px; line-height: 1.8; color: var(--ink-2); }
+
+/* 数字を見せる */
+.figure { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: clamp(34px, 7vw, 48px); font-weight: 500; color: var(--ai); line-height: 1.1; }
+.figure-note { font-size: 14px; color: var(--ink-2); margin-top: 6px; }
+
+/* 工程 */
+.flow { list-style: none; padding: 0; margin: 0 0 18px; max-width: 40em; }
+.flow li { display: grid; grid-template-columns: 78px 1fr; gap: 16px; padding: 12px 0; border-top: 1px solid var(--rule); margin: 0; }
+.flow li:first-child { border-top: 0; }
+.flow .when { font-family: var(--mono); font-size: 12.5px; color: var(--ai); padding-top: 3px; }
+.flow b { font-family: var(--head); font-weight: 500; }
+.flow span.d { display: block; font-size: 14.5px; color: var(--ink-2); }
+
+/* 想定問答 */
+.qa { border-top: 1px solid var(--rule); padding: 16px 0; max-width: 42em; }
+.qa:first-of-type { border-top: 0; }
+.q { font-family: var(--head); font-weight: 500; margin: 0 0 6px; }
+.q::before { content: "Q"; font-family: var(--mono); color: var(--ai); margin-right: 9px; font-size: 13px; }
+.a { margin: 0; color: var(--ink-2); font-size: 15px; }
+.a::before { content: "A"; font-family: var(--mono); color: var(--rule-strong); margin-right: 9px; font-size: 13px; }
+
+.note { background: var(--panel); border-left: 3px solid var(--ai); padding: 14px 18px; margin: 0 0 18px; max-width: 42em; font-size: 15px; }
+footer { padding-block: 34px 60px; color: var(--ink-2); font-size: 13.5px; }
+footer p { max-width: 42em; }
+@media (max-width: 560px) { .flow li { grid-template-columns: 1fr; gap: 2px; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+<header class="cover">
+  <p class="eyebrow">社内資料 ／ 営業担当者向け</p>
+  <h1>町工場のホームページ事業</h1>
+  <p class="lead">北九州市とその近辺の、BtoB中小製造業に、<strong>引き合いを取るためのホームページ</strong>を作って納品します。この資料は、営業をお願いするにあたって、事業の中身と、まだ決まっていないことを共有するためのものです。</p>
+  <div class="meta">
+    <span>2026年9月13日</span>
+    <span>屋号 <span class="todo">要相談</span></span>
+    <span>営業開始：準備期間ののち</span>
+  </div>
+</header>
+
+<section>
+  <p class="no">01</p>
+  <h2>ひとことで言うと</h2>
+  <p class="lead"><strong>「取材して、原稿も全部こちらで書いて、4〜6週間で公開する」</strong>ホームページ制作です。お客様にお願いする作業は、およそ5.5時間だけです。</p>
+  <div class="note">
+    <p style="margin:0">Web制作が途中で止まる原因のほとんどは、<strong>原稿が揃わないこと</strong>です。本業が忙しい社長に「自社の技術を文章にまとめてください」と頼むのは、実質的に無理があります。そこを我々が引き受けます。</p>
+  </div>
+</section>
+
+<section>
+  <p class="no">02</p>
+  <h2>なぜ勝てるのか</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>製造業に特化している</h3>
+      <p>北九州で「製造業専門」を名乗る制作会社は、調べた範囲では見つかりませんでした。材質・加工法・設備の型番まで聞ける取材の型を持っています。</p>
+    </div>
+    <div class="card">
+      <h3>原稿を全部こちらで書く</h3>
+      <p>競合の多くは「お客様に原稿をご用意いただきます」と書いています。ここが最大の差です。</p>
+    </div>
+    <div class="card">
+      <h3>月額をいただかない</h3>
+      <p>保守は都度対応。固定費を嫌う中小企業に刺さります。監視とレポートは無償で続けます。</p>
+    </div>
+  </div>
+  <p>3つ目は、我々の作り方が静的サイト（更新のいらない作り）だから成立しています。<strong>サイトが何件に増えても、維持費はほぼ増えません。</strong></p>
+</section>
+
+<section>
+  <p class="no">03</p>
+  <h2>商品と価格</h2>
+  <div class="tw">
+  <table>
+    <thead><tr><th>商品</th><th class="num">価格（税別）</th><th>中身</th><th>誰に</th></tr></thead>
+    <tbody>
+      <tr><th>製造業スタンダード</th><td class="num">980,000円</td><td>10〜15ページ。事例ページ・設備一覧・対応可能範囲まで</td><td>従業員10〜100名の製造業。<strong>主軸</strong></td></tr>
+      <tr><th>製造業ライト</th><td class="num">480,000円</td><td>ページ数を絞った構成</td><td>予算が合わない場合の受け皿</td></tr>
+      <tr><th>汎用ベーシック</th><td class="num">198,000円</td><td>5〜7ページ。30分の聞き取りで作る</td><td>サイトを持っていない小規模事業者。業種を問わない</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="todo-line">
+    <p><span class="todo">要相談</span> <strong>値引きを求められたときの引き方</strong>（どこまで下げるか、何を削るか）と、<strong>着手金の比率</strong>。社長案は「着手金30%＋検収後70%」ですが、押し返されたときの順番を決めていません。</p>
+  </div>
+</section>
+
+<section>
+  <p class="no">04</p>
+  <h2>最大の武器：お客様の作業は5.5時間だけ</h2>
+  <p class="figure">5.5<span style="font-size:.45em"> 時間</span></p>
+  <p class="figure-note">制作期間中に、お客様にお願いする作業の合計</p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>内容</th><th class="num">時間</th></tr></thead>
+    <tbody>
+      <tr><th>キックオフ</th><td class="num">30分</td></tr>
+      <tr><th>第1回取材（社長）</th><td class="num">90分</td></tr>
+      <tr><th>第2回取材（工場・技術のご担当）</th><td class="num">60分</td></tr>
+      <tr><th>原稿・デザインのご確認</th><td class="num">60分</td></tr>
+      <tr><th>写真のご手配</th><td class="num">30分</td></tr>
+      <tr><th>検収・公開前のご確認</th><td class="num">60分</td></tr>
+      <tr><th>合計</th><td class="num"><strong>約5.5時間</strong></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>取材を2回に分けているのは、<strong>対応精度や設備の型番が、社長おひとりでは埋まらない</strong>とテストで分かったためです。1回と言っておいて後から追加で聞くほうが、印象が悪くなります。</p>
+</section>
+
+<section>
+  <p class="no">05</p>
+  <h2>制作の流れ</h2>
+  <ul class="flow">
+    <li><span class="when">1週目</span><span><b>第1回取材（90分）</b><span class="d">会議室で社長に。引き合いの実態、強み、事例、出せない情報の線引き</span></span></li>
+    <li><span class="when">2週目</span><span><b>第2回取材（60分）</b><span class="d">工場を歩きながら。設備の型番、対応精度、写真</span></span></li>
+    <li><span class="when">3〜4週目</span><span><b>原稿・デザインの提出</b><span class="d">原稿は全ページこちらで執筆。確認いただいて修正</span></span></li>
+    <li><span class="when">5〜6週目</span><span><b>検収・公開</b><span class="d">ドメイン設定、公開、引き渡し一式のお渡し</span></span></li>
+  </ul>
+  <div class="note">
+    <p style="margin:0"><strong>最初の3件は「6週間」で見積もってください。</strong> 目標は4週間ですが、慣れるまでは手戻りが出ます。3件通して4週間でできたら、そこから言い方を変えます。<strong>守れない約束を先に言わないこと</strong>を方針にしています。</p>
+  </div>
+</section>
+
+<section>
+  <p class="no">06</p>
+  <h2>誰に売るか</h2>
+  <div class="tw">
+  <table>
+    <thead><tr><th>条件</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><th>地域</th><td>北九州市および近郊（遠賀・中間・下関あたりまで）。<strong>取材に2回行ける距離</strong>が条件</td></tr>
+      <tr><th>規模</th><td>従業員 10〜100名くらい</td></tr>
+      <tr><th>業種</th><td>BtoBの製造業（金属加工・機械部品・装置まわり）</td></tr>
+      <tr><th>状態</th><td><strong>サイトが無い</strong>、または<strong>5年以上更新されていない</strong></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>探す先として、<strong>「ものづくり北九州企業データベース」</strong>（北九州商工会議所 機械金属部会・約780社）があります。業種・保有設備・所在地で検索できるので、我々の条件でそのまま絞り込めます。</p>
+  <div class="todo-line">
+    <p><span class="todo">要相談</span> <strong>リストの作り方と、最初に当たる順番。</strong> 紹介から入るのか、DMから入るのか。友人の既存の人脈を使うかどうかも含めて決めたいところです。</p>
+  </div>
+</section>
+
+<section>
+  <p class="no">07</p>
+  <h2>断ってよい案件</h2>
+  <p>無理に受けると、こちらが回らなくなって全案件に迷惑がかかります。<strong>断る判断は営業側でしてもらって構いません。</strong></p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>こう言われたら</th><th>断る理由</th></tr></thead>
+    <tbody>
+      <tr><th>ネットショップを作りたい</th><td>作れません。買い物かご・会員制・予約システムは対象外です</td></tr>
+      <tr><th>WordPressで作ってほしい</th><td>現段階では対応しません。得意な会社を紹介する形で構いません</td></tr>
+      <tr><th>福岡市／熊本でお願いしたい</th><td>取材に2回行く必要があるため、移動が割に合いません</td></tr>
+      <tr><th>とにかく安くしてほしい</th><td>価格で勝つ事業ではありません。<strong>5万円のサイトとは戦いません</strong></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <p class="no">08</p>
+  <h2>よく聞かれること</h2>
+
+  <div class="qa">
+    <p class="q">実績を見せてください</p>
+    <p class="a"><strong>正直に「これが最初の案件です」と言ってください。</strong> 隠すと後で必ず崩れます。代わりに、作り方の中身（取材の台本、原稿の作り方、引き渡しの内容）を全部お見せできます。自社サイトも準備中です。</p>
+    <div class="todo-line" style="margin-top:12px">
+      <p><span class="todo">要相談</span> <strong>1件目をどういう条件で受けるか。</strong> 実績づくりとして価格を下げるのか、通常価格で受けるのか。下げる場合の「実績として公開させていただく」条件も決めていません。</p>
+    </div>
+  </div>
+
+  <div class="qa">
+    <p class="q">公開したあと、自分で更新できますか</p>
+    <p class="a">ご自身での編集には対応していません。更新はこちらが承ります（1回15,000円〜、軽微なものは48時間以内）。<strong>電話でも受けます。</strong> そのぶん表示が速く、保守の費用がかからない作りです。</p>
+  </div>
+
+  <div class="qa">
+    <p class="q">他社に乗り換えることはできますか</p>
+    <p class="a"><strong>できます。</strong> サイトのファイル一式・原稿・画像・DNSの設定を、公開時にお渡しします。ドメインもお客様名義です。「弊社がいなくなっても、次の業者さんがすぐ引き継げます」と言えます。</p>
+  </div>
+
+  <div class="qa">
+    <p class="q">月々いくらかかりますか</p>
+    <p class="a"><strong>いただきません。</strong> 死活監視・フォームの疎通確認・月次レポートは無償で続けます。かかるのはドメイン代（年1,600円前後）だけで、これはお客様名義の契約です。</p>
+  </div>
+
+  <div class="qa">
+    <p class="q">前の業者と連絡が取れなくなって困っています</p>
+    <p class="a"><strong>いちばん効く話です。</strong> だからこそ、ドメインはお客様名義、ファイルは納品時にお渡し、という作りにしています。この不安を持っている会社は、こちらが本命の顧客です。</p>
+  </div>
+</section>
+
+<section>
+  <p class="no">09</p>
+  <h2>あなたの役割と条件</h2>
+  <div class="tw">
+  <table>
+    <thead><tr><th>項目</th><th>内容</th><th>状態</th></tr></thead>
+    <tbody>
+      <tr><th>役割</th><td>新規開拓、商談、第1回取材で<strong>話す側</strong>（画面入力は事業主が担当）</td><td>決定</td></tr>
+      <tr><th>形態</th><td>外注費としてお支払い</td><td>決定</td></tr>
+      <tr><th>固定費</th><td><strong>事業主が全額負担。</strong> 折半はしません</td><td>決定</td></tr>
+      <tr><th>書面</th><td>条件が決まり次第、書面にします</td><td>決定</td></tr>
+      <tr><th>報酬</th><td>制作費に対する％</td><td><span class="todo">要相談</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="todo-line">
+    <p><span class="todo">要相談</span> <strong>報酬の％。</strong> 社長案は<strong>「自分で開拓した案件 25〜30%／紹介だけの案件 10%」</strong>とチャネルで分ける形です。手間が違うので分けたい、という趣旨ですが、数字も分け方もここで決めたいところです。</p>
+  </div>
+  <p>取材で話す側をお願いしたいのは、<strong>製造業の話は、聞く人が現場の言葉を分かっているかどうかで深さが変わる</strong>からです。入力はこちらでやるので、画面は見ずに相手の顔を見て話してください。</p>
+</section>
+
+<section>
+  <p class="no">10</p>
+  <h2>もう出来ているもの</h2>
+  <p>「これから作ります」ではなく、<strong>すでに動いている</strong>ものです。</p>
+  <ul>
+    <li><strong>取材用のツール</strong>：90分の取材で聞くことが全部入っていて、答えてもらえなかった項目に印を付けられます。追い質問（「相手がこう言ったら、こう聞く」）が画面に出ます</li>
+    <li><strong>原稿の自動生成</strong>：取材した内容から、10ページ分の原稿を書き出します</li>
+    <li><strong>事実誤りの検査</strong>：<strong>聞いていないことを書いていないか</strong>を機械が検査します。取材にない数字や型番が混ざっていたら、公開できないように止まります</li>
+    <li><strong>サイトの書き出し</strong>：配色・書体・レイアウトを取材のその場で選べます。同じ顔のサイトを並べません</li>
+    <li><strong>撤退したときの設計</strong>：万一この事業をやめても、お客様のサイトが引き継げる形にしてあります</li>
+  </ul>
+</section>
+
+<section>
+  <p class="no">11</p>
+  <h2>決まっていないこと（一覧）</h2>
+  <p><strong>次に会うときに、この5つを決めたいです。</strong></p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>項目</th><th>社長の案</th></tr></thead>
+    <tbody>
+      <tr><th>報酬の％</th><td>開拓 25〜30% ／ 紹介 10%（チャネルで分ける）</td></tr>
+      <tr><th>屋号</th><td>「ものづくりウェブ」＋「北九州の製造業専門のホームページ制作」</td></tr>
+      <tr><th>着手金の比率と、値引きの引き方</th><td>着手金30%＋検収後70%から始める</td></tr>
+      <tr><th>1件目をどう受けるか</th><td>未定。実績づくりの条件を含めて相談したい</td></tr>
+      <tr><th>リストの作り方と当たる順番</th><td>未定。商工会議所のデータベースは使える見込み</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<footer>
+  <p>この資料は社内の共有用です。お客様にお見せする提案書は別に用意しています。</p>
+  <p>数字のうち、価格・工数・スケジュールは<strong>現時点の方針</strong>です。準備期間の実測で守れないと分かった場合は、<strong>約束のほうを変えます。</strong> 守れない数字を先に言わないことを、この事業の方針にしています。</p>
+</footer>
+</div>
