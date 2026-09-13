@@ -35,7 +35,7 @@ function setByPath(obj, path, value) {
 // ── 保存 ────────────────────────────────────────────────────
 function scheduleSave() {
   state.dirty = true;
-  setSaveStatus("保存中…", true);
+  setSaveStatus("自動保存中…", true);
   clearTimeout(state.saveTimer);
   state.saveTimer = setTimeout(save, 700);
 }
@@ -55,12 +55,17 @@ async function save() {
     renderNav(data.completion);
     renderMissing(data.completion);
     const t = new Date(data.savedAt);
-    setSaveStatus(`保存済 ${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`);
+    setSaveStatus(`自動保存 ${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`);
   } catch (err) {
-    setSaveStatus(`保存失敗: ${err.message}`, true);
+    setSaveStatus(`保存できません: ${err.message}`, true);
   }
 }
 
+/**
+ * 保存の状態。**明示的な保存ボタンは置かない。**
+ * 取材中に押し忘れる余地を作らないため、入力のたびに自動で保存する。
+ * ただし「保存されている」ことは常に見えるようにしておく。
+ */
 function setSaveStatus(text, busy = false) {
   const el = $("#save-status");
   el.textContent = text;
@@ -432,16 +437,44 @@ const escapeHtml = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
 // ── 案件の読み込み ──────────────────────────────────────────
+/**
+ * 案件一覧。**商品ごとにグループを分ける。**
+ * 製造業（90分・60項目）と汎用（30分・28項目）は別の商品なので、
+ * 1つのリストに混ぜると取り違える。
+ */
 async function loadProjectList(selectId) {
   const list = await (await fetch("/api/projects")).json();
   const sel = $("#project-select");
   sel.replaceChildren();
   sel.append(new Option("案件を選択…", ""));
-  for (const p of list) {
-    const kind = p.formSet === "general" ? "汎用" : "製造業";
-    sel.append(new Option(`［${kind}］${p.name || p.id}（${p.filledPct}%）`, p.id));
+
+  const groups = [
+    ["manufacturing", "製造業向け（980,000円）"],
+    ["general", "汎用ベーシック（198,000円）"],
+  ];
+  for (const [key, label] of groups) {
+    const items = list.filter((p) => (p.formSet ?? "manufacturing") === key);
+    if (!items.length) continue;
+    const g = document.createElement("optgroup");
+    g.label = label;
+    for (const p of items) {
+      g.append(new Option(`${p.name || p.id}　${p.filledPct}%`, p.id));
+    }
+    sel.append(g);
   }
   if (selectId) sel.value = selectId;
+  return list;
+}
+
+/** 案件IDの自動採番。日付＋連番。後から編集できる */
+function suggestProjectId(list) {
+  const d = new Date();
+  const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+  const used = new Set(list.map((p) => p.id));
+  for (let n = 1; ; n++) {
+    const id = `${stamp}-${n}`;
+    if (!used.has(id)) return id;
+  }
 }
 
 async function openProject(id) {
@@ -460,7 +493,7 @@ async function openProject(id) {
   renderNav(data.completion);
   renderMissing(data.completion);
   renderBlock();
-  setSaveStatus("読み込み完了");
+  setSaveStatus("自動保存されます");
 }
 
 // ── 起動 ────────────────────────────────────────────────────
@@ -475,22 +508,43 @@ async function openProject(id) {
     if (e.target.value) openProject(e.target.value);
   };
 
-  $("#new-project").onclick = async () => {
-    const id = prompt("案件ID（英数字・ハイフン。例: matsubara-seiki）");
-    if (!id) return;
-    const name = prompt("会社名（後から変更できます）") ?? "";
-    const lines = Object.values(state.sets)
-      .map((s, i) => `${i + 1}. ${s.label}　${s.description}（取材${s.interviewMinutes}分）`)
-      .join("\n");
-    const pick = prompt(`どちらの商品ですか。番号で答えてください。\n\n${lines}`, "1");
-    if (pick === null) return;
-    const formSet = pick.trim() === "2" ? "general" : "manufacturing";
+  // 新規案件は画面内のダイアログで完結させる。
+  // 取材の直前にブラウザのポップアップを3回続けて出されるのは、現場で辛い
+  const dialog = $("#new-dialog");
+  const openNew = async () => {
+    const list = await loadProjectList();
+    $("#new-name").value = "";
+    $("#new-id").value = suggestProjectId(list);
+    $("#new-error").hidden = true;
+    dialog.showModal();
+    $("#new-name").focus();
+  };
+  $("#new-project").onclick = openNew;
+  $("#new-project-empty").onclick = openNew;
+  $("#new-cancel").onclick = () => dialog.close();
+
+  $("#new-submit").onclick = async () => {
+    const id = $("#new-id").value.trim();
+    const name = $("#new-name").value.trim();
+    const formSet = document.querySelector('input[name="formSet"]:checked').value;
+    const err = $("#new-error");
+
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) {
+      err.textContent = "案件IDは英数字・ハイフン・アンダースコアで入力してください。";
+      err.hidden = false;
+      return;
+    }
     const res = await fetch("/api/projects", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ id, name, formSet }),
     });
-    if (!res.ok) return alert((await res.json()).error);
+    if (!res.ok) {
+      err.textContent = (await res.json()).error;
+      err.hidden = false;
+      return;
+    }
+    dialog.close();
     await loadProjectList(id);
     await openProject(id);
   };

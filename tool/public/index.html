@@ -2,13 +2,13 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>KOBO — ヒアリング</title>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <header>
-  <div class="brand">KOBO<span>v0.1</span></div>
+  <div class="brand">KOBO<span>v0.2</span></div>
   <div class="project">
     <select id="project-select" aria-label="案件"></select>
     <button id="new-project" type="button">＋ 新規案件</button>
@@ -30,6 +30,7 @@
 
 <div id="empty" class="empty">
   <p>案件を選ぶか、新規に作成してください。</p>
+  <button id="new-project-empty" type="button" class="primary">＋ 新規案件をつくる</button>
 </div>
 
 <main id="main" hidden>
@@ -40,6 +41,49 @@
 <footer>
   <div id="missing-summary"></div>
 </footer>
+
+<!-- 新規案件。ブラウザのポップアップではなく画面内で完結させる -->
+<dialog id="new-dialog">
+  <form method="dialog" id="new-form">
+    <h2>新規案件</h2>
+
+    <fieldset>
+      <legend>商品</legend>
+      <label class="choice">
+        <input type="radio" name="formSet" value="manufacturing" checked>
+        <span>
+          <b>製造業向け</b>　980,000円
+          <em>BtoB中小製造業。90分の取材で10〜15ページ分</em>
+        </span>
+      </label>
+      <label class="choice">
+        <input type="radio" name="formSet" value="general">
+        <span>
+          <b>汎用ベーシック</b>　198,000円
+          <em>サイトがない中小・零細企業。30分で5ページ分</em>
+        </span>
+      </label>
+    </fieldset>
+
+    <div class="dialog-field">
+      <label for="new-name">会社名</label>
+      <input type="text" id="new-name" placeholder="後から変更できます。未定のままでも作れます">
+    </div>
+
+    <div class="dialog-field">
+      <label for="new-id">案件ID</label>
+      <input type="text" id="new-id" pattern="[A-Za-z0-9_-]{1,64}">
+      <p class="hint">保存先のフォルダ名になります。英数字とハイフン。自動で入るので、そのままで構いません。</p>
+    </div>
+
+    <p class="dialog-error" id="new-error" hidden></p>
+
+    <div class="dialog-actions">
+      <button type="button" id="new-cancel">キャンセル</button>
+      <button type="button" id="new-submit" class="primary">作成してはじめる</button>
+    </div>
+  </form>
+</dialog>
 
 <script type="module" src="/app.js"></script>
 </body>
