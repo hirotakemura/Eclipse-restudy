@@ -204,20 +204,33 @@ const server = createServer(async (req, res) => {
   }
 });
 
-/** 同じWi-Fiのタブレットから開くためのアドレス。毎回調べなくて済むように起動時に出す */
+/**
+ * 同じWi-Fiのタブレットから開くためのアドレス。毎回調べなくて済むように起動時に出す。
+ *
+ * インターフェース名も一緒に出す。Mac には VPN（utun）や仮想環境（bridge, vmnet）の
+ * アドレスも生えていることがあり、**どれを使えばよいか分からないと繋がらない。**
+ * Wi-Fi は通常 en0 か en1。
+ */
 function lanAddresses() {
-  return Object.values(networkInterfaces())
-    .flat()
-    .filter((n) => n && n.family === "IPv4" && !n.internal)
-    .map((n) => n.address);
+  const wifiLike = /^en\d+$/;
+  return Object.entries(networkInterfaces())
+    .flatMap(([name, addrs]) =>
+      (addrs ?? [])
+        .filter((n) => n.family === "IPv4" && !n.internal)
+        .map((n) => ({ name, address: n.address, likelyWifi: wifiLike.test(name) })),
+    )
+    .sort((a, b) => Number(b.likelyWifi) - Number(a.likelyWifi));
 }
 
-server.listen(PORT, () => {
+// 明示的に 0.0.0.0 で待ち受ける。ホストを省くと環境によって IPv6 のみになり、
+// 同じ網にいる端末から繋がらないことがある
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`\nKOBO v0.2`);
   console.log(`\n  このパソコン       http://localhost:${PORT}`);
   const lan = lanAddresses();
-  for (const ip of lan) {
-    console.log(`  タブレット・スマホ http://${ip}:${PORT}`);
+  for (const { name, address, likelyWifi } of lan) {
+    const label = likelyWifi ? "タブレット・スマホ" : "（この経路は多分ちがう）";
+    console.log(`  ${label} http://${address}:${PORT}  [${name}]`);
   }
   console.log(`\n  案件データ: ${PROJECTS}`);
 
@@ -227,7 +240,13 @@ server.listen(PORT, () => {
     console.log(
       `\n  ※ 同じWi-Fiにいる端末からは、誰でもこの画面を開けます。` +
       `\n    取材先のWi-Fiに繋いだまま使わないでください。` +
-      `\n    タブレットを使うときは、このパソコンのインターネット共有（テザリング）に繋ぐのが安全です。`,
+      `\n    現地では、スマホのテザリングに このパソコンとタブレットの両方を繋ぐのが安全です。`,
+    );
+    console.log(
+      `\n  繋がらないときは：` +
+      `\n    1. パソコンとスマホが同じWi-Fiにいるか（5GHzと2.4GHzで別SSIDのことがある）` +
+      `\n    2. macOS のファイアウォール（システム設定 → ネットワーク → ファイアウォール）` +
+      `\n    3. ゲストWi-Fiは端末どうしの通信を遮断していることが多い`,
     );
   }
   console.log("");
