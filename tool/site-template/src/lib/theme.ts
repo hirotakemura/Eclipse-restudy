@@ -7,8 +7,8 @@
 import { resolveTheme, themeVars } from "../../../lib/theme.ts";
 import { project } from "./site";
 
-export const theme = resolveTheme((project as any).theme);
-export const themeStyle = themeVars((project as any).theme);
+export const theme = resolveTheme(project.theme);
+export const themeStyle = themeVars(project.theme);
 /** CSSだけでは表せない差は、<html> の属性で出す */
 export const navId = theme.nav.id;
 export const heroId = theme.hero.id;

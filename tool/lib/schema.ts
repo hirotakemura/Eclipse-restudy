@@ -8,9 +8,13 @@
  * 台本を変更したら、このファイルも必ず合わせて変更する。
  */
 
+// 見た目の型は `lib/theme.ts` が正。**ここに書き写さない**（D-197）
+import type { Theme } from "./theme.ts";
+
 // ── 共通型 ────────────────────────────────────────────────
 
 /** サイトの役割。ブロック2の回答から決まり、生成するページ構成を左右する */
+
 export type SiteGoal =
   | "集客" // 問い合わせの絶対数を増やす
   | "選別" // 割に合う仕事だけを呼び込む（来てほしくない問い合わせを減らす）
@@ -326,12 +330,18 @@ export interface Project {
   unconfirmedPlan?: Record<string, string>;
 
   /**
-   * サイトの見た目。配色・書体・雰囲気・レイアウトを案件データとして持つ。
+   * サイトの見た目。配色・書体・雰囲気・型（方向性）を案件データとして持つ。
    *
    * **テンプレートは1つしか持たない**（D-096）ので、見た目の違いはここで出す。
    * 選択肢の中身は `lib/theme.ts`（単一の正）。
+   *
+   * **ここは `lib/theme.ts` の `Theme` をそのまま使う**（D-197）。
+   * 以前はこの場所に `{ palette, font, mood, layout }` と**書き写して**いたため、
+   * D-141 で `layout` を `nav`＋`hero` に分けたあとも古い型が残り、
+   * `textSize` `sections` `headings` `tables` `direction` は型に無いままだった。
+   * 書き写した型は、必ず本体から遅れる。
    */
-  theme?: { palette: string; font: string; mood: string; layout: string };
+  theme?: Partial<Theme>;
 
   /**
    * お預かりした写真。
