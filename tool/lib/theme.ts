@@ -8,6 +8,9 @@
  * 片方だけ増やすと、選べるのに反映されない選択肢ができる。
  */
 
+import { HEROES as HERO_LIST } from "./design/system/hero.ts";
+import { DIRECTIONS, migrateDirection } from "./design/direction.ts";
+
 export interface Palette {
   id: string;
   label: string;
@@ -160,23 +163,13 @@ export const NAVS: Choice[] = [
   { id: "sidebar", label: "左メニュー", note: "ページ数が多い会社向け。技術資料のように読ませる（スマホでは上に出る）" },
 ];
 
-export interface HeroStyle extends Choice {
-  /** この型を選ぶのに要るデータ。無いときは選ばせない */
-  needs?: "photo" | "spec";
-}
-
 /**
  * ファーストビュー（最初の画面）の型。
  *
- * **`spec` は、写真が揃わない会社のための型。**
- * 調達担当者が見ているのは「材質×加工法×条件」であって、綺麗な写真ではない（docs/06）。
- * 写真が1枚も無くても、対応範囲を最初の画面に置けば判断してもらえる。
+ * **定義は `lib/design/system/hero.ts` が正。ここでは読み込むだけ**（D-201）。
+ * 直す前は3つしか無く、写真ゼロの会社では実質2択だった。
  */
-export const HEROES: HeroStyle[] = [
-  { id: "headline", label: "見出しを先に", note: "既定。写真が無くても成立する" },
-  { id: "photo", label: "写真を大きく", note: "外観や現場の写真が良いときに。写真が無いと間延びする", needs: "photo" },
-  { id: "spec", label: "対応範囲を先に", note: "材質・加工法・ロット・納期を最初の画面に置く。写真が無い会社ほど効く", needs: "spec" },
-];
+export { HEROES, type HeroStyle, type HeroId } from "./design/system/hero.ts";
 
 /** 章と章の区切り方 */
 export const SECTIONS: Choice[] = [
@@ -285,32 +278,29 @@ export interface Preset {
   theme: Theme;
 }
 
-export const PRESETS: Preset[] = [
-  {
-    id: "hyojun", label: "標準", note: "迷ったらこれ。業種を問わず外さない",
-    theme: { palette: "ai", font: "gothic", mood: "futsu", textSize: "normal", nav: "standard", hero: "headline", sections: "line", headings: "plain", tables: "all" , direction: "hyojun" },
-  },
-  {
-    id: "seimitsu", label: "精密加工", note: "金属加工・機械部品。ページ数が多く、設備や仕様を読ませる会社",
-    theme: { palette: "hagane", font: "mixed", mood: "katai", textSize: "normal", nav: "sidebar", hero: "spec", sections: "line", headings: "rule", tables: "stripe" , direction: "seimitsu" },
-  },
-  {
-    id: "shinise", label: "老舗・職人", note: "創業が古い会社。代表挨拶や沿革が効くとき",
-    theme: { palette: "enji", font: "mincho", mood: "futsu", textSize: "normal", nav: "standard", hero: "headline", sections: "space", headings: "underline", tables: "horizontal" , direction: "shinise" },
-  },
-  {
-    id: "seiketsu", label: "食品・環境", note: "清潔さが問われる業種。工場の写真が主役になる",
-    theme: { palette: "fukamidori", font: "gothic", mood: "futsu", textSize: "normal", nav: "standard", hero: "photo", sections: "alternate", headings: "band", tables: "all" , direction: "seiketsu" },
-  },
-  {
-    id: "seikatsu", label: "生活サービス", note: "個人のお客様が多い会社。住宅・設備・店舗",
-    theme: { palette: "kohaku", font: "maru", mood: "yawaraka", textSize: "normal", nav: "standard", hero: "photo", sections: "alternate", headings: "underline", tables: "horizontal" , direction: "seikatsu" },
-  },
-  {
-    id: "sekkei", label: "設計・技術", note: "写真が少なくても締まる。図面や技術資料が中心の会社",
-    theme: { palette: "sumi", font: "mixed", mood: "katai", textSize: "normal", nav: "sidebar", hero: "spec", sections: "line", headings: "rule", tables: "stripe" , direction: "sekkei" },
-  },
-];
+/**
+ * 型（プリセット）。
+ *
+ * **`lib/design/direction.ts` から作る。ここで書き写さない**（D-201）。
+ * 別々に持つと必ず食い違う（D-197で学んだとおり）。
+ *
+ * 押せば9軸がまとめて決まる。そこから1軸だけ直す、という使い方を想定している。
+ */
+export const PRESETS: Preset[] = DIRECTIONS.map((d) => ({
+  id: d.id,
+  label: d.label,
+  note: d.note,
+  theme: {
+    ...d.axes,
+    // 写真ゼロでも成立するものを既定にする。写真が要る型は、材料が揃ってから選ぶ
+    hero: d.heroes.find((h) => HERO_LIST.find((x) => x.id === h)?.worksWithoutPhotos) ?? d.heroes[0] ?? "headline",
+    direction: d.id,
+  } as Theme,
+}));
+
+/** そのプランで選べる型だけ。**製造業の型を汎用の商談で見せない**（D-198） */
+export const presetsFor = (plan: "manufacturing" | "general" | undefined): Preset[] =>
+  PRESETS.filter((p) => (DIRECTIONS.find((d) => d.id === p.id)?.plan ?? "manufacturing") === (plan ?? "manufacturing"));
 
 /**
  * どの型が選ばれているか。
@@ -319,20 +309,34 @@ export const PRESETS: Preset[] = [
  * 「精密加工の型を選んだ」という事実は消えない。
  * 古いデータには `direction` が無いので、そのときだけ9軸から逆算する。
  */
-export function matchPreset(theme: Partial<Theme> | undefined): string | null {
+export function matchPreset(
+  theme: Partial<Theme> | undefined,
+  plan: "manufacturing" | "general" = "manufacturing",
+): string | null {
   const t = { ...migrateLayout(theme), ...(theme ?? {}) };
-  if (t.direction && PRESETS.some((p) => p.id === t.direction)) return t.direction;
+  if (t.direction) {
+    // 古いID（seimitsu など）は新しいIDに読み替える（D-201）。取材済みの案件を壊さない
+    const migrated = migrateDirection(t.direction, plan);
+    if (PRESETS.some((p) => p.id === migrated)) return migrated;
+  }
+  /**
+   * 型の保存を始める前のデータには、配色・書体・雰囲気しか無い。
+   * **9軸すべてで照合すると、既定値との差で必ず外れる**（中原設備がそうだった）。
+   * 古いデータが実際に持っている3つだけで照合する。
+   * 3つの組み合わせは型ごとに重ならないようにしてある。
+   */
   const full = { ...DEFAULT_THEME, ...t };
   return (
-    PRESETS.find((p) =>
-      (Object.keys(p.theme) as (keyof Theme)[])
-        .filter((k) => k !== "direction")
-        .every((k) => p.theme[k] === full[k]),
+    presetsFor(plan).find((p) =>
+      (["palette", "font", "mood"] as const).every((k) => p.theme[k] === full[k]),
     )?.id ?? null
   );
 }
 
-export function resolveTheme(theme: Partial<Theme> | undefined) {
+export function resolveTheme(
+  theme: Partial<Theme> | undefined,
+  plan: "manufacturing" | "general" = "manufacturing",
+) {
   const t = { ...DEFAULT_THEME, ...migrateLayout(theme), ...(theme ?? {}) };
   // 知らないIDが入っていても落とさない。既定に戻す
   const pick = <T extends { id: string }>(list: T[], id: string, fallback: T): T =>
@@ -344,12 +348,12 @@ export function resolveTheme(theme: Partial<Theme> | undefined) {
     mood: pick(MOODS, t.mood, MOODS[1]!),
     textSize: pick(TEXT_SIZES, t.textSize, TEXT_SIZES[0]!),
     nav: pick(NAVS, t.nav, NAVS[0]!),
-    hero: pick(HEROES, t.hero, HEROES[0]!),
+    hero: pick(HERO_LIST, t.hero, HERO_LIST[0]!),
     sections: pick(SECTIONS, t.sections, SECTIONS[0]!),
     headings: pick(HEADINGS, t.headings, HEADINGS[0]!),
     tables: pick(TABLES, t.tables, TABLES[0]!),
     /** 型（方向性）。古いデータでは9軸から逆算する */
-    direction: matchPreset(theme) ?? "hyojun",
+    direction: migrateDirection(matchPreset(theme, plan) ?? undefined, plan),
   };
 }
 

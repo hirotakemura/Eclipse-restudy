@@ -121,7 +121,7 @@ const zenbu = make({
 });
 
 const byDirection = {};
-for (const d of ["hyojun", "seimitsu", "shinise", "seiketsu", "seikatsu", "sekkei"]) {
+for (const d of ["standard", "technical", "craft", "engineering", "industrial", "product"]) {
   byDirection[d] = kinds(zenbu, { direction: d });
   console.log(`      ${d.padEnd(9)}: ${byDirection[d].join(" → ")}`);
 }
@@ -129,19 +129,18 @@ check("型が違えば並びが違う（6種のうち4種以上が別の並び�
   new Set(Object.values(byDirection).map((v) => v.join())).size >= 4,
   `別の並びは ${new Set(Object.values(byDirection).map((v) => v.join())).size} 種`);
 check("「老舗・職人」では沿革か代表が前に出る",
-  byDirection.shinise.indexOf("timeline") < byDirection.seimitsu.indexOf("timeline")
-  || byDirection.shinise.includes("people"),
-  byDirection.shinise.join(","));
+  byDirection.craft.indexOf("timeline") < byDirection.technical.indexOf("timeline")
+  || byDirection.craft.includes("people"),
+  byDirection.craft.join(","));
 check("「精密加工」では条件・材質・設備が前に出る",
-  byDirection.seimitsu.slice(0, 4).some((k) => ["figures", "materials", "equipment"].includes(k)),
-  byDirection.seimitsu.join(","));
-check("「食品・環境」では写真が前に出る",
-  byDirection.seiketsu.indexOf("gallery") < byDirection.sekkei.indexOf("gallery")
-  || (byDirection.seiketsu.includes("gallery") && !byDirection.sekkei.includes("gallery")),
-  byDirection.seiketsu.join(","));
+  byDirection.technical.slice(0, 4).some((k) => ["figures", "materials", "equipment"].includes(k)),
+  byDirection.technical.join(","));
+check("「量産・設備」では設備か写真が前に出る",
+  byDirection.industrial.slice(0, 3).some((k) => ["equipment", "gallery"].includes(k)),
+  byDirection.industrial.join(","));
 check("型で後ろに回しても、材料があるセクションを消さない",
-  kinds(zenbu, { direction: "seikatsu" }).length === kinds(zenbu, { direction: "seimitsu" }).length
-  || kinds(zenbu, { direction: "seikatsu" }).length > 1);
+  kinds(zenbu, { direction: "product" }).length === kinds(zenbu, { direction: "technical" }).length
+  || kinds(zenbu, { direction: "product" }).length > 1);
 
 console.log("\n━━━ トップ以外のページも構成される ━━━");
 const page = (slug, p, opts = {}) => composePage(slug, p, analyze(p), opts).map((s) => s.kind);

@@ -7,7 +7,8 @@
 import { resolveTheme, themeVars } from "../../../lib/theme.ts";
 import { project } from "./site";
 
-export const theme = resolveTheme(project.theme);
+const plan = (project as any).formSet === "general" ? "general" : "manufacturing";
+export const theme = resolveTheme(project.theme, plan);
 export const themeStyle = themeVars(project.theme);
 /** CSSだけでは表せない差は、<html> の属性で出す */
 export const navId = theme.nav.id;

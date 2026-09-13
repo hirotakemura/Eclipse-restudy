@@ -72,7 +72,7 @@ console.log(`\n${project.basics?.name ?? id} の原稿を生成します`);
     import("./lib/theme.ts"),
     import("./lib/design/direction.ts"),
   ]);
-  const r = resolveTheme(project.theme);
+  const r = resolveTheme(project.theme, project.formSet === "general" ? "general" : "manufacturing");
   const label = DIRECTIONS.find((d) => d.id === r.direction)?.label ?? r.direction;
   const sections = composeTop(project, analyze(project), {
     hero: r.hero.id, direction: r.direction, hasProse: true,

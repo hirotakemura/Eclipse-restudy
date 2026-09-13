@@ -55,7 +55,7 @@ export async function generateSite(
    * 書き出し（build-site.mjs）と同じ関数を使うので、**画面と原稿がずれない。**
    */
   const analysis = analyze(project);
-  const resolved = resolveTheme(project.theme);
+  const resolved = resolveTheme(project.theme, (project as any).formSet === "general" ? "general" : "manufacturing");
   const direction = resolved.direction;
   const layoutOf = (slug: string): { sections: Section[]; analysis: typeof analysis; direction?: string } | undefined => {
     let sections: Section[] = [];

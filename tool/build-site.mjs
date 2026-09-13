@@ -113,7 +113,7 @@ console.log(`  写真 ${photoCount}枚${unplaced ? `（うち置き場所が未�
  */
 {
   const analysis = analyze(project);
-  const resolved = resolveTheme(project.theme);
+  const resolved = resolveTheme(project.theme, project.formSet === "general" ? "general" : "manufacturing");
   const hero = resolved.hero.id;
   const direction = resolved.direction;
   const sections = composeTop(project, analysis, { hero, direction, hasProse: drafts > 0 });

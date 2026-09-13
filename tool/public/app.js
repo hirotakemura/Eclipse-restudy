@@ -418,8 +418,8 @@ function renderTheme(field, read, write) {
      * **9軸から逆算して補う。** 取材済みの案件は作り直せない（D-141と同じ配慮）。
      */
     if (!t.direction) {
-      const guess = (opts.presets ?? []).find((p) =>
-        Object.keys(p.theme).filter((k) => k !== "direction").every((k) => p.theme[k] === t[k]),
+      const guess = presetsForPlan(opts.presets, state.project?.formSet).find((p) =>
+        ["palette", "font", "mood"].every((k) => p.theme[k] === t[k]),
       );
       if (guess) t.direction = guess.id;
     }
@@ -436,6 +436,19 @@ function renderTheme(field, read, write) {
     if (h.needs === "photo") {
       const has = (p.photos ?? []).some((x) => x.category === "外観");
       return has ? h : { ...h, disabled: true, note: "外観の写真を預かってから選べます" };
+    }
+    if (h.needs === "figure") {
+      // 「数字を大きく」は、大きく出せる数字が1つ以上要る
+      const cap = p.capability ?? {};
+      const has = cap.tolerance || cap.shortestLeadTime || cap.lotSize;
+      return has ? h : { ...h, disabled: true, note: "精度・納期・ロットのどれかを聞き取ってから選べます" };
+    }
+    if (h.needs === "motif") {
+      // 「技術の地紋」は、地紋の根拠になる聞き取りが要る
+      const cap = p.capability ?? {};
+      const st = p.strengths ?? {};
+      const has = cap.tolerance || st.followUpFindings || st.wonAfterOthersDeclined || (cap.materials ?? []).length >= 3;
+      return has ? h : { ...h, disabled: true, note: "精度・工程の工夫・材質のどれかを聞き取ってから選べます" };
     }
     if (h.needs === "spec") {
       const cap = p.capability ?? {};
@@ -458,7 +471,7 @@ function renderTheme(field, read, write) {
    */
   const sync = () => {
     const t = current();
-    const presetId = matchPreset(opts.presets, t);
+    const presetId = matchPreset(presetsForPlan(opts.presets, state.project?.formSet), t);
     for (const row of box.querySelectorAll(".theme-row")) {
       const key = row.dataset.key;
       const selected = key === "preset" ? presetId : t[key];
@@ -480,7 +493,7 @@ function renderTheme(field, read, write) {
      * 押した型のIDを `direction` として残す。
      * **配色を1つ直しても「精密加工を選んだ」という事実は消えない。**
      */
-    choiceRow("preset", "型から選ぶ", opts.presets ?? [], (id) => {
+    choiceRow("preset", "型から選ぶ", presetsForPlan(opts.presets, state.project?.formSet), (id) => {
       const preset = (opts.presets ?? []).find((p) => p.id === id);
       if (preset) { write({ ...preset.theme, direction: id }); sync(); }
     }, (p) => {
@@ -527,15 +540,27 @@ function renderTheme(field, read, write) {
 }
 
 /**
+ * その案件のプランで選べる型だけを出す（D-198）。
+ * **製造業の型を汎用の商談で見せない。** 汎用は30分の取材なので、材料が違う。
+ */
+function presetsForPlan(presets, formSet) {
+  const plan = formSet === "general" ? "general" : "manufacturing";
+  const list = (presets ?? []).filter((p) => (p.plan ?? "manufacturing") === plan);
+  return list.length ? list : (presets ?? []);
+}
+
+/**
  * いま選ばれている型（lib/theme.ts の matchPreset と同じ判定）。
  *
  * **保存された `direction` を正とする。** 無いのは型の保存を始める前のデータなので、
  * そのときだけ9軸から逆算する。
  */
 function matchPreset(presets, t) {
-  if (t.direction && (presets ?? []).some((p) => p.id === t.direction)) return t.direction;
-  return (presets ?? []).find((p) =>
-    Object.keys(p.theme).filter((k) => k !== "direction").every((k) => p.theme[k] === t[k]),
+  const list = presets ?? [];
+  if (t.direction && list.some((p) => p.id === t.direction)) return t.direction;
+  // 古いデータは配色・書体・雰囲気しか持たない（lib/theme.ts と同じ判定・D-201）
+  return list.find((p) =>
+    ["palette", "font", "mood"].every((k) => p.theme[k] === t[k]),
   )?.id ?? null;
 }
 

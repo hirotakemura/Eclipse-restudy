@@ -37,6 +37,7 @@ if (process.features.typescript !== "strip") {
 
 const { FORM_SETS, getFormSet } = await import("./lib/form-definition.ts");
 const THEME = await import("./lib/theme.ts");
+const DESIGN = await import("./lib/design/direction.ts");
 const { computeCompletion } = await import("./lib/completion.ts");
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -236,7 +237,8 @@ const server = createServer(async (req, res) => {
         version: CODE_VERSION,
         // 見た目の選択肢は lib/theme.ts が単一の正。画面側で定義を持たない
         theme: {
-          presets: THEME.PRESETS,
+          // 型はプランごとに違う（D-198）。製造業の型を汎用の商談で見せない
+          presets: THEME.PRESETS.map((p) => ({ ...p, plan: DESIGN.getDirection(p.id).plan })),
           palettes: THEME.PALETTES, fonts: THEME.FONTS, moods: THEME.MOODS,
           textSizes: THEME.TEXT_SIZES,
           navs: THEME.NAVS, heroes: THEME.HEROES,
