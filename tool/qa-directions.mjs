@@ -110,6 +110,31 @@ for (const p of pairs) {
   console.log(`  ${p.score.toFixed(2)}  ${p.label}${p.same ? "　★まったく同じ" : ""}`);
 }
 
+/*
+  **もう1つ、別の物差しを置く。**
+  上の「似ている度合い」は順番・面・組み方まで見るので、
+  **見た目が違えば下がる。** ところが出ている情報の種類が同じなら、
+  それは「同じテンプレートに別のテーマを当てただけ」である（アドバイザー指摘）。
+  種類だけを見る物差しを別に持ち、**両方を下げる**ことを目標にする。
+*/
+console.log("\n━━━ 出ている情報の種類だけを見る（順番・面・組み方を無視）━━━\n");
+const kindsOf = (r) => new Set(r.sig.bands.map((b) => b.split(":")[0]));
+let kTot = 0, kSame = 0, kN = 0;
+for (let i = 0; i < results.length; i++) {
+  for (let j = i + 1; j < results.length; j++) {
+    const A = kindsOf(results[i]), B = kindsOf(results[j]);
+    const inter = [...A].filter((x) => B.has(x)).length;
+    const uni = new Set([...A, ...B]).size;
+    const sc = uni ? inter / uni : 1;
+    kTot += sc; kN++; if (sc === 1) kSame++;
+  }
+}
+for (const { d, sig } of results) {
+  console.log(`  ${d.label.padEnd(7)} ${[...kindsOf({ sig })].join(" ")}`);
+}
+console.log(`\n  種類の重なり： 平均 ${(kTot / kN).toFixed(2)}`);
+console.log(`  **出ている情報がまったく同じ組み合わせ： ${kSame}/${kN}通り**`);
+
 const identical = pairs.filter((p) => p.same).length;
 const avg = pairs.reduce((s, p) => s + p.score, 0) / pairs.length;
 console.log("\n━━━ まとめ ━━━");
