@@ -9,7 +9,7 @@
  */
 import "../styles/site.css";
 import { companyName, tel, telHref, email, address, nav, project, photoOf, photoSrc, isGeneral } from "../lib/site";
-import { themeStyle, layoutId, webfont } from "../lib/theme";
+import { themeStyle, navId, heroId, sectionsId, headingsId, tablesId, webfont } from "../lib/theme";
 
 const logo = photoOf("ロゴ");
 
@@ -33,7 +33,7 @@ const jsonLd = {
 };
 ---
 <!doctype html>
-<html lang="ja" data-layout={layoutId} style={themeStyle}>
+<html lang="ja" data-nav={navId} data-hero={heroId} data-sections={sectionsId} data-headings={headingsId} data-tables={tablesId} style={themeStyle}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">

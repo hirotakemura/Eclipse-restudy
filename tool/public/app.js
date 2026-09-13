@@ -396,7 +396,43 @@ function renderTheme(field, read, write) {
     return box;
   }
 
-  const current = () => ({ ...opts.default, ...(read() ?? {}) });
+  /**
+   * 旧 `layout` 軸（standard / sidebar / wide）を、新しい2軸に読み替える。
+   *
+   * **`lib/theme.ts` の migrateLayout と同じ規則。**
+   * 片方だけ直すと、KOBOの画面と書き出されるサイトが食い違う（実際に食い違った）。
+   */
+  const normalize = (saved) => {
+    const t = { ...opts.default, ...(saved ?? {}) };
+    if (typeof saved?.layout === "string" && !saved.nav) {
+      if (saved.layout === "sidebar") { t.nav = "sidebar"; t.hero = "headline"; }
+      else if (saved.layout === "wide") { t.nav = "standard"; t.hero = "photo"; }
+    }
+    delete t.layout;
+    return t;
+  };
+  const current = () => normalize(read());
+
+  /**
+   * 「写真を大きく」は写真が要る。「対応範囲を先に」は対応材質などが要る。
+   * **材料が無いまま選ぶと、間延びした最初の画面になる。**
+   * 選べないことと、その理由を画面に出す
+   */
+  const withAvailability = (h) => {
+    const p = state.project ?? {};
+    if (h.needs === "photo") {
+      const has = (p.photos ?? []).some((x) => x.category === "外観");
+      return has ? h : { ...h, disabled: true, note: "外観の写真を預かってから選べます" };
+    }
+    if (h.needs === "spec") {
+      const cap = p.capability ?? {};
+      const gen = p.general ?? {};
+      const has = cap.materials?.length || cap.processes?.length || cap.lotSize ||
+        gen.serviceArea || (gen.offerings ?? []).length;
+      return has ? h : { ...h, disabled: true, note: "対応範囲を聞き取ってから選べます" };
+    }
+    return h;
+  };
   const set = (key, value) => { write({ ...current(), [key]: value }); draw(); };
 
   const preview = document.createElement("div");
@@ -443,7 +479,12 @@ function renderTheme(field, read, write) {
         return sample;
       }),
       choiceRow("雰囲気", opts.moods, t.mood, (v) => set("mood", v)),
-      choiceRow("レイアウト", opts.layouts, t.layout, (v) => set("layout", v)),
+      choiceRow("メニューの位置", opts.navs, t.nav, (v) => set("nav", v)),
+      // 最初の画面の型は、材料が無いと成立しない。無いものは選ばせない
+      choiceRow("最初の画面", opts.heroes.map(withAvailability), t.hero, (v) => set("hero", v)),
+      choiceRow("章の区切り", opts.sections, t.sections, (v) => set("sections", v)),
+      choiceRow("見出しの飾り", opts.headings, t.headings, (v) => set("headings", v)),
+      choiceRow("表の罫線", opts.tables, t.tables, (v) => set("tables", v)),
     );
 
     drawPreview(preview, opts, t);
@@ -456,10 +497,8 @@ function renderTheme(field, read, write) {
 
 /** いま選ばれている組み合わせが、どの型と一致するか（lib/theme.ts の matchPreset と同じ判定） */
 function matchPreset(presets, t) {
-  return (presets ?? []).find(
-    (p) =>
-      p.theme.palette === t.palette && p.theme.font === t.font &&
-      p.theme.mood === t.mood && p.theme.layout === t.layout,
+  return (presets ?? []).find((p) =>
+    Object.keys(p.theme).every((k) => p.theme[k] === t[k]),
   )?.id ?? null;
 }
 
@@ -478,6 +517,7 @@ function choiceRow(title, items, selected, onPick, decorate) {
     btn.type = "button";
     btn.className = "theme-choice";
     btn.setAttribute("aria-pressed", String(item.id === selected));
+    if (item.disabled) { btn.disabled = true; btn.classList.add("is-unavailable"); }
     if (decorate) btn.append(decorate(item));
     const label = document.createElement("span");
     label.className = "theme-label";
@@ -499,14 +539,16 @@ function drawPreview(el, opts, t) {
   const p = opts.palettes.find((x) => x.id === t.palette) ?? opts.palettes[0];
   const f = opts.fonts.find((x) => x.id === t.font) ?? opts.fonts[0];
   const m = opts.moods.find((x) => x.id === t.mood) ?? opts.moods[1];
-  const l = opts.layouts.find((x) => x.id === t.layout) ?? opts.layouts[0];
+  const nav = opts.navs.find((x) => x.id === t.nav) ?? opts.navs[0];
 
   el.style.cssText =
     `--tp-accent:${p.accent};--tp-accent-dark:${p.accentDark};--tp-accent-soft:${p.accentSoft};` +
     `--tp-ink:${p.ink};--tp-ink-soft:${p.inkSoft};--tp-bg:${p.bg};--tp-bg-soft:${p.bgSoft};--tp-line:${p.line};` +
     `--tp-body:${f.body};--tp-head:${f.heading};` +
     `--tp-radius:${m.radius};--tp-leading:${m.leading};--tp-line-width:${m.lineWidth}`;
-  el.dataset.layout = l.id;
+  el.dataset.layout = nav.id === "sidebar" ? "sidebar" : t.hero === "photo" ? "wide" : "standard";
+  el.dataset.headings = t.headings;
+  el.dataset.tables = t.tables;
 
   const name = state.project?.basics?.name || "御社名";
   el.innerHTML =
@@ -887,7 +929,8 @@ function renderReviewField(field, blockTitle) {
       `配色：${name("palettes", t.palette)}`,
       `書体：${name("fonts", t.font)}`,
       `雰囲気：${name("moods", t.mood)}`,
-      `レイアウト：${name("layouts", t.layout)}`,
+      `最初の画面：${name("heroes", t.hero)}`,
+      `メニュー：${name("navs", t.nav)}`,
     ].join("　／　");
     return reviewRow(label, text);
   }

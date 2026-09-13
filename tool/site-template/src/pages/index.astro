@@ -10,6 +10,7 @@ import Base from "../layouts/Base.astro";
 import Prose from "../components/Prose.astro";
 import CaseCard from "../components/CaseCard.astro";
 import { project, companyName, cases, photoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen, caseHref } from "../lib/site";
+import { heroId } from "../lib/theme";
 import Figure from "../components/Figure.astro";
 import Gallery from "../components/Gallery.astro";
 
@@ -35,6 +36,25 @@ const facts = (isGeneral
     ]
 ).filter(Boolean) as string[];
 
+/**
+ * 「対応範囲を先に出す」型のときに、最初の画面に置く項目。
+ * **札（facts）より情報量を増やす。**判断に使う数字をそのまま見せる
+ */
+const specs = (isGeneral
+  ? [
+      ["対応エリア", serviceArea],
+      ["主な取り扱い", offerings.map((o: any) => o.name).filter(Boolean).join("・")],
+    ]
+  : [
+      ["対応材質", cap.materials?.join("・")],
+      ["加工法・工法", cap.processes?.join("・")],
+      ["対応ロット", cap.lotSize],
+      ["最短納期", cap.shortestLeadTime],
+      ["対応精度", cap.tolerance],
+      ["資格・認証", cap.certifications?.join("・")],
+    ]
+).filter(([, v]) => v) as [string, string][];
+
 const declined = project.strengths?.wonAfterOthersDeclined;
 const desc = [project.basics?.address, cap.processes?.join("・"), cap.materials?.join("・")]
   .filter(Boolean).join("／");
@@ -44,8 +64,12 @@ const desc = [project.basics?.address, cap.processes?.join("・"), cap.materials
     <div class="inner">
       <h1>{companyName}</h1>
       <p class="lead">{project.basics?.businessSummary}</p>
-      {facts.length > 0 && (
-        <div class="facts">{facts.map((f) => <span>{f}</span>)}</div>
+      {heroId === "spec" && specs.length > 0 ? (
+        <dl class="spec-first">
+          {specs.map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
+        </dl>
+      ) : (
+        facts.length > 0 && <div class="facts">{facts.map((f) => <span>{f}</span>)}</div>
       )}
       <Figure photo={photoOf("外観")} className="hero-photo" eager={true} />
     </div>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="300" viewBox="0 0 800 300" role="img" aria-label="松原精機（仮の画像）">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#10456f"/><stop offset="1" stop-color="#10456f"/>
+    </linearGradient>
+    <pattern id="p" width="48" height="48" patternUnits="userSpaceOnUse" patternTransform="rotate(35)">
+      <rect width="48" height="48" fill="none"/>
+      <line x1="0" y1="0" x2="0" y2="48" stroke="#ffffff" stroke-opacity="0.06" stroke-width="14"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="300" fill="url(#g)"/>
+  <rect width="800" height="300" fill="url(#p)"/>
+  <text x="50%" y="136" text-anchor="middle" font-family="system-ui, sans-serif" font-size="21" fill="#ffffff" fill-opacity="0.92">松原精機</text>
+  <text x="50%" y="168" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#ffffff" fill-opacity="0.7">仮の画像（ロゴ）／差し替え前提</text>
+</svg>

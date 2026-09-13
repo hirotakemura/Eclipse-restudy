@@ -9,6 +9,10 @@ import { project } from "./site";
 
 export const theme = resolveTheme((project as any).theme);
 export const themeStyle = themeVars((project as any).theme);
-/** レイアウトは CSS では表せない差もあるので、body の属性で出す */
-export const layoutId = theme.layout.id;
+/** CSSだけでは表せない差は、<html> の属性で出す */
+export const navId = theme.nav.id;
+export const heroId = theme.hero.id;
+export const sectionsId = theme.sections.id;
+export const headingsId = theme.headings.id;
+export const tablesId = theme.tables.id;
 export const webfont = theme.font.webfont;

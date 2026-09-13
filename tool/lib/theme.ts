@@ -123,26 +123,90 @@ export const MOODS: Mood[] = [
   { id: "yawaraka", label: "やわらかい", note: "角丸・線が薄い・行間広め。個人のお客様向けに", radius: "16px", leading: "2.0", tracking: "0.02em", lineWidth: "1px", section: "64px" },
 ];
 
-export interface LayoutSet {
+export interface Choice {
   id: string;
   label: string;
   note: string;
 }
 
-export const LAYOUTS: LayoutSet[] = [
-  { id: "standard", label: "標準", note: "ヘッダーの下に横並びのメニュー。いちばん無難" },
-  { id: "sidebar", label: "左メニュー", note: "ページ数が多い会社向け。技術資料のように読ませる（スマホでは標準と同じ）" },
-  { id: "wide", label: "写真を大きく", note: "外観や現場の写真が良いときに。写真が無いと間延びする" },
+/**
+ * メニューの置き方。
+ *
+ * **旧 `layout` 軸は、メニューの置き方とファーストビューを1つに混ぜていた。**
+ * そのため「左メニュー、かつ写真を大きく」が選べなかった。別の軸に分ける（D-141）。
+ */
+export const NAVS: Choice[] = [
+  { id: "standard", label: "上に横並び", note: "いちばん無難。ページ数が多くなければこれ" },
+  { id: "sidebar", label: "左メニュー", note: "ページ数が多い会社向け。技術資料のように読ませる（スマホでは上に出る）" },
+];
+
+export interface HeroStyle extends Choice {
+  /** この型を選ぶのに要るデータ。無いときは選ばせない */
+  needs?: "photo" | "spec";
+}
+
+/**
+ * ファーストビュー（最初の画面）の型。
+ *
+ * **`spec` は、写真が揃わない会社のための型。**
+ * 調達担当者が見ているのは「材質×加工法×条件」であって、綺麗な写真ではない（docs/06）。
+ * 写真が1枚も無くても、対応範囲を最初の画面に置けば判断してもらえる。
+ */
+export const HEROES: HeroStyle[] = [
+  { id: "headline", label: "見出しを先に", note: "既定。写真が無くても成立する" },
+  { id: "photo", label: "写真を大きく", note: "外観や現場の写真が良いときに。写真が無いと間延びする", needs: "photo" },
+  { id: "spec", label: "対応範囲を先に", note: "材質・加工法・ロット・納期を最初の画面に置く。写真が無い会社ほど効く", needs: "spec" },
+];
+
+/** 章と章の区切り方 */
+export const SECTIONS: Choice[] = [
+  { id: "line", label: "罫線", note: "既定。すっきりする" },
+  { id: "alternate", label: "背景を交互に", note: "章の切れ目がはっきりする。ページが長い会社に" },
+  { id: "space", label: "余白だけ", note: "静か。文章が主役のとき" },
+];
+
+/** 見出しの飾り */
+export const HEADINGS: Choice[] = [
+  { id: "plain", label: "飾らない", note: "既定" },
+  { id: "rule", label: "左に罫", note: "工業系で見慣れた形。締まって見える" },
+  { id: "underline", label: "下線", note: "やわらかい。読み物寄りのとき" },
+  { id: "band", label: "背景帯", note: "強い。章が多いページで迷子になりにくい" },
+];
+
+/** 表の罫線。対応可能範囲・設備一覧は表が主役になる */
+export const TABLES: Choice[] = [
+  { id: "all", label: "全部に罫線", note: "既定。仕様書に近い" },
+  { id: "horizontal", label: "横罫だけ", note: "軽く見える。項目が少ない表に" },
+  { id: "stripe", label: "行を縞に", note: "行数が多い表で目が迷わない。設備一覧が長い会社に" },
 ];
 
 export interface Theme {
   palette: string;
   font: string;
   mood: string;
-  layout: string;
+  nav: string;
+  hero: string;
+  sections: string;
+  headings: string;
+  tables: string;
 }
 
-export const DEFAULT_THEME: Theme = { palette: "ai", font: "gothic", mood: "futsu", layout: "standard" };
+export const DEFAULT_THEME: Theme = {
+  palette: "ai", font: "gothic", mood: "futsu",
+  nav: "standard", hero: "headline", sections: "line", headings: "plain", tables: "all",
+};
+
+/**
+ * 旧 `layout` 軸（standard / sidebar / wide）を、新しい2軸に読み替える。
+ *
+ * **すでに保存されている案件を壊さない。** 一度でも取材に使ったデータは作り直せない。
+ */
+function migrateLayout(raw: any): Partial<Theme> {
+  if (!raw || typeof raw.layout !== "string") return {};
+  if (raw.layout === "sidebar") return { nav: "sidebar", hero: "headline" };
+  if (raw.layout === "wide") return { nav: "standard", hero: "photo" };
+  return { nav: "standard", hero: "headline" };
+}
 
 /**
  * 型（プリセット）。
@@ -161,46 +225,40 @@ export interface Preset {
 export const PRESETS: Preset[] = [
   {
     id: "hyojun", label: "標準", note: "迷ったらこれ。業種を問わず外さない",
-    theme: { palette: "ai", font: "gothic", mood: "futsu", layout: "standard" },
+    theme: { palette: "ai", font: "gothic", mood: "futsu", nav: "standard", hero: "headline", sections: "line", headings: "plain", tables: "all" },
   },
   {
     id: "seimitsu", label: "精密加工", note: "金属加工・機械部品。ページ数が多く、設備や仕様を読ませる会社",
-    theme: { palette: "hagane", font: "mixed", mood: "katai", layout: "sidebar" },
+    theme: { palette: "hagane", font: "mixed", mood: "katai", nav: "sidebar", hero: "spec", sections: "line", headings: "rule", tables: "stripe" },
   },
   {
     id: "shinise", label: "老舗・職人", note: "創業が古い会社。代表挨拶や沿革が効くとき",
-    theme: { palette: "enji", font: "mincho", mood: "futsu", layout: "standard" },
+    theme: { palette: "enji", font: "mincho", mood: "futsu", nav: "standard", hero: "headline", sections: "space", headings: "underline", tables: "horizontal" },
   },
   {
     id: "seiketsu", label: "食品・環境", note: "清潔さが問われる業種。工場の写真が主役になる",
-    theme: { palette: "fukamidori", font: "gothic", mood: "futsu", layout: "wide" },
+    theme: { palette: "fukamidori", font: "gothic", mood: "futsu", nav: "standard", hero: "photo", sections: "alternate", headings: "band", tables: "all" },
   },
   {
     id: "seikatsu", label: "生活サービス", note: "個人のお客様が多い会社。住宅・設備・店舗",
-    theme: { palette: "kohaku", font: "maru", mood: "yawaraka", layout: "standard" },
+    theme: { palette: "kohaku", font: "maru", mood: "yawaraka", nav: "standard", hero: "photo", sections: "alternate", headings: "underline", tables: "horizontal" },
   },
   {
     id: "sekkei", label: "設計・技術", note: "写真が少なくても締まる。図面や技術資料が中心の会社",
-    theme: { palette: "sumi", font: "mixed", mood: "katai", layout: "standard" },
+    theme: { palette: "sumi", font: "mixed", mood: "katai", nav: "sidebar", hero: "spec", sections: "line", headings: "rule", tables: "stripe" },
   },
 ];
 
 /** いま選ばれている組み合わせが、どの型と一致するか。一致しなければ null */
 export function matchPreset(theme: Partial<Theme> | undefined): string | null {
-  const t = { ...DEFAULT_THEME, ...(theme ?? {}) };
+  const t = { ...DEFAULT_THEME, ...migrateLayout(theme), ...(theme ?? {}) };
   return (
-    PRESETS.find(
-      (p) =>
-        p.theme.palette === t.palette &&
-        p.theme.font === t.font &&
-        p.theme.mood === t.mood &&
-        p.theme.layout === t.layout,
-    )?.id ?? null
+    PRESETS.find((p) => (Object.keys(p.theme) as (keyof Theme)[]).every((k) => p.theme[k] === t[k]))?.id ?? null
   );
 }
 
 export function resolveTheme(theme: Partial<Theme> | undefined) {
-  const t = { ...DEFAULT_THEME, ...(theme ?? {}) };
+  const t = { ...DEFAULT_THEME, ...migrateLayout(theme), ...(theme ?? {}) };
   // 知らないIDが入っていても落とさない。既定に戻す
   const pick = <T extends { id: string }>(list: T[], id: string, fallback: T): T =>
     list.find((x) => x.id === id) ?? fallback;
@@ -209,7 +267,11 @@ export function resolveTheme(theme: Partial<Theme> | undefined) {
     palette: pick(PALETTES, t.palette, PALETTES[0]!),
     font: pick(FONTS, t.font, FONTS[0]!),
     mood: pick(MOODS, t.mood, MOODS[1]!),
-    layout: pick(LAYOUTS, t.layout, LAYOUTS[0]!),
+    nav: pick(NAVS, t.nav, NAVS[0]!),
+    hero: pick(HEROES, t.hero, HEROES[0]!),
+    sections: pick(SECTIONS, t.sections, SECTIONS[0]!),
+    headings: pick(HEADINGS, t.headings, HEADINGS[0]!),
+    tables: pick(TABLES, t.tables, TABLES[0]!),
   };
 }
 

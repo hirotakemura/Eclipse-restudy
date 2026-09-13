@@ -235,30 +235,80 @@ thead th { width: auto; }
 
 /* 左メニュー：ページ数が多い会社向け。スマホでは標準と同じ扱いにする */
 @media (min-width: 900px) {
-  html[data-layout="sidebar"] .site-nav ul {
+  html[data-nav="sidebar"] .site-nav ul {
     flex-direction: column; gap: 0; max-width: none; padding: 8px 0;
   }
-  html[data-layout="sidebar"] .site-nav {
+  html[data-nav="sidebar"] .site-nav {
     position: fixed; top: 0; left: 0; bottom: 0; width: 210px; z-index: 20;
     border-right: var(--line-width) solid var(--line); border-top: 0;
     padding-top: 64px; overflow-y: auto;
   }
-  html[data-layout="sidebar"] .site-nav a[aria-current="page"] { box-shadow: inset 3px 0 0 var(--accent); }
-  html[data-layout="sidebar"] body { padding-left: 210px; }
-  html[data-layout="sidebar"] .site-header { position: relative; z-index: 30; }
-  html[data-layout="sidebar"] .bar { padding-left: 24px; }
+  html[data-nav="sidebar"] .site-nav a[aria-current="page"] { box-shadow: inset 3px 0 0 var(--accent); }
+  html[data-nav="sidebar"] body { padding-left: 210px; }
+  html[data-nav="sidebar"] .site-header { position: relative; z-index: 30; }
+  html[data-nav="sidebar"] .bar { padding-left: 24px; }
 }
 
 /* 写真を大きく：トップの外観写真を全幅にして、見出しを大きくする */
-html[data-layout="wide"] .hero { padding-top: 0; }
-html[data-layout="wide"] .hero .inner { max-width: none; padding: 0; }
-html[data-layout="wide"] .hero h1,
-html[data-layout="wide"] .hero .lead,
-html[data-layout="wide"] .hero .facts { max-width: var(--max); margin-left: auto; margin-right: auto; padding: 0 20px; }
-html[data-layout="wide"] .hero h1 { font-size: 40px; padding-top: 38px; }
-html[data-layout="wide"] .hero-photo { margin-top: 30px; }
-html[data-layout="wide"] .hero-photo img { aspect-ratio: 21 / 9; border-radius: 0; }
+html[data-hero="photo"] .hero { padding-top: 0; }
+html[data-hero="photo"] .hero .inner { max-width: none; padding: 0; }
+html[data-hero="photo"] .hero h1,
+html[data-hero="photo"] .hero .lead,
+html[data-hero="photo"] .hero .facts { max-width: var(--max); margin-left: auto; margin-right: auto; padding: 0 20px; }
+html[data-hero="photo"] .hero h1 { font-size: 40px; padding-top: 38px; }
+html[data-hero="photo"] .hero-photo { margin-top: 30px; }
+html[data-hero="photo"] .hero-photo img { aspect-ratio: 21 / 9; border-radius: 0; }
 @media (max-width: 720px) {
-  html[data-layout="wide"] .hero h1 { font-size: 27px; }
-  html[data-layout="wide"] .hero-photo img { aspect-ratio: 4 / 3; }
+  html[data-hero="photo"] .hero h1 { font-size: 27px; }
+  html[data-hero="photo"] .hero-photo img { aspect-ratio: 4 / 3; }
 }
+
+/* ── 章の区切り方 ───────────────────────── */
+html[data-sections="space"] .section + .section { border-top: 0; }
+html[data-sections="alternate"] .section + .section { border-top: 0; }
+html[data-sections="alternate"] .section:nth-of-type(even) { background: var(--bg-soft); }
+
+/* ── 見出しの飾り ───────────────────────── */
+html[data-headings="rule"] .section h2 {
+  border-left: 4px solid var(--accent); padding-left: 14px;
+}
+html[data-headings="underline"] .section h2 {
+  border-bottom: 2px solid var(--accent); padding-bottom: 8px;
+}
+html[data-headings="band"] .section h2 {
+  background: var(--accent); color: #fff; padding: 9px 16px; border-radius: var(--radius);
+}
+/* 事例ページの見出しは、もともと左罫が付いている。二重にしない */
+html[data-headings="rule"] .case-body h2 { padding-left: 12px; }
+html[data-headings="band"] .case-body h2 { border-left: 0; }
+
+/* ── 表の罫線 ───────────────────────────── */
+html[data-tables="horizontal"] th,
+html[data-tables="horizontal"] td { border: 0; border-bottom: var(--line-width) solid var(--line); }
+html[data-tables="stripe"] th,
+html[data-tables="stripe"] td { border: 0; }
+html[data-tables="stripe"] tbody tr:nth-child(odd) { background: var(--bg-soft); }
+html[data-tables="stripe"] tbody tr:nth-child(odd) th { background: var(--accent-soft); }
+html[data-tables="stripe"] thead th { border-bottom: 2px solid var(--accent); }
+/* スマホでは表を縦積みにしている。縞や横罫が崩れないように戻す */
+@media (max-width: 720px) {
+  html[data-tables="horizontal"] tr,
+  html[data-tables="stripe"] tr { border: var(--line-width) solid var(--line); }
+  html[data-tables="stripe"] tbody tr:nth-child(odd) { background: transparent; }
+  html[data-tables="stripe"] th { background: var(--bg-soft); }
+}
+
+/* ── ファーストビュー：対応範囲を先に出す ── */
+/*
+  **写真が揃わない会社のための型。**
+  調達担当者が見ているのは「材質×加工法×条件」であって、綺麗な写真ではない（docs/06）。
+*/
+.spec-first {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1px; background: var(--line); border: var(--line-width) solid var(--line);
+  border-radius: var(--radius); overflow: hidden; margin: 26px 0 24px;
+}
+.spec-first div { background: var(--bg); padding: 14px 16px; }
+.spec-first dt { font-size: 13px; color: var(--ink-soft); margin-bottom: 3px; }
+.spec-first dd { margin: 0; font-weight: 600; font-size: 17px; line-height: 1.6; }
+html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
