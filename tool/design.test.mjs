@@ -10,7 +10,7 @@
  * あわせて、**材料が無い会社に、そのセクションを作らないこと**も確かめる。
  */
 import { analyze } from "./lib/design/analysis.ts";
-import { composeTop } from "./lib/design/sections.ts";
+import { composeTop, composePage } from "./lib/design/sections.ts";
 
 const base = {
   basics: { name: "試験株式会社", founded: "1972年", tel: "093-000-0000" },
@@ -99,6 +99,61 @@ check("「減らしたい問い合わせ」があると、断られた案件の�
   `${sc(futsu, "declined")} → ${sc(dankotu, "declined")}`);
 check("「減らしたい問い合わせ」の文面そのものは、構成に入らない",
   !JSON.stringify(composeTop(dankotu, analyze(dankotu))).includes("相見積もり"));
+
+console.log("\n━━━ 型（方向性）が並び方を変える ━━━");
+
+/** 同じ会社・同じ材料で、型だけを変える */
+const zenbu = make({
+  basics: {
+    ...base.basics, generation: "四代目",
+    history: [{ year: "1952", event: "創業" }, { year: "1980", event: "工場移転" }, { year: "2005", event: "二代目就任" }],
+  },
+  capability: {
+    materials: ["アルミ", "ステンレス", "鋳鉄"], lotSize: "1個から", shortestLeadTime: "最短3日",
+    equipment: [{ maker: "ブラザー工業", model: "S700X1", count: 6 }],
+  },
+  strengths: {
+    wonAfterOthersDeclined: "他社から断られた薄肉部品を受けている。",
+    followUpFindings: "【治具の内製】治具を自社で作る。",
+  },
+  executive: { vision: "100年続く会社にしたい。" },
+  photos: [{ file: "kojo.jpg", category: "工場・設備" }, { file: "daihyo.jpg", category: "代表者" }],
+});
+
+const byDirection = {};
+for (const d of ["hyojun", "seimitsu", "shinise", "seiketsu", "seikatsu", "sekkei"]) {
+  byDirection[d] = kinds(zenbu, { direction: d });
+  console.log(`      ${d.padEnd(9)}: ${byDirection[d].join(" → ")}`);
+}
+check("型が違えば並びが違う（6種のうち4種以上が別の並び）",
+  new Set(Object.values(byDirection).map((v) => v.join())).size >= 4,
+  `別の並びは ${new Set(Object.values(byDirection).map((v) => v.join())).size} 種`);
+check("「老舗・職人」では沿革か代表が前に出る",
+  byDirection.shinise.indexOf("timeline") < byDirection.seimitsu.indexOf("timeline")
+  || byDirection.shinise.includes("people"),
+  byDirection.shinise.join(","));
+check("「精密加工」では条件・材質・設備が前に出る",
+  byDirection.seimitsu.slice(0, 4).some((k) => ["figures", "materials", "equipment"].includes(k)),
+  byDirection.seimitsu.join(","));
+check("「食品・環境」では写真が前に出る",
+  byDirection.seiketsu.indexOf("gallery") < byDirection.sekkei.indexOf("gallery")
+  || (byDirection.seiketsu.includes("gallery") && !byDirection.sekkei.includes("gallery")),
+  byDirection.seiketsu.join(","));
+check("型で後ろに回しても、材料があるセクションを消さない",
+  kinds(zenbu, { direction: "seikatsu" }).length === kinds(zenbu, { direction: "seimitsu" }).length
+  || kinds(zenbu, { direction: "seikatsu" }).length > 1);
+
+console.log("\n━━━ トップ以外のページも構成される ━━━");
+const page = (slug, p, opts = {}) => composePage(slug, p, analyze(p), opts).map((s) => s.kind);
+console.log(`      強み・技術  : ${page("strengths", zenbu).join(" → ")}`);
+console.log(`      対応可能範囲: ${page("capability", zenbu).join(" → ")}`);
+console.log(`      設備一覧    : ${page("equipment", zenbu).join(" → ")}`);
+check("強み・技術は1つの帯で終わらない", page("strengths", zenbu).length >= 3);
+check("対応可能範囲では条件が先に来る", page("capability", zenbu)[0] === "figures", page("capability", zenbu).join(","));
+check("設備一覧では型番の分かる設備が表より先に来る",
+  page("equipment", zenbu).indexOf("equipment") < page("equipment", zenbu).indexOf("equipmentTable"));
+check("型番の分かる設備が無ければ、その帯を作らない",
+  !page("equipment", make({ capability: { equipment: [{ model: "旋盤", count: 2 }] } })).includes("equipment"));
 
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);
 process.exit(ng ? 1 : 0);

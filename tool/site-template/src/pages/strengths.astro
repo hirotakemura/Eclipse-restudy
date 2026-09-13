@@ -1,29 +1,40 @@
 ---
 /**
  * 強み・技術。**サイトで最も差がつくページ。**
- * 取材の追い質問で引き出した、社長自身が言語化できていなかった強みをここで言葉にする。
+ *
+ * 骨格はこのファイルが決めない。`lib/design/sections.ts` が案件データと型から決める（D-188）。
+ * 直す前は「見出し→本文」を5回繰り返すだけで、どれが重いのか分からなかった。
  */
 import Base from "../layouts/Base.astro";
+import Band from "../components/Band.astro";
 import Prose from "../components/Prose.astro";
+import Declined from "../components/sections/Declined.astro";
+import Technique from "../components/sections/Technique.astro";
+import Points from "../components/sections/Points.astro";
+import Figures from "../components/sections/Figures.astro";
+import { analyze } from "../../../lib/design/analysis.ts";
+import { composePage } from "../../../lib/design/sections.ts";
 import { project, companyName, isGeneral, reasonChosen, idealCustomer } from "../lib/site";
+import { theme } from "../lib/theme";
 import { hasDraft } from "../lib/draft";
 
-const s = project.strengths ?? ({} as any);
-/** 原稿がまだ無い段階では、聞き取った内容をそのまま見出し付きで出す */
-const blocks = (isGeneral
+const s = (project as any).strengths ?? {};
+const analysis = analyze(project as any);
+const sections = composePage("strengths", project as any, analysis, {
+  direction: theme.direction,
+  hasProse: hasDraft("strengths"),
+});
+
+/** 塊として並べるもの。**最も強い1つは上で別に扱う**ので、ここには入れない */
+const points = (isGeneral
   ? [
-      ["同業と比べて、どこが違うか", reasonChosen],
-      ["他社様でお断りされた案件で、お受けできたもの", s.wonAfterOthersDeclined],
       ["お客様からよくいただく言葉", s.praiseFromClients],
       ["どういうお客様が多いか", idealCustomer],
-      ["とくに力を入れているところ", s.followUpFindings],
     ]
   : [
-      ["他社様で難しいと言われた案件", s.wonAfterOthersDeclined],
       ["お客様からよくいただく言葉", s.praiseFromClients],
       ["同業が敬遠しがちな仕事", s.workOthersAvoid],
       ["技術的に最も難しかった仕事", s.hardestJob],
-      ["とくに力を入れているところ", s.followUpFindings],
     ]
 ).filter(([, v]) => v) as [string, string][];
 
@@ -37,19 +48,34 @@ const lead = isGeneral
     <h1>{title}</h1>
     <p>{lead}</p>
   </div></div>
-  <section class="section"><div class="inner">
-    <Prose slug="strengths" />
-    {!hasDraft("strengths") && blocks.map(([heading, body]) => (
-      <>
-        <h2>{heading}</h2>
-        <p>{body}</p>
-      </>
-    ))}
-    {!isGeneral && s.defectRate && (
-      <>
-        <h2>品質</h2>
-        <p>不良率：{s.defectRate}</p>
-      </>
-    )}
-  </div></section>
+
+  {sections.map((sec) => {
+    if (sec.kind === "prose") return <Band width={sec.width} emphasis={sec.emphasis}><Prose slug="strengths" /></Band>;
+
+    if (sec.kind === "declined") return (
+      <Band width={sec.width} emphasis={sec.emphasis} heading={sec.heading}>
+        <Declined text={isGeneral ? reasonChosen : s.wonAfterOthersDeclined} />
+      </Band>
+    );
+
+    if (sec.kind === "technique") return (
+      <Band width={sec.width} emphasis={sec.emphasis} heading={sec.heading}>
+        <Technique text={s.followUpFindings} />
+      </Band>
+    );
+
+    if (sec.kind === "points" && points.length > 0) return (
+      <Band width={sec.width} emphasis={sec.emphasis} heading={sec.heading}>
+        <Points points={points} />
+      </Band>
+    );
+
+    if (sec.kind === "figures") return (
+      <Band width={sec.width} emphasis={sec.emphasis} heading={sec.heading}>
+        <Figures figures={analysis.figures} />
+      </Band>
+    );
+
+    return null;
+  })}
 </Base>

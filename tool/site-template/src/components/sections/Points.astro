@@ -1,0 +1,30 @@
+---
+/**
+ * 強みの塊。
+ *
+ * **同じ見出しの繰り返しにしない。** 直す前は
+ * 「見出し→本文」を5回繰り返すだけで、どれが重いのか分からなかった（docs/21）。
+ * 2〜3列に並べ、**それぞれが独立した札**として読めるようにする。
+ *
+ * 取材メモの【】も、ここで小見出しにほどく。
+ */
+import { splitParts } from "../../lib/text";
+interface Props { points: [string, string][] }
+const { points } = Astro.props;
+const cards = points.map(([h, body]) => ({ h, parts: splitParts(body) }));
+---
+{cards.length > 0 && (
+  <div class="points">
+    {cards.map((c) => (
+      <div class="point">
+        <h3>{c.h}</h3>
+        {c.parts.map((x) => (
+          <>
+            {x.title && <p class="point-sub">{x.title}</p>}
+            <p>{x.body}</p>
+          </>
+        ))}
+      </div>
+    ))}
+  </div>
+)}

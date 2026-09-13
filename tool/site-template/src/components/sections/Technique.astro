@@ -3,23 +3,10 @@
  * どうやって受けているか。取材の追い質問で出てきた工程の工夫。
  * **サイトで最も差がつく内容**（docs/06）。散文なので狭い帯に置く。
  */
+import { splitParts } from "../../lib/text";
 interface Props { text: string; praise?: string; href?: string }
 const { text, praise, href } = Astro.props;
-
-/**
- * 取材メモは「【治具の内製】…【設計経験による図面の意図読解】…」の形で書かれる。
- * **一塊の長文にすると読まれない。** 【】を見出しとして分ける。
- * 分けられない場合は、そのまま1つの段落として出す。
- */
-const parts = (text ?? "")
-  .split(/【([^】]+)】/)
-  .reduce<{ title?: string; body: string }[]>((acc, chunk, i) => {
-    if (i === 0) { if (chunk.trim()) acc.push({ body: chunk.trim() }); return acc; }
-    if (i % 2 === 1) { acc.push({ title: chunk.trim(), body: "" }); return acc; }
-    acc[acc.length - 1]!.body = chunk.trim();
-    return acc;
-  }, [])
-  .filter((x) => x.body);
+const parts = splitParts(text);
 ---
 {parts.map((x) => (
   <>

@@ -248,7 +248,8 @@
     "hero": "spec",
     "sections": "line",
     "headings": "rule",
-    "tables": "stripe"
+    "tables": "stripe",
+    "direction": "seimitsu"
   },
   "unconfirmedPlan": {
     "capability.processes": "工場長に第2回取材で"

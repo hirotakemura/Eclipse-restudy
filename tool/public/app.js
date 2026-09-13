@@ -413,6 +413,16 @@ function renderTheme(field, read, write) {
       else if (saved.layout === "wide") { t.nav = "standard"; t.hero = "photo"; }
     }
     delete t.layout;
+    /**
+     * 型の保存を始める前のデータには `direction` が無い。
+     * **9軸から逆算して補う。** 取材済みの案件は作り直せない（D-141と同じ配慮）。
+     */
+    if (!t.direction) {
+      const guess = (opts.presets ?? []).find((p) =>
+        Object.keys(p.theme).filter((k) => k !== "direction").every((k) => p.theme[k] === t[k]),
+      );
+      if (guess) t.direction = guess.id;
+    }
     return t;
   };
   const current = () => normalize(read());
@@ -465,9 +475,14 @@ function renderTheme(field, read, write) {
   const rows = document.createElement("div");
   rows.append(
     // 型を押すと全部がまとめて決まる。そこから1軸だけ直す使い方を想定している
+    /**
+     * 型は**方向性**であって、9軸の別名ではない（D-187）。
+     * 押した型のIDを `direction` として残す。
+     * **配色を1つ直しても「精密加工を選んだ」という事実は消えない。**
+     */
     choiceRow("preset", "型から選ぶ", opts.presets ?? [], (id) => {
       const preset = (opts.presets ?? []).find((p) => p.id === id);
-      if (preset) { write({ ...preset.theme }); sync(); }
+      if (preset) { write({ ...preset.theme, direction: id }); sync(); }
     }, (p) => {
       const sw = document.createElement("span");
       sw.className = "swatch";
@@ -511,10 +526,16 @@ function renderTheme(field, read, write) {
   return box;
 }
 
-/** いま選ばれている組み合わせが、どの型と一致するか（lib/theme.ts の matchPreset と同じ判定） */
+/**
+ * いま選ばれている型（lib/theme.ts の matchPreset と同じ判定）。
+ *
+ * **保存された `direction` を正とする。** 無いのは型の保存を始める前のデータなので、
+ * そのときだけ9軸から逆算する。
+ */
 function matchPreset(presets, t) {
+  if (t.direction && (presets ?? []).some((p) => p.id === t.direction)) return t.direction;
   return (presets ?? []).find((p) =>
-    Object.keys(p.theme).every((k) => p.theme[k] === t[k]),
+    Object.keys(p.theme).filter((k) => k !== "direction").every((k) => p.theme[k] === t[k]),
   )?.id ?? null;
 }
 

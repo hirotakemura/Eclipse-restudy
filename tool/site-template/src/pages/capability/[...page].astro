@@ -3,12 +3,21 @@
  * 対応可能範囲。**SEOの本体。**
  * 調達担当者は「材質 × 加工法 × 条件」で検索する。この表があるかで検索に出るかが決まる。
  *
- * 表は聞き取ったデータをそのまま出す。生成を通さない（D-095）。
+ * 骨格はこのファイルが決めない（D-188）。表は聞き取ったデータをそのまま出す（D-095）。
+ * 直す前は「本文→表」を1040pxの帯1つで出すだけで、
+ * **最も見られる条件（ロット・納期）が表の1行に埋もれていた。**
  */
 import Base from "../../layouts/Base.astro";
+import Band from "../../components/Band.astro";
 import Prose from "../../components/Prose.astro";
 import Table from "../../components/Table.astro";
+import Figures from "../../components/sections/Figures.astro";
+import Materials from "../../components/sections/Materials.astro";
+import { analyze } from "../../../../lib/design/analysis.ts";
+import { composePage } from "../../../../lib/design/sections.ts";
 import { project, rows, companyName, isGeneral } from "../../lib/site";
+import { theme } from "../../lib/theme";
+import { hasDraft } from "../../lib/draft";
 
 const cap = project.capability ?? ({} as any);
 const spec = rows([
@@ -24,6 +33,12 @@ const spec = rows([
   ["稼働体制", cap.operatingHours],
 ]);
 
+const analysis = analyze(project as any);
+const sections = composePage("capability", project as any, analysis, {
+  direction: theme.direction,
+  hasProse: hasDraft("capability"),
+});
+
 /**
  * 製造業向けの案件でだけ作るページ。
  * 汎用ベーシック（198,000円）には対応材質も設備一覧も無いので、空の表だけのページを作らない。
@@ -31,16 +46,35 @@ const spec = rows([
 export function getStaticPaths() {
   return isGeneral ? [] : [{ params: { page: undefined } }];
 }
-
 ---
 <Base title="対応可能範囲" description={`${companyName}の対応材質・加工法・精度・ロット・納期の一覧`}>
   <div class="page-head"><div class="inner">
     <h1>対応可能範囲</h1>
     <p>材質・加工法・サイズ・精度・ロット・納期の一覧です。</p>
   </div></div>
-  <section class="section"><div class="inner">
-    <Prose slug="capability" />
-    <Table rows={spec} />
-    <p>記載のない条件についても、まずはご相談ください。可否だけでもお答えします。</p>
-  </div></section>
+
+  {sections.map((sec) => {
+    if (sec.kind === "prose") return <Band width={sec.width} emphasis={sec.emphasis}><Prose slug="capability" /></Band>;
+
+    if (sec.kind === "figures") return (
+      <Band width={sec.width} emphasis={sec.emphasis} heading={sec.heading}>
+        <Figures figures={analysis.figures} />
+      </Band>
+    );
+
+    if (sec.kind === "materials") return (
+      <Band width={sec.width} emphasis={sec.emphasis} heading={sec.heading}>
+        <Materials materials={cap.materials ?? []} processes={cap.processes ?? []} />
+      </Band>
+    );
+
+    if (sec.kind === "specTable") return (
+      <Band width={sec.width} emphasis={sec.emphasis} heading={sec.heading}>
+        <Table rows={spec} />
+        <p>記載のない条件についても、まずはご相談ください。可否だけでもお答えします。</p>
+      </Band>
+    );
+
+    return null;
+  })}
 </Base>

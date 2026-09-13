@@ -381,7 +381,9 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
 }
 
 /* 設備。型番が分かっているものを前に出す */
-.machines { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.machines { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: 18px; }
+@media (max-width: 1000px) { .machines { grid-template-columns: repeat(min(var(--cols, 3), 2), minmax(0, 1fr)); } }
+@media (max-width: 680px) { .machines { grid-template-columns: 1fr; } }
 .machine { border: var(--line-width) solid var(--line); border-top: 4px solid var(--accent); padding: 20px 22px; }
 .machine .model { font-size: 20px; font-weight: 700; font-family: var(--font-head); }
 .machine .maker { font-size: 15px; color: var(--ink-soft); margin-top: 4px; }
@@ -396,3 +398,12 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
 }
 .timeline dt { font-weight: 700; font-family: var(--font-head); }
 .timeline dd { margin: 4px 0 0; color: var(--ink-soft); max-width: var(--measure); }
+
+/* 強みの塊（段階2・D-188）。**同じ見出しの繰り返しにしない** */
+.points { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 22px; }
+.point { background: var(--bg-soft); border-left: 4px solid var(--accent); padding: 22px 26px; }
+.point h3 { margin: 0 0 10px; font-size: 18px; }
+.point p { margin: 0 0 12px; max-width: none; }
+.point p:last-child { margin-bottom: 0; }
+.point-sub { font-weight: 700; font-size: 15px; color: var(--accent-dark); }
+@media (max-width: 760px) { .points { grid-template-columns: 1fr; } }

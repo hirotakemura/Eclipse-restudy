@@ -222,11 +222,23 @@ export interface Theme {
   sections: string;
   headings: string;
   tables: string;
+  /**
+   * 選ばれた**型（方向性）**。
+   *
+   * 段階1までは保存していなかった。9軸の値だけを持ち、
+   * 「どの型を押したか」は `matchPreset()` で逆算していたので、
+   * **1軸でも直すと「型を選んだ」という事実が消えていた**（docs/21 第3章）。
+   *
+   * 型は9軸の組み合わせの別名ではなく、**この会社をどう見せるかの方向性**である。
+   * 配色を変えても方向性は変わらないので、別に持つ（D-187）。
+   */
+  direction?: string;
 }
 
 export const DEFAULT_THEME: Theme = {
   palette: "ai", font: "gothic", mood: "futsu", textSize: "normal",
   nav: "standard", hero: "headline", sections: "line", headings: "plain", tables: "all",
+  direction: "hyojun",
 };
 
 /**
@@ -271,35 +283,47 @@ export interface Preset {
 export const PRESETS: Preset[] = [
   {
     id: "hyojun", label: "標準", note: "迷ったらこれ。業種を問わず外さない",
-    theme: { palette: "ai", font: "gothic", mood: "futsu", textSize: "normal", nav: "standard", hero: "headline", sections: "line", headings: "plain", tables: "all" },
+    theme: { palette: "ai", font: "gothic", mood: "futsu", textSize: "normal", nav: "standard", hero: "headline", sections: "line", headings: "plain", tables: "all" , direction: "hyojun" },
   },
   {
     id: "seimitsu", label: "精密加工", note: "金属加工・機械部品。ページ数が多く、設備や仕様を読ませる会社",
-    theme: { palette: "hagane", font: "mixed", mood: "katai", textSize: "normal", nav: "sidebar", hero: "spec", sections: "line", headings: "rule", tables: "stripe" },
+    theme: { palette: "hagane", font: "mixed", mood: "katai", textSize: "normal", nav: "sidebar", hero: "spec", sections: "line", headings: "rule", tables: "stripe" , direction: "seimitsu" },
   },
   {
     id: "shinise", label: "老舗・職人", note: "創業が古い会社。代表挨拶や沿革が効くとき",
-    theme: { palette: "enji", font: "mincho", mood: "futsu", textSize: "normal", nav: "standard", hero: "headline", sections: "space", headings: "underline", tables: "horizontal" },
+    theme: { palette: "enji", font: "mincho", mood: "futsu", textSize: "normal", nav: "standard", hero: "headline", sections: "space", headings: "underline", tables: "horizontal" , direction: "shinise" },
   },
   {
     id: "seiketsu", label: "食品・環境", note: "清潔さが問われる業種。工場の写真が主役になる",
-    theme: { palette: "fukamidori", font: "gothic", mood: "futsu", textSize: "normal", nav: "standard", hero: "photo", sections: "alternate", headings: "band", tables: "all" },
+    theme: { palette: "fukamidori", font: "gothic", mood: "futsu", textSize: "normal", nav: "standard", hero: "photo", sections: "alternate", headings: "band", tables: "all" , direction: "seiketsu" },
   },
   {
     id: "seikatsu", label: "生活サービス", note: "個人のお客様が多い会社。住宅・設備・店舗",
-    theme: { palette: "kohaku", font: "maru", mood: "yawaraka", textSize: "normal", nav: "standard", hero: "photo", sections: "alternate", headings: "underline", tables: "horizontal" },
+    theme: { palette: "kohaku", font: "maru", mood: "yawaraka", textSize: "normal", nav: "standard", hero: "photo", sections: "alternate", headings: "underline", tables: "horizontal" , direction: "seikatsu" },
   },
   {
     id: "sekkei", label: "設計・技術", note: "写真が少なくても締まる。図面や技術資料が中心の会社",
-    theme: { palette: "sumi", font: "mixed", mood: "katai", textSize: "normal", nav: "sidebar", hero: "spec", sections: "line", headings: "rule", tables: "stripe" },
+    theme: { palette: "sumi", font: "mixed", mood: "katai", textSize: "normal", nav: "sidebar", hero: "spec", sections: "line", headings: "rule", tables: "stripe" , direction: "sekkei" },
   },
 ];
 
-/** いま選ばれている組み合わせが、どの型と一致するか。一致しなければ null */
+/**
+ * どの型が選ばれているか。
+ *
+ * **保存された `direction` を正とする。** 配色や書体を1つ直しても、
+ * 「精密加工の型を選んだ」という事実は消えない。
+ * 古いデータには `direction` が無いので、そのときだけ9軸から逆算する。
+ */
 export function matchPreset(theme: Partial<Theme> | undefined): string | null {
-  const t = { ...DEFAULT_THEME, ...migrateLayout(theme), ...(theme ?? {}) };
+  const t = { ...migrateLayout(theme), ...(theme ?? {}) };
+  if (t.direction && PRESETS.some((p) => p.id === t.direction)) return t.direction;
+  const full = { ...DEFAULT_THEME, ...t };
   return (
-    PRESETS.find((p) => (Object.keys(p.theme) as (keyof Theme)[]).every((k) => p.theme[k] === t[k]))?.id ?? null
+    PRESETS.find((p) =>
+      (Object.keys(p.theme) as (keyof Theme)[])
+        .filter((k) => k !== "direction")
+        .every((k) => p.theme[k] === full[k]),
+    )?.id ?? null
   );
 }
 
@@ -319,6 +343,8 @@ export function resolveTheme(theme: Partial<Theme> | undefined) {
     sections: pick(SECTIONS, t.sections, SECTIONS[0]!),
     headings: pick(HEADINGS, t.headings, HEADINGS[0]!),
     tables: pick(TABLES, t.tables, TABLES[0]!),
+    /** 型（方向性）。古いデータでは9軸から逆算する */
+    direction: matchPreset(theme) ?? "hyojun",
   };
 }
 

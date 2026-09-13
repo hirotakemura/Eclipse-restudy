@@ -4,11 +4,20 @@
  *
  * **設備の型番そのものが検索される。**「この設備を持つ会社を探している」という検索が実在する。
  * だからこそ、型番は推測で書かない。聞き取ったデータをそのまま出す（D-095）。
+ *
+ * 骨格はこのファイルが決めない（D-188）。
+ * **型番まで分かっている設備は前に出し、一覧表はその後ろに置く。**
  */
 import Base from "../../layouts/Base.astro";
+import Band from "../../components/Band.astro";
 import Prose from "../../components/Prose.astro";
-import { project, companyName, photosOf, isGeneral } from "../../lib/site";
 import Gallery from "../../components/Gallery.astro";
+import Equipment from "../../components/sections/Equipment.astro";
+import { analyze } from "../../../../lib/design/analysis.ts";
+import { composePage } from "../../../../lib/design/sections.ts";
+import { project, companyName, photosOf, isGeneral } from "../../lib/site";
+import { theme } from "../../lib/theme";
+import { hasDraft } from "../../lib/draft";
 
 /**
  * `note` は**社内のメモ欄**なので、表には出さない。
@@ -18,6 +27,12 @@ import Gallery from "../../components/Gallery.astro";
 const equipment = (project.capability?.equipment ?? []).filter((e: any) => e.maker || e.model);
 const total = equipment.reduce((s: number, e: any) => s + (Number(e.count) || 0), 0);
 
+const analysis = analyze(project as any);
+const sections = composePage("equipment", project as any, analysis, {
+  direction: theme.direction,
+  hasProse: hasDraft("equipment"),
+});
+
 /**
  * 製造業向けの案件でだけ作るページ。
  * 汎用ベーシック（198,000円）には対応材質も設備一覧も無いので、空の表だけのページを作らない。
@@ -25,33 +40,51 @@ const total = equipment.reduce((s: number, e: any) => s + (Number(e.count) || 0)
 export function getStaticPaths() {
   return isGeneral ? [] : [{ params: { page: undefined } }];
 }
-
 ---
 <Base title="設備一覧" description={`${companyName}の保有設備一覧（メーカー・型番・台数）`}>
   <div class="page-head"><div class="inner">
     <h1>設備一覧</h1>
     {total > 0 && <p>保有設備 {total}台</p>}
   </div></div>
-  <section class="section"><div class="inner">
-    <Prose slug="equipment" />
-    {equipment.length > 0 ? (
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th scope="col">設備</th><th scope="col">メーカー</th><th scope="col">台数</th></tr></thead>
-          <tbody>
-            {equipment.map((e: any) => (
-              <tr>
-                <th scope="row">{e.model || e.maker}</th>
-                <td>{e.model ? e.maker : ""}</td>
-                <td>{e.count ? `${e.count}台` : ""}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    ) : (
-      <p>設備の詳細はお問い合わせください。</p>
-    )}
-    <Gallery photos={photosOf("工場・設備")} />
-  </div></section>
+
+  {sections.map((sec) => {
+    if (sec.kind === "prose") return <Band width={sec.width} emphasis={sec.emphasis}><Prose slug="equipment" /></Band>;
+
+    if (sec.kind === "equipment") return (
+      <Band width={sec.width} emphasis={sec.emphasis} heading={sec.heading}>
+        <Equipment equipment={equipment} />
+      </Band>
+    );
+
+    if (sec.kind === "equipmentTable") return (
+      <Band width={sec.width} emphasis={sec.emphasis} heading={sec.heading}>
+        {equipment.length > 0 ? (
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th scope="col">設備</th><th scope="col">メーカー</th><th scope="col">台数</th></tr></thead>
+              <tbody>
+                {equipment.map((e: any) => (
+                  <tr>
+                    <th scope="row">{e.model || e.maker}</th>
+                    <td>{e.model ? e.maker : ""}</td>
+                    <td>{e.count ? `${e.count}台` : ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p>設備の詳細はお問い合わせください。</p>
+        )}
+      </Band>
+    );
+
+    if (sec.kind === "gallery") return (
+      <Band width={sec.width} emphasis={sec.emphasis}>
+        <Gallery photos={photosOf("工場・設備")} heading={sec.heading} />
+      </Band>
+    );
+
+    return null;
+  })}
 </Base>

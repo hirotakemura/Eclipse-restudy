@@ -28,6 +28,7 @@ import { internalValues } from "./lib/form-definition.ts";
 import { analyze } from "./lib/design/analysis.ts";
 import { composeTop, explain } from "./lib/design/sections.ts";
 import { resolveTheme } from "./lib/theme.ts";
+import { DIRECTIONS } from "./lib/design/direction.ts";
 
 // npm run dev:site -- <案件ID> の形でも、順番が入れ替わっても拾えるようにする
 const args = process.argv.slice(2);
@@ -112,8 +113,12 @@ console.log(`  写真 ${photoCount}枚${unplaced ? `（うち置き場所が未�
  */
 {
   const analysis = analyze(project);
-  const hero = resolveTheme(project.theme).hero.id;
-  const sections = composeTop(project, analysis, { hero, hasProse: drafts > 0 });
+  const resolved = resolveTheme(project.theme);
+  const hero = resolved.hero.id;
+  const direction = resolved.direction;
+  const sections = composeTop(project, analysis, { hero, direction, hasProse: drafts > 0 });
+  const label = DIRECTIONS.find((d) => d.id === direction)?.label ?? direction;
+  console.log(`\n  ── 型「${label}」で組み立てます ──`);
   console.log("\n  ── この会社の見立て ──");
   for (const s of analysis.strands) console.log(`  ${String(s.score).padStart(3)}  ${s.id.padEnd(10)} ${s.why}`);
   console.log("\n  ── トップページの構成 ──");

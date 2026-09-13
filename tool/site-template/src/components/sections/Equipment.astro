@@ -5,12 +5,15 @@
  * **型番が分かっているものだけを前に出す。**
  * 「メーカー・型番とも未確認」は載せない。載せると、聞けていないことが並ぶだけになる。
  */
+import { cardGrid } from "../../lib/cards";
 interface Props { equipment: any[]; href?: string }
 const { equipment, href } = Astro.props;
 const named = equipment.filter((e: any) => e?.model && e?.maker);
+/** 1台しか分かっていないときに、横いっぱいの薄い札にしない（D-176と同じ考え方） */
+const grid = cardGrid(named.length);
 ---
 {named.length > 0 && (
-  <div class="machines">
+  <div class={`machines${grid.orphan ? " has-orphan" : ""}`} style={`--cols:${grid.cols}`}>
     {named.map((e: any) => (
       <div class="machine">
         <p class="model">{e.model}</p>
