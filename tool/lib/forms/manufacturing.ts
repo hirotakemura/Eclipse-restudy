@@ -311,8 +311,6 @@ export const BLOCKS: Block[] = [
         help: "名義と支払いは必ず顧客（D-011）。代行するのは手続きだけ",
       },
       { path: "terms.inquiryNotifyEmail", label: "問い合わせの通知先メール", type: "text", required: true },
-      { path: "terms.supportPlan", label: "契約した運用プラン", type: "select", options: ["なし", "ベーシック", "グロース", "フル"] },
-      { path: "terms.wordpressRequested", label: "WordPress指定あり", type: "boolean", help: "指定時は月額+2万（D-009）" },
     ],
   },
 ];

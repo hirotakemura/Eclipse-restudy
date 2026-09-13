@@ -40,8 +40,30 @@
 
 <footer>
   <div id="missing-summary"></div>
+  <button id="close-project" type="button" hidden>入力を終える</button>
   <button id="delete-project" type="button" class="danger" hidden>この案件を削除</button>
 </footer>
+
+<!-- 未確認にするときの控え。ブラウザのポップアップは打ちにくいので画面内で出す -->
+<dialog id="unconf-dialog">
+  <div class="dialog-body">
+    <h2>未確認にする</h2>
+    <p class="delete-target" id="unconf-field"></p>
+    <div class="dialog-field">
+      <label for="unconf-note">その場で何とおっしゃいましたか</label>
+      <input type="text" id="unconf-note" placeholder="空欄でも構いません">
+      <p class="hint">
+        例：「ミクロン単位までは可能です」<br>
+        <b>この発言は原稿には使いません。</b>工場長に確認するときに「社長はこうおっしゃっていました」と
+        言えるかどうかで、確認の精度が変わります。
+      </p>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" id="unconf-cancel">キャンセル</button>
+      <button type="button" id="unconf-ok" class="primary">未確認にする</button>
+    </div>
+  </div>
+</dialog>
 
 <dialog id="delete-dialog">
   <div class="dialog-body">

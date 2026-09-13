@@ -132,12 +132,13 @@ textarea { min-height: 86px; resize: vertical; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 button { font: inherit; }
-#new-project, #new-project-empty, .add-item, .del-item, .dialog-actions button {
+#new-project, #new-project-empty, #close-project, .add-item, .del-item, .dialog-actions button {
   background: var(--panel); border: 1px solid var(--line); color: inherit;
   border-radius: var(--radius); padding: 9px 16px; cursor: pointer;
   min-height: var(--tap); white-space: nowrap;  /* 「＋ 新規案件」を折り返さない */
 }
-#new-project:hover, #new-project-empty:hover, .add-item:hover { border-color: var(--accent); color: var(--accent); }
+#new-project:hover, #new-project-empty:hover, #close-project:hover, .add-item:hover { border-color: var(--accent); color: var(--accent); }
+#close-project { padding: 6px 14px; min-height: 36px; font-size: 13px; }
 .primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 .primary:hover { background: #17573a; border-color: #17573a; color: #fff; }
 

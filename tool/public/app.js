@@ -54,6 +54,7 @@ async function save() {
     renderMeters(data.completion);
     renderNav(data.completion);
     renderMissing(data.completion);
+    updateProjectOption(data.completion);
     const t = new Date(data.savedAt);
     setSaveStatus(`自動保存 ${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`);
   } catch (err) {
@@ -88,22 +89,69 @@ const isUnconfirmed = (path) => (state.project?.unconfirmed ?? []).includes(path
  * 公差値ではないので項目の値にはできないが、この発言自体は捨ててはいけない。
  * 工場長への確認時に「社長はこうおっしゃっていました」と言えるかで確認の精度が変わる。
  */
-function toggleUnconfirmed(path) {
+async function toggleUnconfirmed(field) {
+  const path = field.path;
   const list = (state.project.unconfirmed ??= []);
   const notes = (state.project.unconfirmedNotes ??= {});
   const i = list.indexOf(path);
+
   if (i >= 0) {
+    // 外すときは何も聞かない
     list.splice(i, 1);
     delete notes[path];
   } else {
+    const note = await askUnconfirmedNote(field.label, notes[path] ?? "");
+    if (note === null) return; // キャンセル
     list.push(path);
-    const note = prompt("その場で何とおっしゃいましたか（空欄でも可）", notes[path] ?? "");
-    if (note && note.trim()) notes[path] = note.trim();
+    if (note) notes[path] = note;
   }
   scheduleSave();
+  refreshField(field);
+}
+
+/** ブラウザのポップアップは打ちにくいので、画面内のダイアログで聞く */
+function askUnconfirmedNote(label, current) {
+  return new Promise((resolve) => {
+    const d = $("#unconf-dialog");
+    const input = $("#unconf-note");
+    $("#unconf-field").textContent = label;
+    input.value = current;
+    const done = (v) => { d.close(); resolve(v); };
+    $("#unconf-ok").onclick = () => done(input.value.trim());
+    $("#unconf-cancel").onclick = () => done(null);
+    d.addEventListener("close", () => resolve(null), { once: true });
+    input.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); done(input.value.trim()); } };
+    d.showModal();
+    input.focus();
+  });
+}
+
+/**
+ * その項目だけを描き直す。
+ *
+ * **ブロック全体を描き直すとスクロール位置が失われ、画面の先頭に戻ってしまう。**
+ * 取材中にこれが起きると、どこまで聞いたか見失う。
+ */
+function refreshField(field) {
+  const old = document.querySelector(`.field[data-path="${CSS.escape(field.path)}"]`);
+  if (old) old.replaceWith(renderField(field));
+  else renderBlock();
 }
 
 const unconfirmedNote = (path) => state.project?.unconfirmedNotes?.[path] ?? "";
+
+/**
+ * 案件一覧に出している充足率を、保存のたびに書き換える。
+ * 一覧のテキストは読み込み時のままなので、更新しないと古い数字が残り続ける
+ */
+function updateProjectOption(c) {
+  if (!state.project) return;
+  const opt = [...document.querySelectorAll("#project-select option")]
+    .find((o) => o.value === state.project.id);
+  if (!opt) return;
+  const name = state.project.basics?.name || state.project.id;
+  opt.textContent = `${name}　${c.filledPct}%`;
+}
 
 // ── 描画：メーター／ナビ／不足項目 ──────────────────────────
 function renderMeters(c) {
@@ -196,6 +244,7 @@ function renderBlock() {
 function renderField(field) {
   const wrap = document.createElement("div");
   wrap.className = "field";
+  wrap.dataset.path = field.path;
   if (isUnconfirmed(field.path)) wrap.classList.add("is-unconfirmed");
 
   const head = document.createElement("div");
@@ -217,10 +266,9 @@ function renderField(field) {
     toggle.textContent = "未確認";
     toggle.title = "聞いたが、その場で答えてもらえなかった項目に付ける";
     toggle.setAttribute("aria-pressed", String(isUnconfirmed(field.path)));
-    toggle.onclick = () => {
-      toggleUnconfirmed(field.path);
-      renderBlock();
-    };
+    // Tab は入力欄の間だけを移動させたい。取材中に毎回このボタンを経由すると打ちにくい
+    toggle.tabIndex = -1;
+    toggle.onclick = () => toggleUnconfirmed(field);
     head.append(toggle);
   }
   wrap.append(head);
@@ -418,6 +466,10 @@ function renderList(field, read, write) {
     add.onclick = () => {
       write([...(read() ?? []), {}]);
       draw();
+      // 描き直すと先頭に戻ってしまうので、追加した行の最初の欄にフォーカスを移す。
+      // そのまま打ち始められるうえ、画面もその位置に追従する
+      const inputs = box.querySelectorAll(".list-item:last-of-type input, .list-item:last-of-type textarea");
+      inputs[0]?.focus({ preventScroll: false });
     };
     box.append(add);
 
@@ -491,6 +543,7 @@ async function openProject(id) {
   $("#empty").hidden = true;
   $("#main").hidden = false;
   $("#delete-project").hidden = false;
+  $("#close-project").hidden = false;
   renderMeters(data.completion);
   renderNav(data.completion);
   renderMissing(data.completion);
@@ -528,6 +581,21 @@ async function openProject(id) {
     dialog.showModal();
     $("#new-name").focus();
   };
+  /** 案件を閉じて最初の画面に戻る。取材が終わったときに使う */
+  const closeProject = async () => {
+    if (state.dirty) await save();
+    state.project = null;
+    state.completion = null;
+    $("#main").hidden = true;
+    $("#empty").hidden = false;
+    $("#close-project").hidden = true;
+    $("#delete-project").hidden = true;
+    $("#project-select").value = "";
+    setSaveStatus("保存しました");
+    await loadProjectList();
+  };
+  $("#close-project").onclick = closeProject;
+
   // 削除は「消す」のではなく「ゴミ箱に移す」。
   // 案件データには顧客の技術情報が入っており、取材90分ぶんが誤クリックで消えるのは割に合わない
   const delDialog = $("#delete-dialog");
@@ -547,9 +615,12 @@ async function openProject(id) {
     delDialog.close();
     if (!res.ok) return alert((await res.json()).error);
     state.project = null;
+    state.completion = null;
     $("#main").hidden = true;
     $("#empty").hidden = false;
     $("#delete-project").hidden = true;
+    $("#close-project").hidden = true;
+    $("#project-select").value = "";
     setSaveStatus("削除しました");
     await loadProjectList();
   };
