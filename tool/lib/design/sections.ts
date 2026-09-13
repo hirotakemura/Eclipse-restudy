@@ -19,7 +19,7 @@
 import type { Project } from "../schema.ts";
 import type { Analysis, ShowBy, Strand } from "./analysis.ts";
 import { getDirection, type Tone } from "./direction.ts";
-import type { SurfaceId, LayoutId, MotifId, MediaId } from "./system/index.ts";
+import type { SurfaceId, LayoutId, MotifId, MediaId, ContentId, PresentationId } from "./system/index.ts";
 import { MOTIFS } from "./system/index.ts";
 
 /** セクションの幅。**全部同じ幅にしない**のが今回の主眼 */
@@ -58,6 +58,13 @@ export interface Section {
   media: MediaId;
   /** 地紋。根拠が無ければ none */
   motif: MotifId;
+  /**
+   * 何を伝えるか。**`kind` とは別に持つ**（D-206）。
+   * `kind` は内容と表現を1語で表していたので、型を変えても同じ内容が同じ形で出ていた。
+   */
+  content: ContentId;
+  /** どう見せるか */
+  presentation: PresentationId;
   heading?: string;
   /** `prose` のとき、どの原稿を流すか */
   slug?: string;
@@ -102,7 +109,7 @@ function applyTone(section: Base, tone: Tone): Base {
 }
 
 /** 見せ方ごとの、既定の出し方 */
-type Base = Omit<Section, "why" | "surface" | "layout" | "media" | "motif">;
+type Base = Omit<Section, "why" | "surface" | "layout" | "media" | "motif" | "content" | "presentation">;
 
 const BY_STRAND: Record<ShowBy, Base | null> = {
   declined: { kind: "declined", width: "narrow", emphasis: "lead", heading: "他社様で難しいと言われた案件" },
@@ -167,7 +174,7 @@ function decorate(
   // 地紋：根拠のあるものだけ。強い帯にだけ敷く
   const motif: MotifId = base.emphasis === "lead" ? pickMotif(d.motifs, a) : "none";
 
-  return { ...base, surface, layout, media, motif };
+  return { ...base, surface, layout, media, motif, ...KIND_AS[base.kind] };
 }
 
 /** 型の候補のうち、**聞き取りに裏づけのある**最初のものを取る（ご指示§7） */
@@ -220,7 +227,7 @@ export function composeTop(
   out.push({
     kind: "hero", width: "normal", emphasis: "lead",
     surface: d.surfaces[0] ?? "plain", layout: "stack", media: a.hasRealPhotos ? "full" : "none",
-    motif: pickMotif(d.motifs, a), why: "型で選ばれた最初の画面",
+    motif: pickMotif(d.motifs, a), ...KIND_AS.hero, why: "型で選ばれた最初の画面",
   });
 
   // 見立ての上位。材料の無いものは analyze() の時点で落ちている
@@ -399,3 +406,29 @@ export function resolveHero(
   if (chosen && ok(chosen)) return chosen;
   return d.heroes.find(ok) ?? "headline";
 }
+
+/**
+ * いまの `kind` を、内容と表現の組として読み替える。
+ *
+ * **1・2歩目では見え方を変えない**（D-210）。
+ * 構造だけを分けて、既定の組み合わせを**いまとまったく同じ**にしておく。
+ * 表現を実際に切り替えるのは4歩目から。
+ */
+const KIND_AS: Record<Section["kind"], { content: ContentId; presentation: PresentationId }> = {
+  hero: { content: "draft", presentation: "prose" },
+  figures: { content: "conditions", presentation: "largeNumber" },
+  declined: { content: "declined", presentation: "quote" },
+  technique: { content: "technique", presentation: "prose" },
+  materials: { content: "materials", presentation: "chips" },
+  equipment: { content: "equipment", presentation: "cardGrid" },
+  equipmentTable: { content: "equipment", presentation: "spec" },
+  specTable: { content: "conditions", presentation: "spec" },
+  cases: { content: "cases", presentation: "cardGrid" },
+  gallery: { content: "photos", presentation: "fullWidth" },
+  timeline: { content: "history", presentation: "timeline" },
+  people: { content: "executive", presentation: "prose" },
+  points: { content: "praise", presentation: "cardGrid" },
+  prose: { content: "draft", presentation: "prose" },
+};
+
+export const asContentPresentation = (kind: Section["kind"]) => KIND_AS[kind];
