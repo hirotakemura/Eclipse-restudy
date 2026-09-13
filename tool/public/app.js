@@ -500,6 +500,13 @@ async function openProject(id) {
 (async function init() {
   const form = await (await fetch("/api/form")).json();
   state.sets = form.sets;
+  // 「pull したのに反映されていない気がする」を、画面で確かめられるようにする
+  if (form.version) {
+    const v = document.createElement("span");
+    v.className = "code-version";
+    v.textContent = `コード ${form.version}`;
+    document.querySelector("footer").append(v);
+  }
   state.blocks = form.sets.manufacturing.blocks;
   state.activeBlock = state.blocks[0]?.id ?? null;
   await loadProjectList();

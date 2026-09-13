@@ -13,7 +13,7 @@
 
 import { createServer } from "node:http";
 import { readFile, writeFile, rename, mkdir, readdir, stat } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, dirname, extname, resolve } from "node:path";
 import { networkInterfaces } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -39,6 +39,30 @@ const { FORM_SETS, getFormSet } = await import("./lib/form-definition.ts");
 const { computeCompletion } = await import("./lib/completion.ts");
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * 起動しているコードがどの版なのかを返す。
+ *
+ * 遠隔でやりとりしていると「pull したのに反映されていない気がする」が必ず起きる。
+ * git コマンドに頼らず .git を直接読んで、**画面で確かめられるようにする。**
+ */
+function codeVersion() {
+  try {
+    const gitDir = join(ROOT, "..", ".git");
+    const head = readFileSync(join(gitDir, "HEAD"), "utf8").trim();
+    if (!head.startsWith("ref: ")) return head.slice(0, 7);
+    const ref = head.slice(5);
+    const refPath = join(gitDir, ref);
+    if (existsSync(refPath)) return readFileSync(refPath, "utf8").trim().slice(0, 7);
+    const packed = readFileSync(join(gitDir, "packed-refs"), "utf8");
+    const line = packed.split("\n").find((l) => l.endsWith(` ${ref}`));
+    return line ? line.slice(0, 7) : "不明";
+  } catch {
+    return "不明";
+  }
+}
+
+const CODE_VERSION = codeVersion();
 const PUBLIC = join(ROOT, "public");
 const PROJECTS = join(ROOT, "projects");
 const PORT = Number(process.env.PORT ?? 5173);
@@ -159,7 +183,7 @@ const server = createServer(async (req, res) => {
 
   try {
     if (path === "/api/form") {
-      return json(res, 200, { sets: FORM_SETS });
+      return json(res, 200, { sets: FORM_SETS, version: CODE_VERSION });
     }
 
     if (path === "/api/projects" && req.method === "GET") {
@@ -225,7 +249,7 @@ function lanAddresses() {
 // 明示的に 0.0.0.0 で待ち受ける。ホストを省くと環境によって IPv6 のみになり、
 // 同じ網にいる端末から繋がらないことがある
 server.listen(PORT, "0.0.0.0", () => {
-  console.log(`\nKOBO v0.2`);
+  console.log(`\nKOBO v0.2  （コード ${CODE_VERSION}）`);
   console.log(`\n  このパソコン       http://localhost:${PORT}`);
   const lan = lanAddresses();
   for (const { name, address, likelyWifi } of lan) {
