@@ -50,28 +50,28 @@ const lead = isGeneral
   </div></div>
 
   {sections.map((sec) => {
-    if (sec.kind === "prose") return <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif}><Prose slug="strengths" /></Band>;
+    if (sec.kind === "prose") return <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation}><Prose slug="strengths" /></Band>;
 
     if (sec.kind === "declined") return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} heading={sec.heading}>
+      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} heading={sec.heading}>
         <Declined text={isGeneral ? reasonChosen : s.wonAfterOthersDeclined} />
       </Band>
     );
 
     if (sec.kind === "technique") return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} heading={sec.heading}>
+      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} heading={sec.heading}>
         <Technique text={s.followUpFindings} />
       </Band>
     );
 
     if (sec.kind === "points" && points.length > 0) return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} heading={sec.heading}>
+      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} heading={sec.heading}>
         <Points points={points} />
       </Band>
     );
 
     if (sec.kind === "figures") return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} heading={sec.heading}>
+      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} heading={sec.heading}>
         <Figures figures={analysis.figures} />
       </Band>
     );

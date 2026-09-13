@@ -1,0 +1,21 @@
+---
+/**
+ * 読み物。**長めの文章を、余白・段落・引用で読ませる。**
+ *
+ * 「散文」とは役割が違う（D-207）。散文は短い説明、こちらは**読ませることが目的。**
+ * 書き出しを大きくし、段落の間隔を広く取る。
+ */
+import { splitParts } from "../../lib/text";
+interface Props { text: string; quote?: string }
+const { text, quote } = Astro.props;
+const parts = splitParts(text);
+---
+<div class="longform">
+  {parts.map((x, i) => (
+    <>
+      {x.title && <h3>{x.title}</h3>}
+      <p class={i === 0 && !x.title ? "longform-open" : undefined}>{x.body}</p>
+    </>
+  ))}
+  {quote && <blockquote class="longform-quote">{quote}</blockquote>}
+</div>

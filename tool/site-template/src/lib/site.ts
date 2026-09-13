@@ -11,62 +11,14 @@
 
 import type { Project } from "../../../lib/schema.ts";
 import raw from "../site-data/project.json";
-
-/** lib/schema.ts の NEEDS_REVIEW_MARKER と同じ */
-const NEEDS_REVIEW = "{{要確認}}";
+import { sanitizeProject } from "../../../lib/sanitize.ts";
 
 /**
- * 公開してよい値だけにする。
- *
- * 第1回の書き出しで、事例の「結果」に書いた
- * 「{{要確認}} 精度・歩留まりの数値実績を工場長に確認する」が、
- * **そのままページに出た。** 原稿生成を通さないぶん、verify.ts の検証も通らないため、
- * ここで落とさなければ公開物に出てしまう。
- *
- * 1. `{{要確認}}` 以降を捨てる。残りが無ければ、その項目自体を無かったことにする
- * 2. 未確認マークが付いた項目は、値が残っていても出さない
- * 3. `unconfirmedNotes`（その場の発言の控え）は、そもそも読まない
+ * **落とす処理は `lib/sanitize.ts` が単一の正**（D-213）。
+ * ここに書いていたため、書き出しの説明は生データを見て、
+ * ページは落としたデータを見る、という食い違いが起きていた。
  */
-function cut(text: string): string {
-  const i = text.indexOf(NEEDS_REVIEW);
-  return i < 0 ? text : text.slice(0, i).trim().replace(/[、。]$/, "");
-}
-
-function sanitize(value: any): any {
-  if (typeof value === "string") return cut(value);
-  if (Array.isArray(value)) {
-    return value
-      .map(sanitize)
-      .filter((v) => (typeof v === "string" ? v !== "" : v !== null && v !== undefined));
-  }
-  if (value && typeof value === "object") {
-    const out: Record<string, any> = {};
-    for (const [k, v] of Object.entries(value)) {
-      if (k === "unconfirmedNotes") continue;
-      const s = sanitize(v);
-      if (s === "" || s === null || s === undefined) continue;
-      out[k] = s;
-    }
-    return out;
-  }
-  return value;
-}
-
-function dropUnconfirmed(obj: any, paths: string[]) {
-  for (const path of paths) {
-    const keys = path.split(".");
-    let cur = obj;
-    for (const k of keys.slice(0, -1)) {
-      if (cur == null) break;
-      cur = cur[k];
-    }
-    if (cur && typeof cur === "object") delete cur[keys.at(-1)!];
-  }
-}
-
-const cleaned = sanitize(raw);
-dropUnconfirmed(cleaned, (raw as any).unconfirmed ?? []);
-export const project = cleaned as Project;
+export const project = sanitizeProject(raw) as Project;
 
 export const companyName = project.basics?.name ?? "";
 export const tel = project.basics?.tel ?? "";

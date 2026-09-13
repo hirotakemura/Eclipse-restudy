@@ -84,9 +84,22 @@ check("沿革が2件では年表を作らない",
   !kinds(make({ basics: { ...base.basics, history: [{ year: "1972", event: "創業" }, { year: "1990", event: "移転" }] } })).includes("timeline"));
 
 console.log("\n━━━ 同じものを二度出さない ━━━");
+// 条件が主役になる会社（短納期）
+const hayai = make({
+  capability: { shortestLeadTime: "標準7日。急ぎの場合は最短翌日", lotSize: "1個から", materials: ["アルミ"] },
+});
 const spec = kinds(setsubi, { hero: "spec" });
 const head = kinds(setsubi, { hero: "headline" });
-check("「対応範囲を先に」の型では、数字の帯を重ねて出さない", !spec.includes("figures"), spec.join(","));
+/**
+ * **主役の内容は、最初の画面と重なっても消さない**（D-214）。
+ * 消すと、その会社のいちばん見せたい情報が出なくなる（D-204）。
+ * 重なりは「消す」ではなく「別の見せ方にする」で避ける。
+ */
+check("「対応範囲を先に」の型では、条件の帯を重ねて出さない（主役でないとき）",
+  !kinds(dankotu, { hero: "spec" }).includes("figures"),
+  kinds(dankotu, { hero: "spec" }).join(","));
+check("条件が主役の会社では、最初の画面と重なっても条件の帯を残す",
+  kinds(hayai, { hero: "spec" }).includes("figures"), kinds(hayai, { hero: "spec" }).join(","));
 check("「見出しを先に」の型では、数字の帯を出す", head.includes("figures"), head.join(","));
 check("原稿がまだ無ければ、空の帯を出さない", !kinds(dankotu).includes("prose"));
 check("原稿があれば出す", kinds(dankotu, { hasProse: true }).includes("prose"));

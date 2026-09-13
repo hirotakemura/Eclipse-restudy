@@ -1,0 +1,15 @@
+---
+/**
+ * 大きな数字。**1〜3個の強い数値を、本文に埋めずに出す**（ご指示§5）。
+ * 値は聞き取ったものそのまま。**短く言い切れるものだけ**が渡ってくる（材料の条件）。
+ */
+interface Props { items: { label: string; value: string }[] }
+const { items } = Astro.props;
+---
+{items.length > 0 && (
+  <div class="bignumbers">
+    {items.slice(0, 3).map((x) => (
+      <div><p class="bignumber-label">{x.label}</p><p class="bignumber-value">{x.value}</p></div>
+    ))}
+  </div>
+)}

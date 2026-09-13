@@ -1,0 +1,9 @@
+---
+/**
+ * 箇条書き。**数が少なく、並列に読めるもの。**
+ * 表にするほど項目が無いときに、表の代わりに使う。
+ */
+interface Props { items: string[] }
+const { items } = Astro.props;
+---
+{items.length > 0 && <ul class="plain-list">{items.map((x) => <li>{x}</li>)}</ul>}

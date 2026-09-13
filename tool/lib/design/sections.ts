@@ -21,6 +21,8 @@ import type { Analysis, ShowBy, Strand } from "./analysis.ts";
 import { getDirection, type Tone } from "./direction.ts";
 import type { SurfaceId, LayoutId, MotifId, MediaId, ContentId, PresentationId } from "./system/index.ts";
 import { MOTIFS } from "./system/index.ts";
+import { choosePresentation, PLAYBOOK, LABEL } from "./playbook.ts";
+import { materialsOf } from "./materials.ts";
 
 /** セクションの幅。**全部同じ幅にしない**のが今回の主眼 */
 export type Width =
@@ -174,8 +176,39 @@ function decorate(
   // 地紋：根拠のあるものだけ。強い帯にだけ敷く
   const motif: MotifId = base.emphasis === "lead" ? pickMotif(d.motifs, a) : "none";
 
-  return { ...base, surface, layout, media, motif, ...KIND_AS[base.kind] };
+  const pair = KIND_AS[base.kind];
+  return { ...base, surface, layout, media, motif, ...pair };
 }
+
+/**
+ * 表現を、最大の強みに応じて差し替える。
+ *
+ * **可否表と材料の条件を必ず通す**（D-206）。
+ * 例：精度が強みでも、具体的な精度の値が無ければ「大きな数字」を強制しない。
+ */
+function repress(
+  sec: Omit<Section, "why">, project: Project, a: Analysis, hero: string,
+): { sec: Omit<Section, "why">; note: string } {
+  if (sec.kind === "hero" || sec.content === "draft") return { sec, note: "" };
+  const m = materialsOf(project, sec.content, a.hasRealPhotos);
+  const isLead = PLAYBOOK[a.primaryStrength].lead === sec.content;
+  /**
+   * **最初の画面が出しているものを、すぐ下で同じ形で繰り返さない**（D-183）。
+   * 「数字を大きく」の最初の画面なら、条件の帯は別の見せ方にする。
+   * **帯そのものは消さない。** 消すと必要な情報が落ちる（D-204）。
+   */
+  const avoid: PresentationId[] =
+    sec.content !== "conditions" ? []
+    // 最初の画面が出している形と同じ形で、すぐ下に繰り返さない（D-183）
+    : hero === "figure" ? ["largeNumber"]
+    : hero === "spec" ? ["spec", "list"]
+    : [];
+  const { presentation, why } = choosePresentation(sec.content, a, m, { isLead, avoid });
+  if (presentation === sec.presentation) return { sec, note: "" };
+  return { sec: { ...sec, presentation }, note: `／${why}「${presentation}」で見せる` };
+}
+
+const getStrength = (a: Analysis) => a.primaryStrength;
 
 /** 型の候補のうち、**聞き取りに裏づけのある**最初のものを取る（ご指示§7） */
 export function pickMotif(candidates: MotifId[], a: Analysis): MotifId {
@@ -213,15 +246,23 @@ export function composeTop(
    * 「対応範囲を先に」の型は、ロット・納期・精度を最初の画面に並べる。
    * その下に同じ数字の帯を置くと、同じ情報が1画面に二度出る（D-175で直したのと同じ間違い）。
    */
-  const coveredByHero: Section["kind"][] = hero === "spec" ? ["figures"] : [];
+  /**
+   * **主役の内容は、最初の画面と重なっても消さない**（D-204・D-214）。
+   * 短納期が強みの会社で「対応範囲を先に」の最初の画面を選ぶと、
+   * 条件の帯ごと消えて、**いちばん見せたい「標準7日／最短翌日」が出なくなった。**
+   * 消すのではなく、**最初の画面と違う見せ方にする**（下の `avoid`）。
+   */
+  const leadIsConditions = PLAYBOOK[getStrength(a)].lead === "conditions";
+  const coveredByHero: Section["kind"][] = hero === "spec" && !leadIsConditions ? ["figures"] : [];
 
   const d = getDirection(direction);
   let prev: SurfaceId | null = null;
   let n = 0;
   const put = (base: Base, why: string) => {
-    const sec = decorate(applyTone(base, tone), d, a, n++, prev);
+    const decorated = decorate(applyTone(base, tone), d, a, n++, prev);
+    const { sec, note } = repress(decorated, project, a, hero);
     prev = sec.surface;
-    out.push({ ...sec, why });
+    out.push({ ...sec, why: why + note });
   };
   const out: Section[] = [];
   out.push({
@@ -234,6 +275,18 @@ export function composeTop(
   const picked = applyDirection(a.strands, direction)
     .filter((s) => BY_STRAND[s.id] && !coveredByHero.includes(BY_STRAND[s.id]!.kind))
     .slice(0, maxStrands);
+
+  /**
+   * **最大の強みに対応する内容を、主役として先頭に持ってくる**（ご指示④）。
+   * 根拠が無い（unknown）ときは何もしない。安全な既定のまま。
+   */
+  const leadContent = PLAYBOOK[a.primaryStrength].lead;
+  const leadStrand = a.primaryStrength === "unknown" ? -1
+    : picked.findIndex((s) => BY_STRAND[s.id] && KIND_AS[BY_STRAND[s.id]!.kind].content === leadContent);
+  if (leadStrand > 0) {
+    const [x] = picked.splice(leadStrand, 1);
+    picked.unshift(x!);
+  }
 
   const first = picked[0];
   if (first) put(BY_STRAND[first.id]!, first.why);
@@ -305,9 +358,10 @@ export function composePage(
   let prev: SurfaceId | null = null;
   let n = 0;
   const add = (base: Base, why: string) => {
-    const sec = decorate(applyTone(base, tone), d, a, n++, prev);
+    const decorated = decorate(applyTone(base, tone), d, a, n++, prev);
+    const { sec, note } = repress(decorated, project, a, "headline");
     prev = sec.surface;
-    out.push({ ...sec, why });
+    out.push({ ...sec, why: why + note });
   };
 
   if (hasProse) add({ kind: "prose", width: "narrow", emphasis: "normal", slug }, "生成した本文");

@@ -441,9 +441,11 @@ function renderTheme(field, read, write) {
       // 「数字を大きく」は、大きく出せる数字が1つ以上要る
       const cap = p.capability ?? {};
       // **一言で言い切れる値でなければ、大きく出さない**（lib/design/analysis.ts と同じ判定・D-203）
-      const short = (v) => typeof v === "string" && v.trim().length > 0 && v.trim().length <= 14 && !/[。、]/.test(v);
+      // **短く言い切れること＋数字を含むこと**（lib/design/analysis.ts と同じ判定・D-214）
+      const short = (v) => typeof v === "string" && v.trim().length > 0 && v.trim().length <= 14
+        && !/[。、]/.test(v) && /\d/.test(v);
       const has = short(cap.tolerance) || short(cap.shortestLeadTime) || short(cap.lotSize);
-      return has ? h : { ...h, disabled: true, note: "「±0.01mm」のように短く言い切れる数字を聞き取ってから選べます" };
+      return has ? h : { ...h, disabled: true, note: "「±0.01mm」「最短3日」のように短く数字で言い切れる値を聞き取ってから選べます" };
     }
     if (h.needs === "motif") {
       // 「技術の地紋」は、地紋の根拠になる聞き取りが要る

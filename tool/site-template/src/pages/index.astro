@@ -11,18 +11,8 @@
  */
 import Base from "../layouts/Base.astro";
 import Band from "../components/Band.astro";
-import Prose from "../components/Prose.astro";
-import CaseCard from "../components/CaseCard.astro";
+import Present from "../components/Present.astro";
 import Figure from "../components/Figure.astro";
-import Gallery from "../components/Gallery.astro";
-import Figures from "../components/sections/Figures.astro";
-import Declined from "../components/sections/Declined.astro";
-import Technique from "../components/sections/Technique.astro";
-import Materials from "../components/sections/Materials.astro";
-import Equipment from "../components/sections/Equipment.astro";
-import Timeline from "../components/sections/Timeline.astro";
-import People from "../components/sections/People.astro";
-import { cardGrid } from "../lib/cards";
 import { analyze } from "../../../lib/design/analysis.ts";
 import { composeTop, resolveHero } from "../../../lib/design/sections.ts";
 import { project, companyName, cases, photoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen } from "../lib/site";
@@ -84,8 +74,6 @@ const specs = (isGeneral
     ]
 ).filter(([, v]) => v) as [string, string][];
 
-const shownCases = cases.slice(0, 6);
-const topCards = cardGrid(shownCases.length);
 const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("・")].filter(Boolean).join("／");
 ---
 <Base title="トップ" description={`${companyName}｜${desc}`}>
@@ -133,72 +121,12 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
       </section>
     );
 
-    if (s.kind === "prose") return (
-      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif}><Prose slug={s.slug ?? "index"} /></Band>
-    );
-
-    if (s.kind === "figures") return (
-      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} heading="対応できる条件">
-        <Figures figures={analysis.figures} />
+    return (
+      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} content={s.content} presentation={s.presentation}
+            heading={s.kind === "prose" ? undefined : s.heading}>
+        <Present content={s.content} presentation={s.presentation} analysis={analysis} slug={s.slug} />
       </Band>
     );
-
-    if (s.kind === "declined") return (
-      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} heading={s.heading}>
-        <Declined text={isGeneral ? reasonChosen : st.wonAfterOthersDeclined}
-                  href="/strengths/"
-                  linkLabel={isGeneral ? "くわしく見る" : "なぜ受けられるのか（強み・技術）"} />
-      </Band>
-    );
-
-    if (s.kind === "technique") return (
-      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} heading={s.heading}>
-        <Technique text={st.followUpFindings} praise={st.praiseFromClients} href="/strengths/" />
-      </Band>
-    );
-
-    if (s.kind === "materials") return (
-      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} heading={s.heading}>
-        <Materials materials={cap.materials ?? []} processes={cap.processes ?? []} href="/capability/" />
-      </Band>
-    );
-
-    if (s.kind === "equipment") return (
-      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} heading={s.heading}>
-        <Equipment equipment={cap.equipment ?? []} href="/equipment/" />
-      </Band>
-    );
-
-    if (s.kind === "timeline") return (
-      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} heading={s.heading}>
-        <Timeline history={basics.history ?? []} founded={basics.founded} />
-      </Band>
-    );
-
-    if (s.kind === "people") return (
-      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} heading={s.heading}>
-        <People vision={(project as any).executive?.vision} representative={basics.representative} href="/message/" />
-      </Band>
-    );
-
-    if (s.kind === "gallery") return (
-      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif}>
-        <Gallery photos={photosOf("工場・設備")} heading={s.heading} />
-      </Band>
-    );
-
-    if (s.kind === "cases") return (
-      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} heading={isGeneral ? "実績" : s.heading}>
-        <div class={`cards${topCards.orphan ? " has-orphan" : ""}`} style={`--cols:${topCards.cols}`}>
-          {shownCases.map((c, i) => <CaseCard index={i} item={c} />)}
-        </div>
-        {cases.length > 6 && (
-          <p style="margin-top:20px"><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>
-        )}
-      </Band>
-    );
-
-    return null;
   })}
 
   {/* 汎用プランの取り扱い。**製造業には無い項目なので、構成の外に置く** */}

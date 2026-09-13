@@ -8,6 +8,7 @@
     "start": "node server.mjs",
     "demo": "node make-demo.mjs",
     "qa:directions": "node qa-directions.mjs",
+    "qa:companies": "node qa-companies.mjs",
     "typecheck": "tsc --noEmit",
     "generate": "node generate.mjs",
     "test:verify": "node verify.test.mjs",

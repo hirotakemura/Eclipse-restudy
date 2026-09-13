@@ -12,9 +12,12 @@ interface Props {
   surface?: string;
   layout?: string;
   motif?: string;
+  /** 何を伝えるか・どう見せるか。**検証で数えるために出す**（D-212） */
+  content?: string;
+  presentation?: string;
   heading?: string;
 }
-const { width = "normal", emphasis = "normal", surface = "plain", layout = "stack", motif = "none", heading } = Astro.props;
+const { width = "normal", emphasis = "normal", surface = "plain", layout = "stack", motif = "none", content, presentation, heading } = Astro.props;
 ---
 <section
   class="section band"
@@ -23,6 +26,8 @@ const { width = "normal", emphasis = "normal", surface = "plain", layout = "stac
   data-surface={surface}
   data-layout={layout}
   data-motif={motif !== "none" ? motif : undefined}
+  data-content={content}
+  data-presentation={presentation}
 >
   <div class="inner">
     {heading && <h2>{heading}</h2>}

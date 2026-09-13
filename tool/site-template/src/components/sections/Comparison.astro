@@ -1,0 +1,21 @@
+---
+/**
+ * 対比。**2つの値を並べて見せる。**
+ * 「標準7日 ／ 最短3日」のように、**差そのものが売り**になる会社に向く。
+ * 聞き取った文をそのまま割る。**値は作らない。**
+ */
+interface Props { label: string; text: string }
+const { label, text } = Astro.props;
+/** 「標準7日。急ぎの場合は最短3日」→ 2つに割る。割れなければ1つのまま出す */
+const parts = (text ?? "").split(/[。／/]/).map((x) => x.trim()).filter(Boolean);
+const pair = parts.length >= 2 ? [parts[0]!, parts.slice(1).join("。")] : null;
+---
+{pair ? (
+  <div class="compare">
+    <div><p class="compare-label">{label}</p><p class="compare-value">{pair[0]}</p></div>
+    <div class="compare-vs" aria-hidden="true"></div>
+    <div><p class="compare-label">お急ぎのとき</p><p class="compare-value">{pair[1]}</p></div>
+  </div>
+) : (
+  text && <p>{text}</p>
+)}

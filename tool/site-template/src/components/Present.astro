@@ -1,0 +1,154 @@
+---
+/**
+ * 内容 × 表現 で描き分ける。
+ *
+ * **「何を伝えるか」と「どう見せるか」を分けた**（D-206）ので、
+ * 同じ内容でも会社によって違う形で出る。
+ * どの組み合わせが来るかは `lib/design/` が決め、可否表と材料の条件を通してある。
+ * **ここは受け取ったとおりに描くだけ。**
+ */
+import Figures from "./sections/Figures.astro";
+import BigNumber from "./sections/BigNumber.astro";
+import Comparison from "./sections/Comparison.astro";
+import Process from "./sections/Process.astro";
+import Longform from "./sections/Longform.astro";
+import ListView from "./sections/ListView.astro";
+import Declined from "./sections/Declined.astro";
+import Technique from "./sections/Technique.astro";
+import Materials from "./sections/Materials.astro";
+import Equipment from "./sections/Equipment.astro";
+import Timeline from "./sections/Timeline.astro";
+import People from "./sections/People.astro";
+import Points from "./sections/Points.astro";
+import Table from "./Table.astro";
+import Gallery from "./Gallery.astro";
+import CaseCard from "./CaseCard.astro";
+import Prose from "./Prose.astro";
+import { cardGrid } from "../lib/cards";
+import { project, cases, rows, photosOf, isGeneral, reasonChosen, idealCustomer } from "../lib/site";
+import { splitParts } from "../lib/text";
+
+interface Props { content: string; presentation: string; analysis: any; slug?: string }
+const { content, presentation, analysis, slug } = Astro.props;
+
+const cap = (project as any).capability ?? {};
+const st = (project as any).strengths ?? {};
+const basics = (project as any).basics ?? {};
+
+/** 事例の「課題 → 対応 → 結果」を工程として並べる */
+const caseSteps = cases.flatMap((c: any) => [
+  c.challenge ? { title: "ご相談の内容", body: c.challenge } : null,
+  c.solution ? { title: "対応した内容", body: c.solution } : null,
+  c.result ? { title: "結果", body: c.result } : null,
+].filter(Boolean)).slice(0, 6) as { title: string; body: string }[];
+
+const techSteps = splitParts(st.followUpFindings).map((x) => ({ title: x.title ?? "", body: x.body }));
+const quoteOf = (v: string) => (/[「『][^」』]{4,}[」』]/.exec(v ?? "") ?? [])[0] ?? v;
+const equipTotal = (cap.equipment ?? []).reduce((s: number, e: any) => s + (Number(e.count) || 0), 0);
+const specRows = rows([
+  ["対応材質", cap.materials], ["加工法・工法", cap.processes],
+  ["対応サイズ（最大）", cap.maxSize], ["対応サイズ（最小）", cap.minSize],
+  ["対応精度", cap.tolerance], ["対応ロット", cap.lotSize],
+  ["最短納期", cap.shortestLeadTime], ["資格・認証", cap.certifications],
+  ["稼働体制", cap.operatingHours],
+]);
+const eqRows = rows((cap.equipment ?? []).map((e: any) => [e.model || e.maker, e.count ? `${e.count}台` : ""]));
+const shownCases = cases.slice(0, 6);
+const grid = cardGrid(shownCases.length);
+const points = ([
+  ["お客様からよくいただく言葉", st.praiseFromClients],
+  ["同業が敬遠しがちな仕事", st.workOthersAvoid],
+  ["技術的に最も難しかった仕事", st.hardestJob],
+] as [string, string][]).filter(([, v]) => v);
+---
+{content === "draft" && <Prose slug={slug ?? "index"} />}
+
+{content === "conditions" && presentation === "largeNumber" && <Figures figures={analysis.figures} />}
+{content === "conditions" && presentation === "spec" && <Table rows={specRows} />}
+{content === "conditions" && presentation === "comparison" && (
+  <Comparison label="標準の納期" text={cap.shortestLeadTime} />
+)}
+{content === "conditions" && presentation === "list" && (
+  <ListView items={analysis.figures.map((f: any) => `${f.label}：${f.value}`)} />
+)}
+
+{content === "materials" && presentation === "chips" && (
+  <Materials materials={cap.materials ?? []} processes={cap.processes ?? []} href="/capability/" />
+)}
+{content === "materials" && presentation === "list" && <ListView items={cap.materials ?? []} />}
+{content === "materials" && presentation === "spec" && (
+  <Table rows={rows([["対応材質", cap.materials], ["加工法・工法", cap.processes]])} />
+)}
+
+{content === "equipment" && presentation === "cardGrid" && <Equipment equipment={cap.equipment ?? []} href="/equipment/" />}
+{content === "equipment" && presentation === "spec" && <Table rows={eqRows} />}
+{content === "equipment" && presentation === "largeNumber" && (
+  <BigNumber items={[{ label: "保有設備", value: `${equipTotal}台` }]} />
+)}
+{content === "equipment" && presentation === "list" && (
+  <ListView items={(cap.equipment ?? []).map((e: any) => [e.model || e.maker, e.count ? `${e.count}台` : ""].filter(Boolean).join("　"))} />
+)}
+
+{content === "cases" && presentation === "cardGrid" && (
+  <>
+    <div class={`cards${grid.orphan ? " has-orphan" : ""}`} style={`--cols:${grid.cols}`}>
+      {shownCases.map((c: any, i: number) => <CaseCard index={i} item={c} />)}
+    </div>
+    {cases.length > 6 && <p style="margin-top:20px"><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>}
+  </>
+)}
+{content === "cases" && presentation === "process" && (
+  <>
+    <Process steps={caseSteps} />
+    <p><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>
+  </>
+)}
+{content === "cases" && presentation === "quote" && (
+  <>
+    <Declined text={quoteOf(cases.map((c: any) => c.challenge).filter(Boolean).join(" "))} />
+    <p><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>
+  </>
+)}
+{content === "cases" && presentation === "spec" && (
+  <Table rows={rows(cases.map((c: any) => [c.title, [c.materials?.join("・"), c.quantity, c.leadTime].filter(Boolean).join("／")]))} />
+)}
+
+{content === "technique" && presentation === "prose" && <Technique text={st.followUpFindings} praise={st.praiseFromClients} href="/strengths/" />}
+{content === "technique" && presentation === "longform" && <Longform text={st.followUpFindings} quote={st.praiseFromClients} />}
+{content === "technique" && presentation === "process" && (
+  <>
+    <Process steps={techSteps} />
+    <p><a href="/strengths/">強み・技術をくわしく見る</a></p>
+  </>
+)}
+{content === "technique" && presentation === "list" && <ListView items={techSteps.map((s) => s.title || s.body.slice(0, 40))} />}
+
+{content === "declined" && presentation === "quote" && (
+  <Declined text={isGeneral ? reasonChosen : st.wonAfterOthersDeclined} href="/strengths/"
+            linkLabel={isGeneral ? "くわしく見る" : "なぜ受けられるのか（強み・技術）"} />
+)}
+{content === "declined" && presentation === "prose" && <p>{isGeneral ? reasonChosen : st.wonAfterOthersDeclined}</p>}
+{content === "declined" && presentation === "longform" && (
+  <Longform text={[st.wonAfterOthersDeclined, st.workOthersAvoid, st.hardestJob].filter(Boolean).join("\n\n")} />
+)}
+
+{content === "praise" && presentation === "cardGrid" && <Points points={points} />}
+{content === "praise" && presentation === "quote" && <Declined text={quoteOf(st.praiseFromClients)} />}
+{content === "praise" && presentation === "prose" && <p>{st.praiseFromClients}</p>}
+
+{content === "history" && presentation === "timeline" && <Timeline history={basics.history ?? []} founded={basics.founded} />}
+{content === "history" && presentation === "list" && <ListView items={(basics.history ?? []).map((h: any) => `${h.year}　${h.event}`)} />}
+{content === "history" && presentation === "prose" && basics.founded && <p>創業 {basics.founded}</p>}
+{content === "history" && presentation === "longform" && (
+  <Longform text={(basics.history ?? []).map((h: any) => `${h.year}　${h.event}`).join("\n\n")} />
+)}
+
+{content === "executive" && presentation === "prose" && (
+  <People vision={(project as any).executive?.vision} representative={basics.representative} href="/message/" />
+)}
+{content === "executive" && presentation === "quote" && <Declined text={quoteOf((project as any).executive?.messageToStaff ?? (project as any).executive?.vision)} />}
+{content === "executive" && presentation === "longform" && (
+  <Longform text={[(project as any).executive?.vision, (project as any).executive?.messageToStaff].filter(Boolean).join("\n\n")} />
+)}
+
+{content === "photos" && <Gallery photos={photosOf("工場・設備")} />}

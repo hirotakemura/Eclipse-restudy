@@ -1,0 +1,18 @@
+---
+/**
+ * 工程の流れ。**順序に意味があるものだけ**（可否表・材料の条件で縛っている）。
+ * 取材メモの【見出し】や、事例の「課題 → 対応 → 結果」を段として並べる。
+ */
+interface Props { steps: { title: string; body: string }[] }
+const { steps } = Astro.props;
+---
+{steps.length > 0 && (
+  <ol class="process">
+    {steps.map((s) => (
+      <li>
+        <p class="process-title">{s.title}</p>
+        <p class="process-body">{s.body}</p>
+      </li>
+    ))}
+  </ol>
+)}

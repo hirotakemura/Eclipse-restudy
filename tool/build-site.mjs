@@ -26,6 +26,7 @@ import { spawnSync } from "node:child_process";
 import { findInternalLanguage, visibleText, contextFor } from "./lib/internal-language.ts";
 import { internalValues } from "./lib/form-definition.ts";
 import { analyze } from "./lib/design/analysis.ts";
+import { sanitizeProject } from "./lib/sanitize.ts";
 import { composeTop, explain } from "./lib/design/sections.ts";
 import { resolveTheme } from "./lib/theme.ts";
 import { DIRECTIONS } from "./lib/design/direction.ts";
@@ -112,13 +113,15 @@ console.log(`  写真 ${photoCount}枚${unplaced ? `（うち置き場所が未�
  * 「なぜこの順番なのか」を社長に説明できない。黙って決めない。
  */
 {
-  const analysis = analyze(project);
+  // **ページと同じデータを見る。** 生データを見て説明すると、実物とずれる（D-213）
+  const analysis = analyze(sanitizeProject(project));
   const resolved = resolveTheme(project.theme, project.formSet === "general" ? "general" : "manufacturing");
   const hero = resolved.hero.id;
   const direction = resolved.direction;
   const sections = composeTop(project, analysis, { hero, direction, hasProse: drafts > 0 });
   const label = DIRECTIONS.find((d) => d.id === direction)?.label ?? direction;
   console.log(`\n  ── 型「${label}」で組み立てます ──`);
+  console.log(`\n  この会社の最大の強み：${analysis.primaryStrength}（${analysis.primaryWhy}）`);
   console.log("\n  ── この会社の見立て ──");
   for (const s of analysis.strands) console.log(`  ${String(s.score).padStart(3)}  ${s.id.padEnd(10)} ${s.why}`);
   console.log("\n  ── トップページの構成 ──");

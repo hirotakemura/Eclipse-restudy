@@ -71,7 +71,33 @@ export interface Analysis {
    * いちばん判断に効くものを選ぶ。無ければ null（そのときは数字のHeroを選ばせない）。
    */
   heroFigure: Figure | null;
+  /**
+   * この会社は**何で選ばれているか**。
+   *
+   * **推測で決めない**（D-205）。値ごとに根拠となる聞き取り項目を決めてあり、
+   * どれにも当てはまらなければ `unknown`。
+   * 製造業で「精度が強みだろう」と勝手に判断すると、**事実確認の思想と正面から衝突する。**
+   * 公差を聞き取れていないのに精度で売る構成にするのは、嘘をつくのと同じ。
+   */
+  primaryStrength: PrimaryStrength;
+  /** なぜそう判定したか。根拠を言えないものは採用しない */
+  primaryWhy: string;
 }
+
+/**
+ * 最大の強み。**取材データに根拠がある強みだけを採る。**
+ * 根拠が弱ければ `unknown` とし、規則版の安全な構成へ落とす（D-205）。
+ */
+export type PrimaryStrength =
+  | "precision"   // 精度・公差
+  | "difficulty"  // 難加工
+  | "speed"       // 短納期・対応力
+  | "range"       // 対応範囲の広さ
+  | "engineering" // 設計対応
+  | "equipment"   // 設備
+  | "craft"       // 職人性
+  | "history"     // 歴史
+  | "unknown";
 
 const text = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 const len = (v: unknown): number => (Array.isArray(v) ? v.length : 0);
@@ -196,15 +222,88 @@ export function analyze(project: Project): Analysis {
    * 短く言い直すのは**こちらが値を作ること**になるので、しない（D-181）。
    * 短い値が聞き取れていなければ、この型は選ばない。
    */
-  const short = (v: string) => v.length > 0 && v.length <= 14 && !/[。、]/.test(v);
-  const heroFigure: Figure | null =
-    short(text(cap.tolerance)) ? { label: "対応精度", value: text(cap.tolerance) }
-    : short(text(cap.shortestLeadTime)) ? { label: "最短納期", value: text(cap.shortestLeadTime) }
-    : short(text(cap.lotSize)) ? { label: "対応ロット", value: text(cap.lotSize) }
-    : null;
+  const ranked = rank(strands);
+
+  /**
+   * 最大の強みを決める。
+   *
+   * **点数は「その主張の根拠がどれだけ強いか」で付ける。**
+   * 見立ての点数を流用すると、たとえば設備の記録が揃っているだけで
+   * 「設備が強み」になり、**短納期の会社が設備の会社にされてしまう**（実際になった）。
+   * 主張ごとに、その主張を支える聞き取りを直接見る。
+   */
+  const lead = text(cap.shortestLeadTime);
+  const candidates: { id: PrimaryStrength; score: number; why: string }[] = [];
+  const add = (id: PrimaryStrength, score: number, why: string) => {
+    if (score > 0) candidates.push({ id, score, why });
+  };
+
+  add("precision", text(cap.tolerance) ? 5 : 0, "対応精度を聞き取れている");
+  add("difficulty",
+    (text(st.wonAfterOthersDeclined) ? 5 : 0) + (text(st.workOthersAvoid) ? 1 : 0),
+    "他社様で断られた案件を受けた記録がある");
+  add("speed",
+    /最短|翌日|即日|当日/.test(lead) ? 5 : (lead && text(cap.lotSize) ? 3 : 0),
+    "最短納期を聞き取れている");
+  add("range",
+    len(cap.materials) >= 5 ? 4 : (len(cap.materials) >= 3 && len(cap.processes) > 0 ? 3 : 0),
+    "対応材質と加工法の幅を聞き取れている");
+  add("engineering", /設計|図面/.test(text(st.followUpFindings)) ? 4 : 0,
+    "設計・図面に関わる工夫を聞き取れている");
+  add("equipment",
+    (() => {
+      const named = (cap.equipment ?? []).filter((e: any) => text(e?.maker) && text(e?.model)).length;
+      return named >= 3 ? 4 : named >= 1 ? 2 : 0;
+    })(),
+    "メーカー・型番まで分かっている設備がある");
+  add("craft", text(st.followUpFindings) && text(st.praiseFromClients) ? 3 : 0,
+    "工程の工夫と、お客様の言葉の両方がある");
+  add("history", text(basics.founded) && len(basics.history) >= 3 ? 3 : 0,
+    "創業年と沿革3件以上を聞き取れている");
+
+  // 同点のときは、見立ての点数で決める（既存の設計をそのまま使う）
+  const strandFor: Record<string, ShowBy> = {
+    precision: "numbers", difficulty: "declined", speed: "numbers", range: "materials",
+    engineering: "technique", equipment: "equipment", craft: "technique", history: "history",
+  };
+  candidates.sort((a, b) =>
+    b.score - a.score
+    || (ranked.find((x) => x.id === strandFor[b.id])?.score ?? 0)
+     - (ranked.find((x) => x.id === strandFor[a.id])?.score ?? 0));
+  const primary = candidates[0];
+  const primaryStrength: PrimaryStrength = primary?.id ?? "unknown";
+  const primaryWhy = primary?.why ?? "根拠のある強みが聞き取れていないため、安全な構成にします";
+
+  /**
+   * 最初の画面に「1つだけ」大きく出す数字。
+   *
+   * **その会社の強みに合った数字を選ぶ**（D-214）。
+   * 短納期が強みの会社で「対応ロット 1個から」を大きく出しても、売りにならない。
+   * 順番は強みで変える。**短く言い切れる値が無ければ null**（D-203）。
+   */
+  /**
+   * **大きく出す数字は、その会社の強みそのものであること**（D-214）。
+   *
+   * 短納期が強みの会社で「対応ロット 1個から」を大きく出しても売りにならない。
+   * 難加工が強みの会社で「最短納期 案件により相談」を大きく出すのは、もっと悪い。
+   * **強みが数字で言える会社のときだけ**この型を使い、それ以外は null にして
+   * 最初の画面を次の候補へ落とす（`resolveHero`）。
+   *
+   * 条件は2つ：**短く言い切れること**（D-203）と、**数字を含むこと。**
+   */
+  const short = (v: string) => v.length > 0 && v.length <= 14 && !/[。、]/.test(v) && /\d/.test(v);
+  const FIGURE_OF: Partial<Record<PrimaryStrength, [string, string]>> = {
+    precision: ["対応精度", text(cap.tolerance)],
+    speed: ["最短納期", text(cap.shortestLeadTime)],
+    range: ["対応ロット", text(cap.lotSize)],
+  };
+  const own = FIGURE_OF[primaryStrength];
+  const heroFigure: Figure | null = own && short(own[1]) ? { label: own[0], value: own[1] } : null;
 
   return {
-    strands: rank(strands),
+    strands: ranked,
+    primaryStrength,
+    primaryWhy,
     motifs,
     heroFigure,
     figures,

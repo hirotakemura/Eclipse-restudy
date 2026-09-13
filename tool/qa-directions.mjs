@@ -31,9 +31,9 @@ function signature(html) {
   const palette = /--accent:(#[0-9a-f]{6})/.exec(html);
   const bands = [...html.matchAll(/<section class="section band"([^>]*)>([\s\S]*?)(?=<section class="section band"|<section class="cta"|<footer)/g)]
     .map((m) => {
-      const at = (k) => (new RegExp(`data-${k}="([a-z]+)"`).exec(m[1]) ?? [, "-"])[1];
+      const at = (k) => (new RegExp(`data-${k}="([a-zA-Z]+)"`).exec(m[1]) ?? [, "-"])[1];
       const head = /<h2[^>]*>([^<]*)</.exec(m[2]);
-      return `${head ? head[1].trim() : "(見出しなし)"}:${at("width")}/${at("emphasis")}/${at("surface")}/${at("layout")}`;
+      return `${at("content")}:${at("presentation")}|${at("width")}/${at("emphasis")}/${at("surface")}/${at("layout")}`;
     });
   const hero = /<dl class="spec-first"/.test(html) ? "spec"
     : /class="hero-photo"/.test(html) ? "photo" : "headline";
@@ -118,7 +118,13 @@ for (const p of pairs) {
   種類だけを見る物差しを別に持ち、**両方を下げる**ことを目標にする。
 */
 console.log("\n━━━ 出ている情報の種類だけを見る（順番・面・組み方を無視）━━━\n");
-const kindsOf = (r) => new Set(r.sig.bands.map((b) => b.split(":")[0]));
+/**
+ * **「何を、どう見せたか」の組で数える。**
+ * 見出し（＝内容）だけで数えると、製造業で共通するのが当然の情報
+ * （対応範囲・材質・条件・設備・事例）まで「重なり」として数えてしまい、
+ * **情報を削れという圧になる**（D-204）。数えるのは内容×表現の組。
+ */
+const kindsOf = (r) => new Set(r.sig.bands.map((b) => b.split("|")[0]));
 let kTot = 0, kSame = 0, kN = 0;
 for (let i = 0; i < results.length; i++) {
   for (let j = i + 1; j < results.length; j++) {

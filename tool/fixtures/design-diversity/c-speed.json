@@ -1,0 +1,173 @@
+{
+  "id": "c-speed",
+  "status": "hearing",
+  "hearingDate": "2026-09-12",
+  "basics": {
+    "name": "【検証C】短納期が強い会社",
+    "representative": "松原 健二",
+    "generation": "三代目",
+    "founded": "1972年（昭和47年）",
+    "employees": 28,
+    "averageAge": 50,
+    "address": "北九州市八幡西区",
+    "businessSummary": "精密切削加工。売上構成は自動車部品が約6割、産業機械の部品が約3割、試作が約1割。1972年に現社長の祖父が創業し、家族経営として三代目の現社長に承継。現社長は、ものづくりの業務知識が必要との考えから他社の装置メーカーで設計と現場を経験したのち帰任し、2019年に社長就任。",
+    "clientIndustries": [
+      "自動車",
+      "産業機械"
+    ],
+    "history": [
+      {
+        "year": "1972年",
+        "event": "創業"
+      },
+      {
+        "year": "2019年",
+        "event": "現社長（三代目）が就任"
+      }
+    ],
+    "tel": "093-000-0000"
+  },
+  "inquiry": {
+    "monthlyInquiries": "月1〜2件",
+    "channels": [
+      "既存顧客からの追加発注"
+    ],
+    "recentNewClientOrigin": "3年前。取引先の担当者が転職先から声をかけてくれて受注に至った。それ以降、新規取引は始まっていない。",
+    "lostDealReasons": [
+      "価格"
+    ],
+    "wantLessOf": "単純な量産の相見積もり。価格でしか勝負にならず、中国・ベトナムと比較されると勝てないため。",
+    "mostProfitableWork": "試作と、小ロットの難しい仕事。利益率は最も高いが、難易度が高く人手が足りないため、現状では多くを受注できない。",
+    "wantMoreOf": "半導体装置向けの部品。増やしたいが、現時点ではほとんど実績がない。",
+    "goals": [
+      "選別",
+      "信用構築",
+      "採用"
+    ],
+    "targetKeywords": [
+      "薄肉 加工",
+      "薄物 切削",
+      "複雑形状 小ロット",
+      "反り 変形 対策 加工",
+      "ステンレス 薄板 加工",
+      "アルミ 薄物 加工",
+      "専用治具 自社製作",
+      "治具 外注しない",
+      "試作 図面なし 相談",
+      "図面 未確定 試作",
+      "装置部品 薄物 加工",
+      "精密切削加工 北九州",
+      "小ロット 加工 福岡"
+    ],
+    "outlookConcern": "既存顧客については「信頼と実績があるので当面は大丈夫」との認識。ただし今後さらに価格が下がっていくと不透明との懸念。加えて、日産の九州生産移管について尋ねたところ「今後ちょっと読めないかな、というところが大きい」との回答。自動車部品がティア1経由で売上の約6割を占めるため、ここが最大の不確実性。※ 一般的に「変化の兆しはありますか」と聞いた段階では何も出てこず、地域の具体的な動きを挙げて初めて出てきた答え。"
+  },
+  "capability": {
+    "equipment": [
+      {
+        "maker": "ブラザー工業",
+        "model": "S700X1",
+        "count": 6,
+        "note": ""
+      },
+      {
+        "maker": "オークマ",
+        "model": "LB3000",
+        "count": 4,
+        "note": ""
+      },
+      {
+        "maker": "アマダ",
+        "model": "HFE3",
+        "count": 1,
+        "note": ""
+      }
+    ],
+    "materials": [
+      "アルミ",
+      "ステンレス",
+      "鋳鉄",
+      "チタン（実績は限定的）"
+    ],
+    "lotSize": "1個から",
+    "shortestLeadTime": "標準7日。急ぎの場合は最短翌日",
+    "certifications": [
+      "ISO9001"
+    ],
+    "operatingHours": "2交代制",
+    "tolerance": ""
+  },
+  "strengths": {
+    "wonAfterOthersDeclined": "",
+    "praiseFromClients": "「金曜に頼んで月曜に届く」と言われる。",
+    "workOthersAvoid": "",
+    "hardestJob": "2〜3年前の産業機械部品。肉厚が薄く形状が複雑で、加工中に歪んで精度が出ず、複数回やり直した。具体的な数値は工場長に要確認。",
+    "followUpFindings": "【材料在庫】よく出る材料は常時在庫しており、材料手配の3日を省ける。【段取りの標準化】治具を共通化し、機械の切り替えを15分で終える。"
+  },
+  "cases": [
+    {
+      "title": "ライン停止中の交換部品を翌日納品",
+      "clientIndustry": "食品機械メーカー様",
+      "partDescription": "搬送部の樹脂ガイド",
+      "challenge": "ラインが止まっており、翌日までに部品が必要だった。",
+      "solution": "在庫材から即日で削り出し、夜間に仕上げて翌朝発送した。",
+      "result": "翌日午前に納品。ラインの停止は1日で収まった。",
+      "materials": [
+        "樹脂"
+      ],
+      "quantity": "2個",
+      "leadTime": "翌日"
+    }
+  ],
+  "recruitment": {
+    "isHiring": true,
+    "neededRoles": [
+      "加工オペレーター（特に若手）"
+    ],
+    "retentionNotes": "平均年齢が50歳前後で、5年後に定年を迎える層がまとまっている。若手人材の確保が急務。利益率の高い試作・小ロットの難しい仕事を増やしたくても、対応できる人手が足りず受注を絞らざるを得ない状態。"
+  },
+  "executive": {
+    "vision": "5年後、「安いから頼む」と言われる会社ではなく、「難しいものは松原さんに聞いてみよう」と名指しで相談が来る会社になっていること。人数を増やす必要はなく、今いる社員が誇りを持って働き続けたいと思える状態を目指す。5年後には先代（会長）が完全に引退している見込み。",
+    "messageToStaff": "「お前らがなんでもないと思ってやってることが、よそではできないことなんだ」。治具を自作することも、図面を見て気づくことも、社員は当たり前だと思っている。それが値打ちなのだと分かってほしい。社長自身も本取材で気づかされた、と述べている。"
+  },
+  "terms": {
+    "photo": {},
+    "domain": {},
+    "ngItems": [
+      "取引先名",
+      "価格・単価",
+      "加工条件の具体的数値（回転数・送り速度等のノウハウ）",
+      "社員の顔写真・個人名（本人の了承が取れるまで）"
+    ],
+    "inquiryNotifyEmail": "k-matsubara@matsubara-seiki.co.jp（事務担当のCC先は工場長に確認後に追加）"
+  },
+  "unconfirmed": [
+    "capability.maxSize",
+    "capability.minSize",
+    "capability.tolerance"
+  ],
+  "unconfirmedNotes": {
+    "capability.tolerance": "「ミクロン単位までは可能です」との回答。具体的な公差値は未取得。工場長に要確認。",
+    "capability.maxSize": "「現場に聞かないと分からないかな」。工場長に要確認。",
+    "capability.minSize": "「現場に聞かないと分からないかな」。工場長に要確認。"
+  },
+  "photos": [],
+  "theme": {
+    "palette": "hagane",
+    "font": "mixed",
+    "mood": "katai",
+    "textSize": "normal",
+    "nav": "sidebar",
+    "sections": "line",
+    "headings": "rule",
+    "tables": "stripe",
+    "hero": "figure",
+    "direction": "technical"
+  },
+  "unconfirmedPlan": {
+    "capability.processes": "工場長に第2回取材で"
+  },
+  "secondVisit": {
+    "date": "2026-09-20",
+    "attendees": "工場長の田中様"
+  }
+}
