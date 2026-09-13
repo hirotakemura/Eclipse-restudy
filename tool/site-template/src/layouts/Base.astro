@@ -8,7 +8,7 @@
  * 電話とメールが載っていれば、お客様の商売は止まらない（docs/17）。
  */
 import "../styles/site.css";
-import { companyName, tel, telHref, email, address, nav, project, photoOf, photoSrc } from "../lib/site";
+import { companyName, tel, telHref, email, address, nav, project, photoOf, photoSrc, isGeneral } from "../lib/site";
 
 const logo = photoOf("ロゴ");
 
@@ -92,10 +92,19 @@ const jsonLd = {
     <slot />
   </main>
 
+  <!--
+    問い合わせの誘い文句は商品ごとに変える。
+    **「図面をお持ちでしたら」は、加工屋にしか通じない。**
+    汎用は業種を問わないので、どの業種でも成り立つ言い方にとどめる
+  -->
   <section class="cta">
     <div class="inner">
-      <h2>図面をお持ちでしたら、そのままご相談ください</h2>
-      <p>他社様で難しいと言われた案件も、一度ご相談ください。可否だけでもお答えします。</p>
+      <h2>{isGeneral ? "まずはお気軽にご相談ください" : "図面をお持ちでしたら、そのままご相談ください"}</h2>
+      <p>
+        {isGeneral
+          ? "お電話・メールで承っております。"
+          : "他社様で難しいと言われた案件も、一度ご相談ください。可否だけでもお答えします。"}
+      </p>
       <p class="cta-lines">
         {tel && <a class="tel-big" href={`tel:${telHref}`}>{tel}</a>}
         {email && <a class="mail" href={`mailto:${email}`}>{email}</a>}

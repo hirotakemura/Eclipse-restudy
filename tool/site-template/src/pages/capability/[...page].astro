@@ -5,10 +5,10 @@
  *
  * 表は聞き取ったデータをそのまま出す。生成を通さない（D-095）。
  */
-import Base from "../layouts/Base.astro";
-import Prose from "../components/Prose.astro";
-import Table from "../components/Table.astro";
-import { project, rows, companyName } from "../lib/site";
+import Base from "../../layouts/Base.astro";
+import Prose from "../../components/Prose.astro";
+import Table from "../../components/Table.astro";
+import { project, rows, companyName, isGeneral } from "../../lib/site";
 
 const cap = project.capability ?? ({} as any);
 const spec = rows([
@@ -23,6 +23,15 @@ const spec = rows([
   ["資格・認証", cap.certifications],
   ["稼働体制", cap.operatingHours],
 ]);
+
+/**
+ * 製造業向けの案件でだけ作るページ。
+ * 汎用ベーシック（198,000円）には対応材質も設備一覧も無いので、空の表だけのページを作らない。
+ */
+export function getStaticPaths() {
+  return isGeneral ? [] : [{ params: { page: undefined } }];
+}
+
 ---
 <Base title="対応可能範囲" description={`${companyName}の対応材質・加工法・精度・ロット・納期の一覧`}>
   <div class="page-head"><div class="inner">

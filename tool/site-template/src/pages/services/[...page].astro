@@ -1,0 +1,49 @@
+---
+/**
+ * サービス・料金（汎用ベーシックのみ）。
+ *
+ * **サイトを見た人が知りたいのは「何を、いくらで、誰に」の3つ。**
+ * 業種を問わず、ここが書かれていないサイトは問い合わせに繋がらない（docs/06 汎用ブロックB）。
+ *
+ * 表は聞き取ったデータをそのまま出す。生成を通さない（D-095）。
+ */
+import Base from "../../layouts/Base.astro";
+import Prose from "../../components/Prose.astro";
+import { companyName, offerings, serviceArea, idealCustomer, isGeneral } from "../../lib/site";
+
+export function getStaticPaths() {
+  // 取り扱いが1件も無ければ、このページは作らない。
+  // **中身の無いページを1枚増やすより、無いほうがいい。**
+  // （未確認マークを付けた項目は、サイトに出さない＝ここが空になることがある）
+  return isGeneral && offerings.length ? [{ params: { page: undefined } }] : [];
+}
+---
+<Base title="サービス・料金" description={`${companyName}の取り扱いと料金の目安`}>
+  <div class="page-head"><div class="inner">
+    <h1>サービス・料金</h1>
+    {serviceArea && <p>対応エリア：{serviceArea}</p>}
+  </div></div>
+
+  <section class="section"><div class="inner">
+    <Prose slug="services" />
+
+    {offerings.map((o: any) => (
+      <div class="offering">
+        <h2>{o.name}</h2>
+        {o.detail && <p>{o.detail}</p>}
+        {o.price && <p class="price"><span>料金の目安</span>{o.price}</p>}
+      </div>
+    ))}
+
+    {idealCustomer && (
+      <>
+        <h2>こんなお客様にご利用いただいています</h2>
+        <p>{idealCustomer}</p>
+      </>
+    )}
+
+    <p class="note-box">
+      記載のない内容もご相談ください。料金は内容によって変わりますので、まずは概算をお出しします。
+    </p>
+  </div></section>
+</Base>

@@ -5,33 +5,47 @@
  */
 import Base from "../layouts/Base.astro";
 import Prose from "../components/Prose.astro";
-import { project, companyName } from "../lib/site";
+import { project, companyName, isGeneral, reasonChosen, idealCustomer } from "../lib/site";
 import { hasDraft } from "../lib/draft";
 
 const s = project.strengths ?? ({} as any);
 /** 原稿がまだ無い段階では、聞き取った内容をそのまま見出し付きで出す */
-const blocks = [
-  ["他社様で難しいと言われた案件", s.wonAfterOthersDeclined],
-  ["お客様からよくいただく言葉", s.praiseFromClients],
-  ["同業が敬遠しがちな仕事", s.workOthersAvoid],
-  ["技術的に最も難しかった仕事", s.hardestJob],
-  ["取材で詳しくうかがった点", s.followUpFindings],
-].filter(([, v]) => v) as [string, string][];
+const blocks = (isGeneral
+  ? [
+      ["同業と比べて、どこが違うか", reasonChosen],
+      ["他社様でお断りされた案件で、お受けできたもの", s.wonAfterOthersDeclined],
+      ["お客様からよくいただく言葉", s.praiseFromClients],
+      ["どういうお客様が多いか", idealCustomer],
+      ["取材で詳しくうかがった点", s.followUpFindings],
+    ]
+  : [
+      ["他社様で難しいと言われた案件", s.wonAfterOthersDeclined],
+      ["お客様からよくいただく言葉", s.praiseFromClients],
+      ["同業が敬遠しがちな仕事", s.workOthersAvoid],
+      ["技術的に最も難しかった仕事", s.hardestJob],
+      ["取材で詳しくうかがった点", s.followUpFindings],
+    ]
+).filter(([, v]) => v) as [string, string][];
+
+const title = isGeneral ? "選ばれている理由" : "強み・技術";
+const lead = isGeneral
+  ? "なぜ、お客様に選んでいただけているのか。"
+  : "なぜ他社様で難しいと言われた案件をお受けできるのか。";
 ---
-<Base title="強み・技術" description={`${companyName}が他社で断られた案件を受けられる理由`}>
+<Base title={title} description={`${companyName}が選ばれている理由`}>
   <div class="page-head"><div class="inner">
-    <h1>強み・技術</h1>
-    <p>なぜ他社様で難しいと言われた案件をお受けできるのか。</p>
+    <h1>{title}</h1>
+    <p>{lead}</p>
   </div></div>
   <section class="section"><div class="inner">
     <Prose slug="strengths" />
-    {!hasDraft("strengths") && blocks.map(([title, body]) => (
+    {!hasDraft("strengths") && blocks.map(([heading, body]) => (
       <>
-        <h2>{title}</h2>
+        <h2>{heading}</h2>
         <p>{body}</p>
       </>
     ))}
-    {s.defectRate && (
+    {!isGeneral && s.defectRate && (
       <>
         <h2>品質</h2>
         <p>不良率：{s.defectRate}</p>

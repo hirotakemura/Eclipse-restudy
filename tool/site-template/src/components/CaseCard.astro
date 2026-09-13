@@ -1,9 +1,11 @@
 ---
-import { caseHref } from "../lib/site";
+import { caseHref, isGeneral } from "../lib/site";
 interface Props { index: number; item: any }
 const { index, item } = Astro.props;
+// 汎用は個別ページを作らないので、リンクにしない（リンク先が無いカードを置かない）
+const Tag = isGeneral ? "div" : "a";
 ---
-<a class="case-card" href={caseHref(index)}>
+<Tag class="case-card" href={isGeneral ? undefined : caseHref(index)}>
   <span class="case-industry">{item.clientIndustry}</span>
   <span class="case-title">{item.title}</span>
   {item.challenge && <span class="case-challenge">{item.challenge}</span>}
@@ -12,4 +14,4 @@ const { index, item } = Astro.props;
       {[...(item.materials ?? []), ...(item.processes ?? [])].map((t: string) => <em>{t}</em>)}
     </span>
   )}
-</a>
+</Tag>

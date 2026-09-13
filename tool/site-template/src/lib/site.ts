@@ -84,6 +84,25 @@ export const email = (project.terms?.inquiryNotifyEmail ?? "").match(/[\w.!#$%&'
 /** 電話番号の表記ゆれを `tel:` 用に整える */
 export const telHref = tel.replace(/[^\d+]/g, "");
 
+/**
+ * 商品が2つある（`lib/form-definition.ts`）。**テンプレートは1つしか持たない**（D-096）。
+ *
+ *   manufacturing … 製造業向け（980,000円）。対応可能範囲・設備一覧がSEOの本体
+ *   general       … 汎用ベーシック（198,000円）。業種を問わない。ページ数を増やさない
+ *
+ * 見た目の違いは、聞き取ったデータの違いから出す。コードを分けない。
+ */
+export const formSet = (project as any).formSet ?? "manufacturing";
+export const isGeneral = formSet === "general";
+
+/** 汎用：主なサービス・商品。中身のあるものだけ */
+export const offerings = ((project as any).general?.offerings ?? []).filter(
+  (o: any) => o && (o.name || o.detail),
+);
+export const serviceArea = (project as any).general?.serviceArea ?? "";
+export const idealCustomer = (project as any).general?.idealCustomer ?? "";
+export const reasonChosen = (project as any).general?.reasonChosen ?? "";
+
 const goals = new Set(project.inquiry?.goals ?? []);
 export const hasRecruit = goals.has("採用") && Boolean(project.recruitment);
 export const hasMessage = (goals.has("採用") || goals.has("信用構築")) && Boolean(project.executive?.vision);
@@ -94,17 +113,28 @@ export interface NavItem {
   label: string;
 }
 
-export const nav: NavItem[] = [
-  { href: "/", label: "トップ" },
-  { href: "/capability/", label: "対応可能範囲" },
-  { href: "/equipment/", label: "設備一覧" },
-  { href: "/strengths/", label: "強み・技術" },
-  ...(cases.length ? [{ href: "/cases/", label: "加工事例" }] : []),
-  { href: "/company/", label: "会社概要" },
-  ...(hasRecruit ? [{ href: "/recruit/", label: "採用情報" }] : []),
-  ...(hasMessage ? [{ href: "/message/", label: "代表挨拶" }] : []),
-  { href: "/contact/", label: "お問い合わせ" },
-];
+export const nav: NavItem[] = isGeneral
+  ? [
+      { href: "/", label: "トップ" },
+      ...(offerings.length ? [{ href: "/services/", label: "サービス・料金" }] : []),
+      { href: "/strengths/", label: "選ばれている理由" },
+      ...(cases.length ? [{ href: "/cases/", label: "実績" }] : []),
+      { href: "/company/", label: "会社概要" },
+      ...(hasRecruit ? [{ href: "/recruit/", label: "採用情報" }] : []),
+      ...(hasMessage ? [{ href: "/message/", label: "代表挨拶" }] : []),
+      { href: "/contact/", label: "お問い合わせ" },
+    ]
+  : [
+      { href: "/", label: "トップ" },
+      { href: "/capability/", label: "対応可能範囲" },
+      { href: "/equipment/", label: "設備一覧" },
+      { href: "/strengths/", label: "強み・技術" },
+      ...(cases.length ? [{ href: "/cases/", label: "加工事例" }] : []),
+      { href: "/company/", label: "会社概要" },
+      ...(hasRecruit ? [{ href: "/recruit/", label: "採用情報" }] : []),
+      ...(hasMessage ? [{ href: "/message/", label: "代表挨拶" }] : []),
+      { href: "/contact/", label: "お問い合わせ" },
+    ];
 
 /** 値があるものだけを表の行にする。空欄の行を作らない */
 export function rows(pairs: [string, unknown][]): [string, string][] {

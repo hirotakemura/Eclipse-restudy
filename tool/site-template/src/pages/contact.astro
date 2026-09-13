@@ -7,7 +7,7 @@
  * 相談時に用意していただけると早い情報も先に案内しておく。
  */
 import Base from "../layouts/Base.astro";
-import { project, companyName, tel, telHref, email } from "../lib/site";
+import { project, companyName, tel, telHref, email, isGeneral, serviceArea } from "../lib/site";
 ---
 <Base title="お問い合わせ" description={`${companyName}へのお問い合わせ。お電話・メールで承ります`}>
   <div class="page-head"><div class="inner">
@@ -28,14 +28,28 @@ import { project, companyName, tel, telHref, email } from "../lib/site";
     </div>
 
     <h2>ご相談の際にお知らせいただきたいこと</h2>
-    <p>下記が分かると、可否と概算のお返事が早くなります。分かる範囲で構いません。</p>
-    <ul>
-      <li>図面（PDF・DXFなど。お手元にあるものでかまいません）</li>
-      <li>材質</li>
-      <li>数量</li>
-      <li>ご希望の納期</li>
-      <li>用途・使われ方（精度の要否の判断に使います）</li>
-    </ul>
-    <p>図面がまだ固まっていない段階のご相談も承ります。</p>
+    <p>下記が分かると、お返事が早くなります。分かる範囲で構いません。</p>
+    {isGeneral ? (
+      <>
+        <ul>
+          <li>ご相談の内容（どこが、どのような状態か）</li>
+          <li>ご希望の時期</li>
+          <li>お住まい・所在地の地域</li>
+          <li>ご予算の目安（お決まりであれば）</li>
+        </ul>
+        {serviceArea && <p>対応エリア：{serviceArea}</p>}
+      </>
+    ) : (
+      <>
+        <ul>
+          <li>図面（PDF・DXFなど。お手元にあるものでかまいません）</li>
+          <li>材質</li>
+          <li>数量</li>
+          <li>ご希望の納期</li>
+          <li>用途・使われ方（精度の要否の判断に使います）</li>
+        </ul>
+        <p>図面がまだ固まっていない段階のご相談も承ります。</p>
+      </>
+    )}
   </div></section>
 </Base>

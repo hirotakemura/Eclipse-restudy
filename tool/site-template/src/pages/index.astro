@@ -9,18 +9,31 @@
 import Base from "../layouts/Base.astro";
 import Prose from "../components/Prose.astro";
 import CaseCard from "../components/CaseCard.astro";
-import { project, companyName, cases, photoOf, photosOf } from "../lib/site";
+import { project, companyName, cases, photoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen, caseHref } from "../lib/site";
 import Figure from "../components/Figure.astro";
 import Gallery from "../components/Gallery.astro";
 
 const cap = project.capability ?? ({} as any);
-const facts = [
-  cap.materials?.length ? `材質：${cap.materials.slice(0, 5).join("・")}` : null,
-  cap.processes?.length ? `加工：${cap.processes.slice(0, 5).join("・")}` : null,
-  cap.lotSize ? `ロット：${cap.lotSize}` : null,
-  cap.shortestLeadTime ? `納期：${cap.shortestLeadTime}` : null,
-  cap.certifications?.length ? cap.certifications.join("・") : null,
-].filter(Boolean) as string[];
+
+/**
+ * 10秒で「自分の用は足りるか」を判断してもらうための札。
+ *
+ * 製造業なら「材質・加工法・ロット・納期」、
+ * 汎用なら「対応エリアと、何を扱っているか」。**業種が違っても、見る人の問いは同じ。**
+ */
+const facts = (isGeneral
+  ? [
+      serviceArea ? `対応エリア：${serviceArea}` : null,
+      ...offerings.slice(0, 4).map((o: any) => o.name).filter(Boolean),
+    ]
+  : [
+      cap.materials?.length ? `材質：${cap.materials.slice(0, 5).join("・")}` : null,
+      cap.processes?.length ? `加工：${cap.processes.slice(0, 5).join("・")}` : null,
+      cap.lotSize ? `ロット：${cap.lotSize}` : null,
+      cap.shortestLeadTime ? `納期：${cap.shortestLeadTime}` : null,
+      cap.certifications?.length ? cap.certifications.join("・") : null,
+    ]
+).filter(Boolean) as string[];
 
 const declined = project.strengths?.wonAfterOthersDeclined;
 const desc = [project.basics?.address, cap.processes?.join("・"), cap.materials?.join("・")]
@@ -40,7 +53,33 @@ const desc = [project.basics?.address, cap.processes?.join("・"), cap.materials
 
   <Prose slug="index" />
 
-  {declined && (
+  {isGeneral && offerings.length > 0 && (
+    <section class="section">
+      <div class="inner">
+        <h2>取り扱い</h2>
+        {offerings.slice(0, 4).map((o: any) => (
+          <div class="offering">
+            <h3>{o.name}</h3>
+            {o.detail && <p>{o.detail}</p>}
+            {o.price && <p class="price"><span>料金の目安</span>{o.price}</p>}
+          </div>
+        ))}
+        <p><a href="/services/">サービス・料金をすべて見る</a></p>
+      </div>
+    </section>
+  )}
+
+  {isGeneral && reasonChosen && (
+    <section class="section">
+      <div class="inner">
+        <h2>選ばれている理由</h2>
+        <div class="note-box">{reasonChosen}</div>
+        <p><a href="/strengths/">くわしく見る</a></p>
+      </div>
+    </section>
+  )}
+
+  {!isGeneral && declined && (
     <section class="section">
       <div class="inner">
         <h2>他社様で難しいと言われた案件</h2>
@@ -53,11 +92,13 @@ const desc = [project.basics?.address, cap.processes?.join("・"), cap.materials
   {cases.length > 0 && (
     <section class="section">
       <div class="inner">
-        <h2>加工事例</h2>
+        <h2>{isGeneral ? "実績" : "加工事例"}</h2>
         <div class="cards">
           {cases.slice(0, 6).map((c, i) => <CaseCard index={i} item={c} />)}
         </div>
-        {cases.length > 6 && <p style="margin-top:20px"><a href="/cases/">加工事例をすべて見る</a></p>}
+        {cases.length > 6 && (
+          <p style="margin-top:20px"><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>
+        )}
         <Gallery photos={photosOf("工場・設備").slice(0, 3)} heading="工場・設備" />
       </div>
     </section>

@@ -44,13 +44,6 @@ if (!fs.existsSync(projectFile)) {
 
 const project = JSON.parse(fs.readFileSync(projectFile, "utf8"));
 
-// 汎用フォーム（198,000円）の案件は、対応材質・精度・設備型番といった項目を持たない。
-// 製造業テンプレートに流し込むと、空の表だけのサイトになる
-if ((project.formSet ?? "manufacturing") !== "manufacturing") {
-  console.error("\n  このテンプレートは製造業向けの案件専用です。");
-  console.error("  汎用ベーシックのテンプレートは未着手です（Month 3）。\n");
-  process.exit(1);
-}
 
 const templateDir = "site-template";
 const dataDir = path.join(templateDir, "src", "site-data");
@@ -88,8 +81,22 @@ if (fs.existsSync(draftSrc)) {
   }
 }
 
-console.log(`\n  ${project.basics?.name ?? id}`);
+const productLabel = (project.formSet ?? "manufacturing") === "general"
+  ? "汎用ベーシック（198,000円）"
+  : "製造業向け（980,000円）";
+console.log(`\n  ${project.basics?.name ?? id}　${productLabel}`);
 console.log(`  原稿 ${drafts}ページ分${drafts ? "" : "（まだありません。データだけでサイトを建てます）"}`);
+/**
+ * 未確認マークを付けた項目は、テンプレート側でサイトに出さない（`src/lib/site.ts`）。
+ *
+ * **黙って消えるのが一番まずい。** 何が出ていないのかを、書き出しのたびに必ず見せる。
+ * 「サービス・料金のページが出ていない」の原因が、ここに付けたマークだったことがある
+ */
+const unconfirmed = project.unconfirmed ?? [];
+if (unconfirmed.length) {
+  console.log(`  未確認のため、サイトに出していない項目 ${unconfirmed.length}件`);
+  for (const path of unconfirmed) console.log(`      ${path}`);
+}
 const unplaced = (project.photos ?? []).filter((p) => !p.category || p.category === "その他").length;
 console.log(`  写真 ${photoCount}枚${unplaced ? `（うち置き場所が未定 ${unplaced}枚。サイトには出ません）` : ""}`);
 

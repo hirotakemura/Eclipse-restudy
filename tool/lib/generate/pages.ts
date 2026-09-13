@@ -26,6 +26,7 @@ export interface PageSpec {
 
 export function decidePages(project: Project): PageSpec[] {
   const goals = new Set(project.inquiry?.goals ?? []);
+  if ((project as any).formSet === "general") return generalPages(project, goals);
   const pages: PageSpec[] = [];
 
   pages.push({
@@ -115,6 +116,79 @@ export function decidePages(project: Project): PageSpec[] {
       outline:
         "取材で語られた5年後のビジョンと、社員に伝えたいことを軸にする。" +
         "**取材で出た言葉をそのまま活かす。** 一般的な社長挨拶に薄めない。",
+    });
+  }
+
+  return pages;
+}
+
+/**
+ * 汎用ベーシック（198,000円）で作るページ。
+ *
+ * **ページ数を増やさない。** 30分の取材で取れる材料しかないので、
+ * 薄いページを10枚作るより、要る4枚を厚く書くほうが問い合わせに繋がる。
+ * 会社概要・お問い合わせ・実績の一覧は、テンプレートがデータから出す（D-095）。
+ */
+function generalPages(project: Project, goals: Set<string>): PageSpec[] {
+  const pages: PageSpec[] = [];
+
+  pages.push({
+    slug: "index",
+    title: "トップページ",
+    purpose:
+      "初めて来た人が、10秒で「自分の用は足りるか」を判断できるようにする。" +
+      "見ているのは、何を・いくらで・どこまで来てくれるのか、の3つ。",
+    outline:
+      "①一文で何をしている会社かを言い切る見出し（業種の名前ではなく、客の困りごとの言葉で）" +
+      "②対応エリアと主な取り扱いを、箇条書きで即座に示す" +
+      "③選ばれている理由を1つだけ、具体例で" +
+      "④問い合わせ（電話番号とメールアドレスを必ず併記する）。" +
+      "**取り扱いの一覧と料金の表はテンプレートが出す。ここでは書かない。**",
+  });
+
+  if ((project as any).general?.offerings?.length) {
+    pages.push({
+      slug: "services",
+      title: "サービス・料金",
+      purpose:
+        "**サイトを見た人が知りたいのは「何を、いくらで、誰に」の3つ。** " +
+        "ここが書かれていないサイトは、業種を問わず問い合わせに繋がらない。",
+      outline:
+        "**各サービスの名前・内容・料金はテンプレートがデータから出す。表を書かないこと。**" +
+        "ここで書くのは、その前に置く3〜5行の説明文だけ。" +
+        "初めての人が読んで、自分の用が足りるかどうかが分かる言い方にする。",
+    });
+  }
+
+  pages.push({
+    slug: "strengths",
+    title: "選ばれている理由",
+    purpose:
+      "同業がいくらでもいる中で、なぜこの会社なのかに答える。**最も差がつくページ。**",
+    outline:
+      "①同業と比べてどこが違うかを、具体的に" +
+      "②お客様から繰り返し言われる言葉を、その理由とともに" +
+      "③追い質問で判明したことを、独立した見出しで扱う" +
+      "④誇張しない。事実だけで十分に強い。",
+  });
+
+  if ((project.cases ?? []).length) {
+    pages.push({
+      slug: "cases",
+      title: "実績",
+      purpose: "「自分と似た困りごとを解決したことがあるか」を見せる。",
+      outline:
+        "**各実績の見出し・相談内容・対応・結果はテンプレートがデータから出す。個別に書き起こさないこと。**" +
+        "ここで書くのは、一覧の前に置く2〜4行の説明文だけ。社名は絶対に書かない。",
+    });
+  }
+
+  if (goals.has("採用")) {
+    pages.push({
+      slug: "recruit",
+      title: "採用情報",
+      purpose: "求職者向け。仕事の中身を先に、条件は後に。",
+      outline: "①どんな仕事か ②募集職種と条件 ③応募方法。データにない条件を書かない。",
     });
   }
 

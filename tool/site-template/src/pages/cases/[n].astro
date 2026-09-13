@@ -8,11 +8,13 @@
  */
 import Base from "../../layouts/Base.astro";
 import Prose from "../../components/Prose.astro";
-import { cases, companyName, photosOfCase } from "../../lib/site";
+import { cases, companyName, photosOfCase, isGeneral } from "../../lib/site";
 import Gallery from "../../components/Gallery.astro";
 import { hasDraft } from "../../lib/draft";
 
 export function getStaticPaths() {
+  // 汎用ベーシックは事例を1ページにまとめる。個別ページは作らない
+  if (isGeneral) return [];
   return (cases ?? []).map((item, i) => ({
     params: { n: String(i + 1) },
     props: { item, index: i },

@@ -1,16 +1,31 @@
 ---
 import Base from "../../layouts/Base.astro";
 import CaseCard from "../../components/CaseCard.astro";
-import { cases, companyName } from "../../lib/site";
+import { cases, companyName, isGeneral, photosOfCase } from "../../lib/site";
+import Gallery from "../../components/Gallery.astro";
 ---
-<Base title="加工事例" description={`${companyName}の加工事例。他社で断られた案件の解決例を掲載しています`}>
+<Base title={isGeneral ? "実績" : "加工事例"} description={`${companyName}の${isGeneral ? "実績" : "加工事例"}`}>
   <div class="page-head"><div class="inner">
-    <h1>加工事例</h1>
+    <h1>{isGeneral ? "実績" : "加工事例"}</h1>
     <p>お客様の社名は伏せております。</p>
   </div></div>
   <section class="section"><div class="inner">
-    <div class="cards">
-      {cases.map((c, i) => <CaseCard index={i} item={c} />)}
-    </div>
+    {isGeneral ? (
+      // 汎用は件数が多くないので、1ページに全部出す。個別ページを量産しない
+      cases.map((c: any, i: number) => (
+        <div class="case-body work">
+          <p class="case-industry">{c.clientIndustry}</p>
+          <h2>{c.title}</h2>
+          <Gallery photos={photosOfCase(i + 1)} />
+          {c.challenge && <><h3>ご相談の内容</h3><p>{c.challenge}</p></>}
+          {c.solution && <><h3>対応した内容</h3><p>{c.solution}</p></>}
+          {c.result && <><h3>結果</h3><p>{c.result}</p></>}
+        </div>
+      ))
+    ) : (
+      <div class="cards">
+        {cases.map((c, i) => <CaseCard index={i} item={c} />)}
+      </div>
+    )}
   </div></section>
 </Base>

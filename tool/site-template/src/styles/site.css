@@ -137,6 +137,22 @@ thead th { width: auto; }
 .case-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .case-tags em { font-style: normal; font-size: 13px; background: var(--bg-soft); padding: 3px 9px; border-radius: 3px; }
 
+/* ── サービス・料金（汎用） ─────────────── */
+.offering { border-top: 1px solid var(--line); padding-top: 22px; margin-top: 26px; }
+.offering:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
+.offering h2, .offering h3 { margin-bottom: 8px; }
+.price {
+  display: inline-flex; align-items: baseline; gap: 12px;
+  background: var(--bg-soft); border-left: 4px solid var(--accent);
+  padding: 10px 16px; font-weight: 600; margin: 0;
+}
+.price span { font-size: 13px; font-weight: 400; color: var(--ink-soft); }
+.price + h2, .offering + h2 { margin-top: 40px; }
+/* 実績（汎用は1ページにまとめる） */
+.work { border-top: 1px solid var(--line); padding-top: 30px; margin-top: 34px; }
+.work:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
+.work h2 { margin-top: 4px; }
+
 /* ── 事例本文 ───────────────────────────── */
 .case-body h2 { border-left: 4px solid var(--accent); padding-left: 12px; margin-top: 36px; }
 .note-box { background: var(--bg-soft); border-left: 4px solid var(--accent); padding: 16px 20px; margin: 0 0 26px; }
