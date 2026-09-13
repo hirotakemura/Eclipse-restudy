@@ -235,6 +235,8 @@ export interface Project {
   status: "hearing" | "generating" | "reviewing" | "published" | "archived";
   hearingDate?: string;
   contractedAt?: string;
+  /** 聞き取り内容をお客様に確認いただいた日時 */
+  reviewedAt?: string;
 
   basics: CompanyBasics;
   inquiry: InquiryReality;

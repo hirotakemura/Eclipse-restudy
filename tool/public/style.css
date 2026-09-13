@@ -14,6 +14,7 @@
   --tap: 44px;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
@@ -219,6 +220,68 @@ footer {
   display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap;
 }
 
+/* ── 確認画面（お客様にお見せする） ─────────── */
+/* タブレットを相手に向けて見せる。読めることが最優先なので本文より大きくする */
+#review {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 34px max(20px, env(safe-area-inset-left)) 130px max(20px, env(safe-area-inset-right));
+  font-size: 18px;
+}
+.review-kicker { margin: 0; color: var(--accent); font-weight: 600; letter-spacing: .06em; font-size: 15px; }
+.review-head h1 { margin: 4px 0 2px; font-size: 30px; line-height: 1.35; }
+.review-date { margin: 0; color: var(--muted); font-size: 15px; }
+.review-lead {
+  margin: 20px 0 0; padding: 16px 18px;
+  background: var(--accent-soft); border-radius: var(--radius);
+  font-size: 17px; line-height: 1.9;
+}
+.review-block { margin-top: 38px; }
+.review-block h2 {
+  margin: 0; padding-bottom: 8px;
+  font-size: 21px; color: var(--accent);
+  border-bottom: 2px solid var(--accent);
+}
+.review-row {
+  display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 4px 24px;
+  padding: 14px 2px; border-bottom: 1px solid var(--line);
+}
+.review-label { color: var(--muted); font-size: 16px; line-height: 1.6; }
+.review-value { white-space: pre-wrap; line-height: 1.85; }
+/* 「後日あらためて確認させてください」。その場で答えられなかった項目は隠さず、色を変えて出す */
+.review-value.pending { color: var(--warn); }
+.review-pending-note { margin-top: 4px; font-size: 16px; }
+.review-list { padding: 14px 2px 4px; border-bottom: 1px solid var(--line); }
+.review-item {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--panel); padding: 6px 16px 8px; margin-top: 10px;
+}
+.review-item-title { color: var(--muted); font-size: 14px; padding-top: 8px; }
+.review-item .review-row:last-child { border-bottom: 0; }
+.review-foot { margin: 34px 0 0; color: var(--muted); font-size: 16px; }
+.review-actions {
+  position: sticky; bottom: 0; z-index: 5;
+  display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap;
+  margin-top: 26px; padding: 12px 0 max(12px, env(safe-area-inset-bottom));
+  /* 本文の上に重なるので、透けさせない（下の文字と重なって読めなくなる） */
+  background: var(--bg); border-top: 1px solid var(--line);
+}
+.review-actions button {
+  background: var(--panel); border: 1px solid var(--line); color: inherit;
+  border-radius: var(--radius); padding: 12px 22px; cursor: pointer;
+  min-height: 52px; font-size: 17px;
+}
+.review-actions .primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+
+/* 紙に出して置いていく場合（ボタンや画面の枠は出さない） */
+@media print {
+  header, footer, #main, #empty, .review-actions { display: none !important; }
+  body { background: #fff; font-size: 12pt; }
+  #review { padding: 0; max-width: none; font-size: 12pt; }
+  .review-row, .review-item { break-inside: avoid; }
+  .review-block { break-inside: auto; }
+}
+
 /* ── タブレット縦（iPad 768px など）以下は1カラム ── */
 @media (max-width: 900px) {
   main { grid-template-columns: 1fr; }
@@ -237,6 +300,16 @@ footer {
   .bar { width: 72px; }
   .meter strong { min-width: 42px; }
   .save-status { min-width: 0; flex: 0 0 auto; }
+}
+
+@media (max-width: 760px) {
+  .review-row { grid-template-columns: 1fr; gap: 2px; }
+  .review-head h1 { font-size: 25px; }
+  /* 縦に積むとボタンだけで画面の1/5を占める。1行に収める */
+  .review-actions { flex-wrap: nowrap; }
+  .review-actions button { flex: 1 1 0; padding: 12px 8px; font-size: 16px; }
+  /* 文字数が違うので、幅を等分すると長いほうだけ折り返す */
+  .review-actions #review-done { flex: 1.7 1 0; }
 }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

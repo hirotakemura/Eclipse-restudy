@@ -28,6 +28,8 @@ export interface Field {
   /** Project 型のドットパス。例: "basics.name" */
   path: string;
   label: string;
+  /** 確認画面でお客様に見せる項目名。省略時は `label` を使う */
+  customerLabel?: string;
   type: FieldType;
   /** 充足率の分母に含めるか。取材で必ず取るべき項目を true にする */
   required?: boolean;
@@ -62,7 +64,15 @@ export interface Block {
   id: string;
   /** 取材台本のブロック番号 */
   scriptBlock: string;
+  /** 我々が使う見出し。内部向けの注記（★SEOの本体 など）を含んでよい */
   title: string;
+  /**
+   * 確認画面でお客様に見せる見出し。省略時は `title` を使う。
+   *
+   * **「強み（社長が自分では言えない部分）」をそのままお見せするわけにはいかない。**
+   * 内部向けの言い回しが混ざる見出しには、必ずこちらを付ける。
+   */
+  customerTitle?: string;
   minutes: number;
   note?: string;
   /** 取材中、画面に出しておく追い質問 */

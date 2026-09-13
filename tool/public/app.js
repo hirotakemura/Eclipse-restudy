@@ -489,6 +489,193 @@ function renderList(field, read, write) {
 const escapeHtml = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
+// ── 確認画面（お客様にお見せする） ──────────────────────────
+/**
+ * 取材の最後に、聞き取った内容をそのままお客様にお見せして確認していただく。
+ *
+ * 原稿を書いてから直すより、この場で直すほうが圧倒的に安い。
+ * 数字・型番・材質・社名の誤りは、我々には検算しようがない（lib/verify.ts で弾けるのは
+ * 「どこにも書いていないことを書いた」だけで、聞き間違いは弾けない）。
+ *
+ * **この画面には社内の言葉を出さない。**
+ *   - 見出しの「強み（社長が自分では言えない部分）」を本人に向けるわけにはいかないので、
+ *     customerTitle / customerLabel があればそちらを使う（lib/form-definition.ts）
+ *   - 台本メモ・追い質問・充足率は出さない。あれは我々の道具であってお客様の資料ではない
+ *   - 未確認欄に控えた発言（unconfirmedNotes）も出さない。
+ *     あれは工場長に確認しにいくための手控えで、確定した事実ではない
+ */
+const PENDING_TEXT = "後日あらためて確認させてください";
+const NOT_ASKED_TEXT = "うかがえていません";
+/** lib/schema.ts の NEEDS_REVIEW_MARKER と同じ。取材中に書いた我々への申し送り */
+const NEEDS_REVIEW = "{{要確認}}";
+
+/**
+ * {{要確認}} 以降を落とす。
+ *
+ * 「{{要確認}} 精度・歩留まりの数値実績を工場長に確認する」のような申し送りは、
+ * **お客様に向ける文章ではない。**確定した部分だけを見せ、残りは後日に回す。
+ */
+function splitMarker(text) {
+  if (!text.includes(NEEDS_REVIEW)) return { text, note: "" };
+  const kept = text.split(NEEDS_REVIEW)[0].trim().replace(/[、。]$/, "");
+  return kept
+    ? { text: kept, note: `このほか、${PENDING_TEXT}` }
+    : { text: "", note: PENDING_TEXT };
+}
+
+function jpDate(value) {
+  const d = value ? new Date(value) : new Date();
+  if (Number.isNaN(d.getTime())) return String(value);
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
+/** 値を読める文字列にする。空なら null */
+function reviewText(field, raw) {
+  if (raw === undefined || raw === null || raw === "") return null;
+  if (Array.isArray(raw) && raw.length === 0) return null;
+  switch (field.type) {
+    case "boolean": return raw ? "はい" : "いいえ";
+    case "date": return jpDate(raw);
+    case "tags":
+    case "multiselect": return raw.join("、");
+    case "number": return String(raw);
+    default: return String(raw);
+  }
+}
+
+function reviewRow(label, value, { pending = false, note = "" } = {}) {
+  const row = document.createElement("div");
+  row.className = "review-row";
+  const l = document.createElement("div");
+  l.className = "review-label";
+  l.textContent = label;
+  const v = document.createElement("div");
+  v.className = "review-value";
+  v.textContent = value;
+  if (pending) v.classList.add("pending");
+  if (note) {
+    const n = document.createElement("div");
+    n.className = "review-pending-note pending";
+    n.textContent = note;
+    v.append(n);
+  }
+  row.append(l, v);
+  return row;
+}
+
+/** 値のある行。{{要確認}} の申し送りをここで落とす */
+function valueRow(label, text) {
+  const { text: shown, note } = splitMarker(text);
+  if (!shown) return reviewRow(label, note || PENDING_TEXT, { pending: true });
+  return reviewRow(label, shown, { note });
+}
+
+/** 1項目ぶん。出すものが無ければ null（任意項目の空欄でお客様の画面を埋めない） */
+function renderReviewField(field, blockTitle) {
+  const label = field.customerLabel ?? field.label;
+
+  if (isUnconfirmed(field.path)) return reviewRow(label, PENDING_TEXT, { pending: true });
+
+  const raw = getByPath(state.project, field.path);
+
+  if (field.type === "list") {
+    const items = Array.isArray(raw) ? raw.filter((it) => it && Object.values(it).some((v) => v !== "" && v != null)) : [];
+    if (!items.length) return field.required ? reviewRow(label, NOT_ASKED_TEXT, { pending: true }) : null;
+    const box = document.createElement("div");
+    box.className = "review-list";
+    // 「加工事例」のように見出しと同じ名前のときは、二重に出さない
+    if (label !== blockTitle) {
+      const head = document.createElement("div");
+      head.className = "review-label";
+      head.textContent = label;
+      box.append(head);
+    }
+    items.forEach((item, i) => {
+      const card = document.createElement("div");
+      card.className = "review-item";
+      const title = document.createElement("div");
+      title.className = "review-item-title";
+      title.textContent = `${i + 1} 件目`;
+      card.append(title);
+      for (const sub of field.itemFields ?? []) {
+        const text = reviewText(sub, item[sub.path]);
+        if (text === null) continue;
+        card.append(valueRow(sub.customerLabel ?? sub.label, text));
+      }
+      box.append(card);
+    });
+    return box;
+  }
+
+  const text = reviewText(field, raw);
+  if (text === null) return field.required ? reviewRow(label, NOT_ASKED_TEXT, { pending: true }) : null;
+  return valueRow(label, text);
+}
+
+function renderReview() {
+  const p = state.project;
+  $("#review-company").textContent = p.basics?.name || p.id;
+  $("#review-date").textContent = `${jpDate(p.hearingDate)} 聞き取り`;
+
+  const body = $("#review-body");
+  body.replaceChildren();
+
+  for (const block of state.blocks) {
+    const title = block.customerTitle ?? block.title;
+    const rows = [];
+    for (const field of block.fields) {
+      const el = renderReviewField(field, title);
+      if (el) rows.push(el);
+    }
+    if (!rows.length) continue;
+    const sec = document.createElement("section");
+    sec.className = "review-block";
+    const h = document.createElement("h2");
+    // 内部向けの見出し（★最重要 など）をそのままお見せしない
+    h.textContent = title;
+    sec.append(h, ...rows);
+    body.append(sec);
+  }
+
+  const pending = body.querySelectorAll(".pending").length;
+  const foot = $("#review-foot");
+  foot.textContent = pending
+    ? `「${PENDING_TEXT}」と出ている項目が ${pending} 件あります。こちらからあらためてお尋ねします。`
+    : "お気づきの点があれば、この場でお知らせください。その場で直します。";
+}
+
+function openReview() {
+  renderReview();
+  document.querySelector("header").hidden = true;
+  document.querySelector("footer").hidden = true;
+  $("#main").hidden = true;
+  $("#review").hidden = false;
+  scrollTo({ top: 0 });
+}
+
+/** 確認画面を閉じてふだんの画面構えに戻す。本文をどれにするかは呼び出し側が決める */
+function closeReview() {
+  $("#review").hidden = true;
+  document.querySelector("header").hidden = false;
+  document.querySelector("footer").hidden = false;
+}
+
+/** 最初の画面（案件を選ぶか、新規に作成してください）に戻す */
+async function showHome(status) {
+  clearTimeout(state.saveTimer);
+  state.dirty = false;
+  state.project = null;
+  state.completion = null;
+  closeReview();
+  $("#main").hidden = true;
+  $("#empty").hidden = false;
+  $("#close-project").hidden = true;
+  $("#delete-project").hidden = true;
+  $("#project-select").value = "";
+  setSaveStatus(status);
+  await loadProjectList();
+}
+
 // ── 案件の読み込み ──────────────────────────────────────────
 /**
  * 案件一覧。**商品ごとにグループを分ける。**
@@ -581,20 +768,40 @@ async function openProject(id) {
     dialog.showModal();
     $("#new-name").focus();
   };
-  /** 案件を閉じて最初の画面に戻る。取材が終わったときに使う */
-  const closeProject = async () => {
+  // 入力を終えたら、まずお客様に確認していただく。
+  // 原稿を書いてから誤りが見つかると作り直しになるので、その場で潰す
+  const reviewDialog = $("#review-dialog");
+  $("#close-project").onclick = async () => {
     if (state.dirty) await save();
-    state.project = null;
-    state.completion = null;
-    $("#main").hidden = true;
-    $("#empty").hidden = false;
-    $("#close-project").hidden = true;
-    $("#delete-project").hidden = true;
-    $("#project-select").value = "";
-    setSaveStatus("保存しました");
-    await loadProjectList();
+    const c = state.completion;
+    const name = state.project.basics?.name || state.project.id;
+    const lines = [name];
+    if (c) {
+      const parts = [`必須 ${c.filled}/${c.requiredTotal} 入力済`];
+      if (c.unconfirmed.length) parts.push(`未確認 ${c.unconfirmed.length}件`);
+      if (c.missing.length) parts.push(`未着手 ${c.missing.length}件`);
+      lines.push(parts.join(" ／ "));
+    }
+    if (state.project.reviewedAt) lines.push(`前回の確認：${new Date(state.project.reviewedAt).toLocaleString("ja-JP")}`);
+    $("#review-target").textContent = lines.join("\n");
+    reviewDialog.showModal();
   };
-  $("#close-project").onclick = closeProject;
+  $("#review-cancel").onclick = () => reviewDialog.close();
+  $("#review-open").onclick = () => { reviewDialog.close(); openReview(); };
+
+  // 直すところがあれば編集画面へ戻す
+  $("#review-back").onclick = () => {
+    closeReview();
+    $("#main").hidden = false;
+  };
+
+  // 確認が済んだら、いつ確認していただいたかを残してから最初の画面に戻る
+  $("#review-done").onclick = async () => {
+    state.project.reviewedAt = new Date().toISOString();
+    state.dirty = true;
+    await save();
+    await showHome("確認済みとして保存しました");
+  };
 
   // 削除は「消す」のではなく「ゴミ箱に移す」。
   // 案件データには顧客の技術情報が入っており、取材90分ぶんが誤クリックで消えるのは割に合わない
@@ -614,15 +821,8 @@ async function openProject(id) {
     const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
     delDialog.close();
     if (!res.ok) return alert((await res.json()).error);
-    state.project = null;
-    state.completion = null;
-    $("#main").hidden = true;
-    $("#empty").hidden = false;
-    $("#delete-project").hidden = true;
-    $("#close-project").hidden = true;
-    $("#project-select").value = "";
-    setSaveStatus("削除しました");
-    await loadProjectList();
+    // 保存待ちのタイマーが残っていると、消した案件を書き戻してしまう。showHome で止める
+    await showHome("削除しました");
   };
 
   $("#new-project").onclick = openNew;

@@ -62,6 +62,7 @@ export const BLOCKS: Block[] = [
     id: "offerings",
     scriptBlock: "B",
     title: "売っているもの・選ばれている理由　★最重要",
+    customerTitle: "お取り扱いと、選ばれている理由",
     minutes: 10,
     note:
       "サイトを見た人が知りたいのは「何を、いくらで、誰に、なぜこの会社に頼むのか」の4つだけ。" +
@@ -118,6 +119,7 @@ export const BLOCKS: Block[] = [
       {
         path: "strengths.followUpFindings",
         label: "追い質問で判明したこと",
+        customerLabel: "とくにくわしくうかがった点",
         type: "textarea",
         help:
           "定型質問では出てこなかったが、掘ったら出てきたこと。" +
@@ -167,6 +169,7 @@ export const BLOCKS: Block[] = [
       {
         path: "inquiry.targetKeywords",
         label: "想定検索キーワード",
+        customerLabel: "お客様が検索しそうな言葉（こちらの想定）",
         type: "tags",
         required: true,
         help: "お客様が困ったときに何と検索するか。「業種＋地域」だけで終わらせない",
@@ -207,10 +210,18 @@ export const BLOCKS: Block[] = [
     id: "terms",
     scriptBlock: "E",
     title: "制作条件・クロージング",
+    customerTitle: "制作にあたっての条件",
     minutes: 2,
     note: "次のアクション日を明言する：「1週間後に構成案と原稿をお送りします」",
     fields: [
-      { path: "terms.ngItems", label: "出せない情報（NG）", type: "tags", required: true, help: "取引先名・価格など、載せないでほしいものはありますか" },
+      {
+        path: "terms.ngItems",
+        label: "出せない情報（NG）",
+        customerLabel: "サイトに出さないとお約束した情報",
+        type: "tags",
+        required: true,
+        help: "取引先名・価格など、載せないでほしいものはありますか"
+      },
       { path: "terms.inquiryNotifyEmail", label: "問い合わせの通知先メール", type: "text", required: true },
       { path: "terms.photo.hasExisting", label: "使える写真があるか", type: "boolean", help: "無い場合はスマホでの撮影指示書をこちらで作る" },
       { path: "terms.domain.existing", label: "既存ドメイン", type: "text" },

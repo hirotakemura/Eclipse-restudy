@@ -69,6 +69,7 @@ export const BLOCKS: Block[] = [
     id: "inquiry",
     scriptBlock: "ブロック2",
     title: "引き合いの実態　★最重要",
+    customerTitle: "お仕事の引き合いについて",
     minutes: 20,
     note:
       "ここでサイト全体の設計が決まる。綺麗なサイトを作るのではなく、今足りていない引き合いを取るサイトを作るため。" +
@@ -111,11 +112,20 @@ export const BLOCKS: Block[] = [
       {
         path: "inquiry.outlookConcern",
         label: "受注の先行きへの不安",
+        customerLabel: "今後の受注について気にされていること",
         type: "textarea",
         required: true,
         help: "今のお取引先からの発注量は、来年・再来年も同じくらい続きそうですか。変化の兆しはありますか",
       },
-      { path: "inquiry.targetKeywords", label: "想定検索キーワード", type: "tags", required: true, help: "商談前調査と取材から確定する" },
+      {
+        path: "inquiry.targetKeywords",
+        label: "想定検索キーワード",
+        // お客様の発言ではなく我々の想定。確認画面ではそう分かる言い方にする
+        customerLabel: "お客様が検索しそうな言葉（こちらの想定）",
+        type: "tags",
+        required: true,
+        help: "商談前調査と取材から確定する"
+      },
     ],
   },
 
@@ -124,6 +134,7 @@ export const BLOCKS: Block[] = [
     id: "capability",
     scriptBlock: "ブロック3",
     title: "技術・設備　★SEOの本体",
+    customerTitle: "技術・設備",
     minutes: 15,
     note:
       "BtoB製造業の検索は「材質×加工法×条件」と「設備の型番」で行われる。" +
@@ -177,7 +188,7 @@ export const BLOCKS: Block[] = [
           { path: "maker", label: "メーカー", type: "text" },
           { path: "model", label: "型番", type: "text" },
           { path: "count", label: "台数", type: "number" },
-          { path: "note", label: "備考", type: "text" },
+          { path: "note", label: "備考", customerLabel: "補足", type: "text" },
         ],
       },
       { path: "capability.certifications", label: "資格・認証", type: "tags", required: true, help: "ISOのほか、特殊工程の資格などがあれば", placeholder: "聞き取ったとおりに" },
@@ -190,6 +201,7 @@ export const BLOCKS: Block[] = [
     id: "strengths",
     scriptBlock: "ブロック3",
     title: "強み（社長が自分では言えない部分）",
+    customerTitle: "御社の強み",
     minutes: 10,
     note:
       "社長は自社の強みを自分では言語化できない。この質問群で引き出す。" +
@@ -223,6 +235,7 @@ export const BLOCKS: Block[] = [
       {
         path: "strengths.followUpFindings",
         label: "追い質問で判明したこと",
+        customerLabel: "とくにくわしくうかがった点",
         type: "textarea",
         required: true,
         help: "台本の定型質問では出てこなかったが、追い質問で出てきた強み。"
@@ -236,6 +249,7 @@ export const BLOCKS: Block[] = [
     id: "cases",
     scriptBlock: "ブロック4",
     title: "加工事例　★最も問い合わせに繋がる",
+    customerTitle: "加工事例",
     minutes: 20,
     note:
       "事例ページはBtoB製造業サイトで最も読まれ、最も問い合わせに繋がる。最低3本。" +
@@ -263,7 +277,9 @@ export const BLOCKS: Block[] = [
           { path: "result", label: "結果", type: "textarea", help: "数字があれば必ず数字で（不良率◯%改善、コスト◯%削減）" },
           { path: "materials", label: "材質", type: "tags" },
           { path: "processes", label: "加工法", type: "tags" },
-          { path: "confidentialityNotes", label: "秘密保持のメモ", type: "text" },
+          // 社名を出してよいかは、事例ページを作る前に必ず本人に確認が要る。
+          // 確認画面で最も見ていただきたい項目のひとつなので、伝わる言い方にする
+          { path: "confidentialityNotes", label: "秘密保持のメモ", customerLabel: "掲載してよい範囲", type: "text" },
         ],
       },
     ],
@@ -294,11 +310,19 @@ export const BLOCKS: Block[] = [
     id: "terms",
     scriptBlock: "ブロック6",
     title: "制作条件・クロージング",
+    customerTitle: "制作にあたっての条件",
     minutes: 5,
     note: "次のアクション日を明言する：「1週間後に構成案と原稿の第1稿をお送りします」",
     fields: [
       { path: "terms.targetLaunchDate", label: "公開希望日", type: "date" },
-      { path: "terms.ngItems", label: "出せない情報（NG）", type: "tags", required: true, help: "取引先名／価格／特定の技術など、出せない情報はありますか" },
+      {
+        path: "terms.ngItems",
+        label: "出せない情報（NG）",
+        customerLabel: "サイトに出さないとお約束した情報",
+        type: "tags",
+        required: true,
+        help: "取引先名／価格／特定の技術など、出せない情報はありますか"
+      },
       { path: "terms.photo.hasExisting", label: "使える既存写真があるか", type: "boolean" },
       { path: "terms.photo.professionalShootNeeded", label: "プロ撮影が必要か", type: "boolean" },
       { path: "terms.photo.shootDate", label: "撮影日", type: "date" },

@@ -38,6 +38,34 @@
   <section id="form"></section>
 </main>
 
+<!--
+  お客様にお見せする確認画面。
+  取材の最後に、この画面をそのままタブレットでお客様に向ける。
+  **ヘッダー（充足率）とフッター（削除ボタン）は隠す。**
+  充足率90%という数字は我々の指標であって、お客様に見せるものではない。
+-->
+<section id="review" hidden>
+  <div class="review-head">
+    <p class="review-kicker">聞き取り内容のご確認</p>
+    <h1 id="review-company"></h1>
+    <p class="review-date" id="review-date"></p>
+    <p class="review-lead">
+      本日うかがった内容です。この内容をもとに、ホームページの原稿をつくります。<br>
+      <b>数字・型番・材質・社名など、事実の間違いがないか</b>をご確認ください。
+      文章の言い回しは、こちらで整えます。
+    </p>
+  </div>
+
+  <div id="review-body"></div>
+
+  <p class="review-foot" id="review-foot"></p>
+
+  <div class="review-actions">
+    <button type="button" id="review-back">編集に戻る</button>
+    <button type="button" id="review-done" class="primary">この内容で確認しました</button>
+  </div>
+</section>
+
 <footer>
   <div id="missing-summary"></div>
   <button id="close-project" type="button" hidden>入力を終える</button>
@@ -61,6 +89,26 @@
     <div class="dialog-actions">
       <button type="button" id="unconf-cancel">キャンセル</button>
       <button type="button" id="unconf-ok" class="primary">未確認にする</button>
+    </div>
+  </div>
+</dialog>
+
+<!--
+  確認画面をお客様にお見せする前の、我々への確認。
+  自由記述欄には取材中の自分用メモが混じることがある。お客様に向ける前に一度止める。
+-->
+<dialog id="review-dialog">
+  <div class="dialog-body">
+    <h2>お客様にご確認いただきます</h2>
+    <p class="delete-target" id="review-target"></p>
+    <p class="hint">
+      次の画面は<b>そのままお客様にお見せします。</b>
+      自由記述の欄に自分用のメモが残っていないか、先に目を通してください。<br>
+      未確認にした項目は「後日あらためて確認させてください」と表示されます。
+    </p>
+    <div class="dialog-actions">
+      <button type="button" id="review-cancel">まだ直す</button>
+      <button type="button" id="review-open" class="primary">確認画面を開く</button>
     </div>
   </div>
 </dialog>
