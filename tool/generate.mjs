@@ -21,10 +21,36 @@ if (!fs.existsSync(file)) {
   process.exit(1);
 }
 
-if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
-  console.error("\nAnthropic API の認証情報が見つかりません。\n");
-  console.error("  export ANTHROPIC_API_KEY=sk-ant-...\n");
-  console.error("を設定してから実行してください。");
+const key = process.env.ANTHROPIC_API_KEY;
+
+if (!key && !process.env.ANTHROPIC_AUTH_TOKEN) {
+  console.error("\n  Anthropic API の認証情報が見つかりません。\n");
+  console.error("    export ANTHROPIC_API_KEY=sk-ant-api03-...\n");
+  console.error("  を設定してから実行してください。");
+  console.error("  キーは https://console.anthropic.com → Settings → API keys で作れます。\n");
+  process.exit(1);
+}
+
+/**
+ * キーの形をここで見る。
+ *
+ * **コンソールの一覧に出ている `apikey_...` は、キーのID であってキーではない。**
+ * これを設定すると、10ページぶんの生成を始めてから401で落ちる。
+ * APIに投げる前に、形だけでも確かめて止める。
+ */
+if (key && !key.startsWith("sk-ant-")) {
+  console.error("\n  ANTHROPIC_API_KEY の形が違います。\n");
+  if (key.startsWith("apikey_")) {
+    console.error("  設定されているのは **キーのID** です（コンソールの一覧に出ている文字列）。");
+    console.error("  必要なのはキー本体で、`sk-ant-api03-` から始まります。\n");
+    console.error("  **キー本体は作成時に一度しか表示されません。**");
+    console.error("  分からなくなった場合は、新しいキーを作り直してください。\n");
+  } else {
+    console.error(`  いま設定されている値：${key.slice(0, 7)}…（${key.length}文字）`);
+    console.error("  キー本体は `sk-ant-api03-` から始まります。\n");
+  }
+  console.error("    export ANTHROPIC_API_KEY=sk-ant-api03-...\n");
+  console.error("  https://console.anthropic.com → Settings → API keys\n");
   process.exit(1);
 }
 
@@ -32,7 +58,37 @@ const { generateSite, estimateCost } = await import("./lib/generate/pipeline.ts"
 const project = JSON.parse(fs.readFileSync(file, "utf8"));
 
 console.log(`\n${project.basics?.name ?? id} の原稿を生成します\n`);
-const results = await generateSite(project, { onProgress: (m) => console.log(m) });
+
+/**
+ * APIのエラーを、そのままスタックトレースで出さない。
+ *
+ * 何が起きたのか・次に何をすればよいのかを日本語で出す。
+ * 取材の後で疲れているときに、英語のスタックトレースを読ませない
+ */
+let results;
+try {
+  results = await generateSite(project, { onProgress: (m) => console.log(m) });
+} catch (err) {
+  const status = err?.status;
+  console.error("\n  生成できませんでした。\n");
+  if (status === 401) {
+    console.error("  APIキーが受け付けられませんでした（401）。");
+    console.error("  キーが失効しているか、別のキーが設定されている可能性があります。");
+    console.error("  いま設定されている値：" + (key ? `${key.slice(0, 12)}…（${key.length}文字）` : "（なし）"));
+    console.error("\n  https://console.anthropic.com → Settings → API keys で作り直してください。");
+  } else if (status === 403) {
+    console.error("  そのキーでは、このモデルを使う権限がありません（403）。");
+  } else if (status === 429) {
+    console.error("  回数の上限に達しました（429）。時間をおいて、もう一度実行してください。");
+    console.error("  途中まで生成したページは保存されていません。最初からやり直しになります。");
+  } else if (status >= 500) {
+    console.error(`  Anthropic側で一時的な障害が起きています（${status}）。時間をおいて再実行してください。`);
+  } else {
+    console.error(`  ${err?.message ?? err}`);
+  }
+  console.error("");
+  process.exit(1);
+}
 
 const outDir = path.join("projects", id, "draft");
 fs.mkdirSync(outDir, { recursive: true });
