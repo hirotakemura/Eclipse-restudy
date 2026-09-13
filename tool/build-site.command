@@ -45,5 +45,16 @@ if [ -z "$id" ]; then
 fi
 
 node build-site.mjs "$id"
+status=$?
+
 echo ""
-read -r -p "  Enterで閉じます " _
+if [ "$status" = "0" ]; then
+  # file:// で開くとリンクも写真も切れるので、必ずサーバー経由で見てもらう
+  read -r -p "  ブラウザで見ますか？（Enterで開く／nで閉じる）： " see
+  case "$see" in
+    n|N) ;;
+    *) node preview-site.mjs "$id" ;;
+  esac
+else
+  read -r -p "  Enterで閉じます " _
+fi

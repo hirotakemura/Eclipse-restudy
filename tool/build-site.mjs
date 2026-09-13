@@ -120,6 +120,8 @@ const files = fs.existsSync(outDir) ? fs.readdirSync(outDir, { recursive: true }
 const html = files.filter((f) => String(f).endsWith(".html"));
 console.log(`\n  ${html.length}ページを書き出しました`);
 console.log(`  書き出し先: ${path.relative(process.cwd(), outDir)}`);
+// **file:// で開くとリンクも写真も切れる。**必ずサーバー経由で見てもらう
+console.log(`\n  見るには：  npm run preview:site -- ${id}`);
 if (!domain) console.log(`  ※ ドメイン未定のため ${siteUrl} で書き出しています。決まったら聞き取りに入れて再実行してください。`);
 
 /**
