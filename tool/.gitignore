@@ -15,3 +15,8 @@ site-template/.astro/
 
 # サイト書き出しの作業用フォルダ
 projects/*/.build/
+
+# 書き出しのたびに build-site.mjs が案件の写真をここへ複製する。
+# **お客様の写真そのものなので、絶対にコミットしない。**
+# 一度 Git に入ってしまっていた（D-186）
+site-template/public/photos/
