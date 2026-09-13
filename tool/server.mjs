@@ -12,9 +12,9 @@
  */
 
 import { createServer } from "node:http";
-import { readFile, writeFile, rename, mkdir, readdir, stat } from "node:fs/promises";
+import { readFile, writeFile, rename, mkdir, readdir, stat, rm } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
-import { join, dirname, extname, resolve } from "node:path";
+import { join, dirname, extname, resolve, basename } from "node:path";
 import { networkInterfaces } from "node:os";
 import { fileURLToPath } from "node:url";
 
@@ -80,7 +80,17 @@ const MIME = {
   ".js": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+  ".gif": "image/gif",
+  ".svg": "image/svg+xml",
+  ".heic": "image/heic",
 };
+
+/** 写真として受け取る拡張子。iPhoneの標準は HEIC なので必ず含める */
+const PHOTO_EXT = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".heic"]);
 
 /** 案件IDに使えるのは英数字・ハイフン・アンダースコアのみ。パストラバーサル対策 */
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -97,6 +107,35 @@ function json(res, status, body) {
   const payload = JSON.stringify(body);
   res.writeHead(status, { "content-type": MIME[".json"], "cache-control": "no-store" });
   res.end(payload);
+}
+
+/** 生のバイト列を読む。写真の受け取りに使う */
+async function readBytes(req, limit) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > limit) throw new Error("ファイルが大きすぎます");
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
+/**
+ * 預かった写真のファイル名を安全にする。
+ *
+ * **お客様から届くファイル名は何でもあり得る。**
+ * 日本語・空白・`../`・絵文字。そのまま保存先に使わない。
+ */
+function safePhotoName(raw) {
+  const ext = extname(String(raw ?? "")).toLowerCase();
+  if (!PHOTO_EXT.has(ext)) throw new Error(`画像ファイルではありません: ${raw}`);
+  const base = basename(String(raw), ext)
+    .replace(/[^A-Za-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+  const stamp = Date.now().toString(36);
+  return `${base || "photo"}-${stamp}${ext}`;
 }
 
 async function readBody(req) {
@@ -208,6 +247,44 @@ const server = createServer(async (req, res) => {
       const project = emptyProject(id, name, formSet);
       await writeJsonAtomic(file, project);
       return json(res, 201, withCompletion(project));
+    }
+
+    /**
+     * 写真の受け渡し。
+     *
+     * multipart は解析にライブラリが要る。**依存を増やしたくないので生のバイト列で受ける。**
+     * ブラウザからは fetch(url, { method: "POST", body: file }) だけで送れる
+     */
+    const photoMatch = path.match(/^\/api\/projects\/([^/]+)\/photos(?:\/([^/]+))?$/);
+    if (photoMatch) {
+      const id = decodeURIComponent(photoMatch[1]);
+      const dir = join(projectDir(id), "photos");
+
+      if (req.method === "POST") {
+        const name = safePhotoName(url.searchParams.get("name"));
+        const bytes = await readBytes(req, 25 * 1024 * 1024);
+        if (!bytes.length) return json(res, 400, { error: "中身が空です" });
+        await mkdir(dir, { recursive: true });
+        await writeFile(join(dir, name), bytes);
+        return json(res, 201, { file: name, bytes: bytes.length });
+      }
+
+      const name = photoMatch[2] ? decodeURIComponent(photoMatch[2]) : null;
+      if (name) {
+        // 保存済みのファイル名しか来ない前提だが、念のため基本名だけを使う
+        const file = join(dir, basename(name));
+        if (!resolve(file).startsWith(resolve(dir))) return json(res, 400, { error: "不正なファイル名" });
+
+        if (req.method === "GET") {
+          if (!existsSync(file)) return json(res, 404, { error: "写真が見つかりません" });
+          res.writeHead(200, { "content-type": MIME[extname(file)] ?? "application/octet-stream" });
+          return res.end(await readFile(file));
+        }
+        if (req.method === "DELETE") {
+          if (existsSync(file)) await rm(file);
+          return json(res, 200, { removed: name });
+        }
+      }
     }
 
     const match = path.match(/^\/api\/projects\/([^/]+)$/);

@@ -8,7 +8,8 @@
  */
 import Base from "../../layouts/Base.astro";
 import Prose from "../../components/Prose.astro";
-import { cases, companyName } from "../../lib/site";
+import { cases, companyName, photosOfCase } from "../../lib/site";
+import Gallery from "../../components/Gallery.astro";
 import { hasDraft } from "../../lib/draft";
 
 export function getStaticPaths() {
@@ -33,6 +34,7 @@ const sections = [
   </div></div>
   <section class="section"><div class="inner case-body">
     {item.partDescription && <div class="note-box">{item.partDescription}</div>}
+    <Gallery photos={photosOfCase(index + 1)} />
     <Prose slug={slug} />
     {!hasDraft(slug) && sections.map(([title, body]) => (
       <>

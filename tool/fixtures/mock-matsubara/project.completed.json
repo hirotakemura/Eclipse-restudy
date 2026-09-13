@@ -24,7 +24,8 @@
         "year": "2019年",
         "event": "現社長（三代目）が就任"
       }
-    ]
+    ],
+    "tel": "093-000-0000"
   },
   "inquiry": {
     "monthlyInquiries": "月1〜2件",
@@ -191,5 +192,53 @@
     "capability.processes": "「現場に聞かないと分からないです」。工場長に要確認。",
     "capability.maxSize": "「現場に聞かないと分からないかな」。工場長に要確認。",
     "capability.minSize": "「現場に聞かないと分からないかな」。工場長に要確認。"
-  }
+  },
+  "photos": [
+    {
+      "file": "gaikan-mtzd3we7.svg",
+      "category": "外観",
+      "caption": "本社工場（八幡西区）"
+    },
+    {
+      "file": "daihyo-mtzd3wds.svg",
+      "category": "代表者",
+      "caption": "代表取締役 松原 健二"
+    },
+    {
+      "file": "kojo-1-mtzd3wf4.svg",
+      "category": "工場・設備",
+      "caption": "マシニングセンタ"
+    },
+    {
+      "file": "kojo-2-mtzd3wfd.svg",
+      "category": "工場・設備",
+      "caption": "NC旋盤"
+    },
+    {
+      "file": "kojo-3-mtzd3wfl.svg",
+      "category": "工場・設備",
+      "caption": "三次元測定機"
+    },
+    {
+      "file": "jirei-1-mtzd3weo.svg",
+      "category": "加工事例",
+      "caseNo": 1,
+      "caption": "薄肉カバー部品"
+    },
+    {
+      "file": "jirei-2-mtzd3wew.svg",
+      "category": "加工事例",
+      "caseNo": 2,
+      "caption": "ステンレス薄物部品"
+    },
+    {
+      "file": "hataraku-1-mtzd3weg.svg",
+      "category": "働く人",
+      "caption": "加工の段取り"
+    },
+    {
+      "file": "logo-mtzd3wfu.svg",
+      "category": "ロゴ"
+    }
+  ]
 }

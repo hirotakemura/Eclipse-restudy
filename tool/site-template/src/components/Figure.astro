@@ -1,0 +1,12 @@
+---
+/** 写真1枚。説明文があれば添える */
+import { photoSrc } from "../lib/site";
+interface Props { photo: any; className?: string; eager?: boolean }
+const { photo, className = "", eager = false } = Astro.props;
+---
+{photo && (
+  <figure class={`photo ${className}`}>
+    <img src={photoSrc(photo)} alt={photo.caption ?? ""} loading={eager ? "eager" : "lazy"} />
+    {photo.caption && <figcaption>{photo.caption}</figcaption>}
+  </figure>
+)}

@@ -7,7 +7,9 @@
  */
 import Base from "../layouts/Base.astro";
 import Prose from "../components/Prose.astro";
-import { project, hasRecruit, hasMessage, companyName } from "../lib/site";
+import { project, hasRecruit, hasMessage, companyName, photoOf, photosOf } from "../lib/site";
+import Figure from "../components/Figure.astro";
+import Gallery from "../components/Gallery.astro";
 import { hasDraft } from "../lib/draft";
 
 export function getStaticPaths() {
@@ -40,6 +42,7 @@ const blocks = kind === "recruit"
     )}
   </div></div>
   <section class="section"><div class="inner">
+    {kind === "message" && <Figure photo={photoOf("代表者")} className="portrait" />}
     <Prose slug={kind} />
     {!hasDraft(kind) && blocks.map(([h, body]) => (
       <>
@@ -47,6 +50,7 @@ const blocks = kind === "recruit"
         <p>{body}</p>
       </>
     ))}
+    {kind === "recruit" && <Gallery photos={photosOf("働く人")} />}
     {kind === "recruit" && (
       <p style="margin-top:30px">ご応募・ご質問は<a href="/contact/">お問い合わせ</a>よりご連絡ください。</p>
     )}

@@ -22,6 +22,7 @@ export type FieldType =
   | "multiselect"
   | "date"
   | "boolean"
+  | "photos" // 写真。ファイルを預かって置き場所（カテゴリ）を決める
   | "list"; // オブジェクトの配列
 
 export interface Field {

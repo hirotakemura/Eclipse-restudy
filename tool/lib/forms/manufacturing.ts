@@ -315,6 +315,14 @@ export const BLOCKS: Block[] = [
     note: "次のアクション日を明言する：「1週間後に構成案と原稿の第1稿をお送りします」",
     followUps: [
       {
+        trigger: "写真は用意できていない",
+        ask: "外観と社長のお写真だけ、後日スマホで撮って送っていただけますか。この2枚は効きます",
+      },
+      {
+        trigger: "写真はたくさんある",
+        ask: "加工したものが写っている写真はありますか。事例のページに載せる写真が、一番問い合わせに繋がります",
+      },
+      {
         trigger: "今のドメインをそのまま使いたい",
         ask: "そのドメインで、メールもお使いですか。info@◯◯ のようなアドレスです",
       },
@@ -334,6 +342,16 @@ export const BLOCKS: Block[] = [
         help: "取引先名／価格／特定の技術など、出せない情報はありますか"
       },
       { path: "terms.photo.hasExisting", label: "使える既存写真があるか", type: "boolean" },
+      {
+        path: "photos",
+        label: "お預かりした写真",
+        customerLabel: "お預かりした写真",
+        type: "photos",
+        help:
+          "その場でいただけるものはここで預かる。後日でも構わない。" +
+          "**先に置き場所を決めてから、必要な枚数だけお願いする。**" +
+          "「とりあえず写真をください」と頼むと、使えない画像が大量に届く",
+      },
       { path: "terms.photo.professionalShootNeeded", label: "プロ撮影が必要か", type: "boolean" },
       { path: "terms.photo.shootDate", label: "撮影日", type: "date" },
       { path: "terms.domain.existing", label: "既存ドメイン", type: "text" },

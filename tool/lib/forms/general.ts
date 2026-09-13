@@ -234,6 +234,16 @@ export const BLOCKS: Block[] = [
       },
       { path: "terms.inquiryNotifyEmail", label: "問い合わせの通知先メール", type: "text", required: true },
       { path: "terms.photo.hasExisting", label: "使える写真があるか", type: "boolean", help: "無い場合はスマホでの撮影指示書をこちらで作る" },
+      {
+        path: "photos",
+        label: "お預かりした写真",
+        customerLabel: "お預かりした写真",
+        type: "photos",
+        help:
+          "その場でいただけるものはここで預かる。後日でも構わない。" +
+          "**先に置き場所を決めてから、必要な枚数だけお願いする。**" +
+          "「とりあえず写真をください」と頼むと、使えない画像が大量に届く",
+      },
       { path: "terms.domain.existing", label: "既存ドメイン", type: "text" },
       { path: "terms.domain.desired", label: "希望ドメイン（新規取得）", type: "text" },
       {

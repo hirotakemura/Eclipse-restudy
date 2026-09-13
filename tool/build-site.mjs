@@ -58,6 +58,22 @@ fs.mkdirSync(draftDst, { recursive: true });
 fs.writeFileSync(path.join(dataDir, ".gitkeep"), "");
 fs.writeFileSync(path.join(dataDir, "project.json"), JSON.stringify(project, null, 2));
 
+// 預かった写真を公開ファイルとして配る。project.json はファイル名しか持っていない
+const photoDst = path.join(templateDir, "public", "photos");
+fs.rmSync(photoDst, { recursive: true, force: true });
+const photoSrc = path.join(projectDir, "photos");
+let photoCount = 0;
+if (fs.existsSync(photoSrc)) {
+  fs.mkdirSync(photoDst, { recursive: true });
+  // project.json に載っている写真だけを配る。**載せると決めていない画像を公開しない**
+  const listed = new Set((project.photos ?? []).map((p) => p.file));
+  for (const f of fs.readdirSync(photoSrc)) {
+    if (!listed.has(f)) continue;
+    fs.copyFileSync(path.join(photoSrc, f), path.join(photoDst, f));
+    photoCount++;
+  }
+}
+
 const draftSrc = path.join(projectDir, "draft");
 let drafts = 0;
 if (fs.existsSync(draftSrc)) {
@@ -69,6 +85,8 @@ if (fs.existsSync(draftSrc)) {
 
 console.log(`\n  ${project.basics?.name ?? id}`);
 console.log(`  原稿 ${drafts}ページ分${drafts ? "" : "（まだありません。データだけでサイトを建てます）"}`);
+const unplaced = (project.photos ?? []).filter((p) => !p.category || p.category === "その他").length;
+console.log(`  写真 ${photoCount}枚${unplaced ? `（うち置き場所が未定 ${unplaced}枚。サイトには出ません）` : ""}`);
 
 // 依存は初回だけ入れる
 if (!fs.existsSync(path.join(templateDir, "node_modules"))) {

@@ -167,6 +167,40 @@ button { font: inherit; }
 .sub-field { margin-bottom: 12px; }
 .sub-field label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 3px; line-height: 1.6; }
 
+/* ── 写真 ─────────────────────────────────── */
+/* **先に置き場所を決めてから集める。** 何に使うか決めずに集めた写真は使えない */
+.photo-places { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 12px; }
+.photo-places th, .photo-places td { border: 1px solid var(--line); padding: 5px 9px; text-align: left; font-weight: 400; }
+.photo-places thead th { background: var(--bg); font-weight: 600; }
+.photo-places tbody th { width: 96px; font-weight: 600; white-space: nowrap; }
+.photo-pick {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 9px 18px; min-height: var(--tap); cursor: pointer; margin-bottom: 6px;
+}
+.photo-pick:hover { border-color: var(--accent); color: var(--accent); }
+.photo-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; margin-top: 10px; }
+.photo-card {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 10px; background: var(--panel); display: flex; flex-direction: column; gap: 7px;
+}
+/* 置き場所が決まっていない写真は、ひと目で分かるようにする */
+.photo-card.unplaced { border-color: var(--warn); background: var(--warn-soft); }
+.photo-thumb { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 4px; background: var(--bg); }
+.photo-thumb.no-preview {
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  font-size: 12px; color: var(--muted); padding: 8px; border: 1px dashed var(--line);
+}
+.photo-card select, .photo-card input { min-height: 38px; font-size: 14px; padding: 6px 8px; }
+.photo-card .del-item { align-self: flex-start; }
+
+/* 確認画面の写真 */
+.review-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; margin-top: 10px; }
+.review-photos figure { margin: 0; }
+.review-photos img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--line); }
+.review-photos figcaption { font-size: 15px; color: var(--muted); margin-top: 5px; }
+
 /* ── 新規案件ダイアログ ───────────────────── */
 dialog {
   border: 1px solid var(--line); border-radius: 12px; padding: 0;

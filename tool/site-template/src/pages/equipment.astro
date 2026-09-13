@@ -7,7 +7,8 @@
  */
 import Base from "../layouts/Base.astro";
 import Prose from "../components/Prose.astro";
-import { project, companyName } from "../lib/site";
+import { project, companyName, photosOf } from "../lib/site";
+import Gallery from "../components/Gallery.astro";
 
 const equipment = (project.capability?.equipment ?? []).filter((e: any) => e.maker || e.model);
 const total = equipment.reduce((s: number, e: any) => s + (Number(e.count) || 0), 0);
@@ -37,5 +38,6 @@ const total = equipment.reduce((s: number, e: any) => s + (Number(e.count) || 0)
     ) : (
       <p>設備の詳細はお問い合わせください。</p>
     )}
+    <Gallery photos={photosOf("工場・設備")} />
   </div></section>
 </Base>

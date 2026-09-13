@@ -359,6 +359,8 @@ function renderInput(field, path, target, localKey = null) {
       }
       return box;
     }
+    case "photos":
+      return renderPhotos(field, read, write);
     case "tags":
       return renderTags(field, read, write);
     case "list":
@@ -372,6 +374,162 @@ function renderInput(field, path, target, localKey = null) {
       return el;
     }
   }
+}
+
+/**
+ * 写真。
+ *
+ * **先に置き場所を決めてから集める。**
+ * 「とりあえず写真をください」と頼むと、何に使うか分からないまま撮りためた画像が
+ * 大量に届いて、結局どれも使えない。サイトのどこに出るかを決めてから、必要な枚数だけ頼む。
+ *
+ * ファイルは projects/<案件ID>/photos/ に置き、project.json にはファイル名だけを持つ。
+ * 案件フォルダを丸ごと渡せば写真も一緒に渡る（引き渡しパッケージ・docs/17）。
+ */
+// lib/schema.ts の PhotoCategory と同じ。サイトのどこに出るかと、目安の枚数
+const PHOTO_PLACES = [
+  ["外観", "トップ・会社概要", "1枚"],
+  ["代表者", "代表挨拶・会社概要", "1枚"],
+  ["工場・設備", "設備一覧・強み", "3〜8枚"],
+  ["加工事例", "各事例ページ　★最も効く", "1〜3枚／件"],
+  ["働く人", "採用情報", "2〜4枚"],
+  ["ロゴ", "ヘッダー", "1枚"],
+  ["その他", "置き場所は後で決める", "—"],
+];
+
+const photoUrl = (file) => `/api/projects/${state.project.id}/photos/${encodeURIComponent(file)}`;
+
+function renderPhotos(field, read, write) {
+  const box = document.createElement("div");
+  box.className = "photos";
+
+  const legend = document.createElement("table");
+  legend.className = "photo-places";
+  legend.innerHTML =
+    "<thead><tr><th>置き場所</th><th>サイトのどこに出るか</th><th>目安</th></tr></thead><tbody>" +
+    PHOTO_PLACES.map(([c, where, n]) =>
+      `<tr><th>${escapeHtml(c)}</th><td>${escapeHtml(where)}</td><td>${escapeHtml(n)}</td></tr>`).join("") +
+    "</tbody>";
+
+  const grid = document.createElement("div");
+  grid.className = "photo-grid";
+
+  // OSの標準ボタン（Choose Files）は英語で出ることがあり、タブレットでは押しにくい。
+  // ラベルで包んで、他のボタンと同じ見た目・同じ大きさにする
+  const pick = document.createElement("input");
+  pick.type = "file";
+  pick.accept = "image/*";
+  pick.multiple = true;
+  pick.className = "photo-input";
+  const pickLabel = document.createElement("label");
+  pickLabel.className = "photo-pick";
+  pickLabel.append("＋ 写真を追加", pick);
+
+  const status = document.createElement("div");
+  status.className = "help";
+
+  const draw = () => {
+    const items = read() ?? [];
+    grid.replaceChildren();
+    for (const [i, photo] of items.entries()) {
+      grid.append(renderPhotoCard(photo, i, read, write, draw));
+    }
+    status.textContent = items.length ? `${items.length}枚お預かりしています` : "まだ1枚もありません";
+  };
+
+  pick.onchange = async () => {
+    const files = [...pick.files];
+    pick.value = "";
+    for (const [i, f] of files.entries()) {
+      status.textContent = `${i + 1}/${files.length} を保存中…`;
+      try {
+        const res = await fetch(
+          `/api/projects/${state.project.id}/photos?name=${encodeURIComponent(f.name)}`,
+          { method: "POST", body: f },
+        );
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        // 置き場所は人が決める。ここで推測して勝手に振り分けない
+        write([...(read() ?? []), { file: data.file, category: "その他" }]);
+      } catch (err) {
+        status.textContent = `保存できません：${err.message}`;
+        return;
+      }
+    }
+    draw();
+  };
+
+  draw();
+  box.append(legend, pickLabel, status, grid);
+  return box;
+}
+
+function renderPhotoCard(photo, i, read, write, draw) {
+  const card = document.createElement("div");
+  card.className = "photo-card";
+  if (photo.category === "その他") card.classList.add("unplaced");
+
+  // iPhoneの標準は HEIC で、ブラウザでは表示できないことが多い。
+  // 表示できなくても「預かった」ことは分かるようにしておく
+  const isHeic = /\.heic$/i.test(photo.file);
+  if (isHeic) {
+    const ph = document.createElement("div");
+    ph.className = "photo-thumb no-preview";
+    ph.textContent = "HEIC（この画面では表示できません）";
+    card.append(ph);
+  } else {
+    const img = document.createElement("img");
+    img.className = "photo-thumb";
+    img.src = photoUrl(photo.file);
+    img.alt = photo.caption || photo.file;
+    img.loading = "lazy";
+    card.append(img);
+  }
+
+  const set = (key, value) => {
+    const next = [...(read() ?? [])];
+    next[i] = { ...next[i], [key]: value };
+    if (value === undefined || value === "") delete next[i][key];
+    write(next);
+  };
+
+  const cat = document.createElement("select");
+  for (const [c] of PHOTO_PLACES) cat.append(new Option(c, c));
+  cat.value = photo.category ?? "その他";
+  cat.onchange = () => { set("category", cat.value); draw(); };
+  card.append(cat);
+
+  // 事例の写真は、どの事例のものかが分からないと置き場所が決まらない
+  if (photo.category === "加工事例") {
+    const cases = state.project.cases ?? [];
+    const which = document.createElement("select");
+    which.append(new Option("どの事例か未選択", ""));
+    cases.forEach((c, n) => which.append(new Option(`${n + 1}件目　${c.title ?? ""}`.trim(), String(n + 1))));
+    which.value = photo.caseNo ? String(photo.caseNo) : "";
+    which.onchange = () => set("caseNo", which.value ? Number(which.value) : undefined);
+    card.append(which);
+  }
+
+  const caption = document.createElement("input");
+  caption.type = "text";
+  caption.placeholder = "ひとこと（任意）";
+  caption.value = photo.caption ?? "";
+  caption.oninput = () => set("caption", caption.value);
+  card.append(caption);
+
+  const del = document.createElement("button");
+  del.type = "button";
+  del.className = "del-item";
+  del.textContent = "削除";
+  del.onclick = async () => {
+    await fetch(photoUrl(photo.file), { method: "DELETE" });
+    const next = [...(read() ?? [])];
+    next.splice(i, 1);
+    write(next);
+    draw();
+  };
+  card.append(del);
+  return card;
 }
 
 function renderTags(field, read, write) {
@@ -577,6 +735,37 @@ function renderReviewField(field, blockTitle) {
   if (isUnconfirmed(field.path)) return reviewRow(label, PENDING_TEXT, { pending: true });
 
   const raw = getByPath(state.project, field.path);
+
+  // 写真は、お預かりしたものをそのままお見せして「これを載せてよいか」を確認いただく。
+  // 工場の写真には、社外に出せない設備や図面が写り込んでいることがある
+  if (field.type === "photos") {
+    const items = Array.isArray(raw) ? raw : [];
+    if (!items.length) return null;
+    const box = document.createElement("div");
+    box.className = "review-list";
+    const head = document.createElement("div");
+    head.className = "review-label";
+    head.textContent = `${label}（${items.length}枚）`;
+    box.append(head);
+    const grid = document.createElement("div");
+    grid.className = "review-photos";
+    for (const photo of items) {
+      const fig = document.createElement("figure");
+      if (!/\.heic$/i.test(photo.file)) {
+        const img = document.createElement("img");
+        img.src = photoUrl(photo.file);
+        img.alt = photo.caption || "";
+        img.loading = "lazy";
+        fig.append(img);
+      }
+      const cap = document.createElement("figcaption");
+      cap.textContent = [photo.category, photo.caption].filter(Boolean).join("／");
+      fig.append(cap);
+      grid.append(fig);
+    }
+    box.append(grid);
+    return box;
+  }
 
   if (field.type === "list") {
     const items = Array.isArray(raw) ? raw.filter((it) => it && Object.values(it).some((v) => v !== "" && v != null)) : [];

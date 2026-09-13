@@ -8,7 +8,9 @@
  * 電話とメールが載っていれば、お客様の商売は止まらない（docs/17）。
  */
 import "../styles/site.css";
-import { companyName, tel, telHref, email, address, nav, project } from "../lib/site";
+import { companyName, tel, telHref, email, address, nav, project, photoOf, photoSrc } from "../lib/site";
+
+const logo = photoOf("ロゴ");
 
 interface Props {
   title: string;
@@ -41,11 +43,26 @@ const jsonLd = {
   <meta property="og:type" content="website">
   {description && <meta property="og:description" content={description} />}
   <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} is:inline></script>
+  <!--
+    スマホのメニュー開閉。
+    JSが動かない端末でも詰まないよう、フッターに同じリンクを全部置いてある
+  -->
+  <script is:inline>
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest(".nav-toggle");
+      if (!btn) return;
+      const open = btn.getAttribute("aria-expanded") === "true";
+      btn.setAttribute("aria-expanded", String(!open));
+      document.getElementById("site-menu")?.classList.toggle("open", !open);
+    });
+  </script>
 </head>
 <body>
   <header class="site-header">
     <div class="bar">
-      <a class="logo" href="/">{companyName}</a>
+      <a class="logo" href="/">
+        {logo ? <img src={photoSrc(logo)} alt={companyName} /> : companyName}
+      </a>
       <div class="head-contact">
         {tel && (
           <a class="tel" href={`tel:${telHref}`}>
@@ -56,7 +73,11 @@ const jsonLd = {
         <a class="btn" href="/contact/">お問い合わせ</a>
       </div>
     </div>
-    <nav class="site-nav" aria-label="メインメニュー">
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-menu">
+      <span class="nav-bars" aria-hidden="true"></span>
+      メニュー
+    </button>
+    <nav class="site-nav" id="site-menu" aria-label="メインメニュー">
       <ul>
         {nav.map((item) => (
           <li>

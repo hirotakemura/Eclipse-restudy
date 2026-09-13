@@ -1,0 +1,19 @@
+---
+/** 写真の並び。0枚なら何も出さない */
+import { photoSrc } from "../lib/site";
+interface Props { photos: any[]; heading?: string }
+const { photos, heading } = Astro.props;
+---
+{photos.length > 0 && (
+  <div class="gallery-wrap">
+    {heading && <h2>{heading}</h2>}
+    <div class="gallery">
+      {photos.map((p) => (
+        <figure class="photo">
+          <img src={photoSrc(p)} alt={p.caption ?? ""} loading="lazy" />
+          {p.caption && <figcaption>{p.caption}</figcaption>}
+        </figure>
+      ))}
+    </div>
+  </div>
+)}

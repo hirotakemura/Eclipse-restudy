@@ -121,5 +121,27 @@ export function rows(pairs: [string, unknown][]): [string, string][] {
   return out;
 }
 
+/**
+ * 写真。置き場所（カテゴリ）ごとに取り出す。
+ *
+ * **写真が無くてもサイトは建つ**（D-099）。写真は足すもので、骨格ではない。
+ * ただし「事業所と社長の写真は載せたい」は必ず言われるので、置き場所は先に決めてある。
+ */
+export interface Photo {
+  file: string;
+  category: string;
+  caption?: string;
+  caseNo?: number;
+}
+const allPhotos: Photo[] = ((project as any).photos ?? []) as Photo[];
+
+/** 公開するファイルのURL。build-site.mjs が public/photos/ に配る */
+export const photoSrc = (p: Photo) => `/photos/${p.file}`;
+
+export const photosOf = (category: string) => allPhotos.filter((p) => p.category === category);
+export const photoOf = (category: string) => photosOf(category)[0] ?? null;
+/** 事例の写真。何件目かで絞る（1始まり） */
+export const photosOfCase = (n: number) => photosOf("加工事例").filter((p) => p.caseNo === n);
+
 /** 事例ページのURL。1始まりで、生成した原稿の slug と合わせる */
 export const caseHref = (i: number) => `/cases/${i + 1}/`;

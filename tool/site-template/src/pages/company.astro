@@ -5,7 +5,8 @@
  */
 import Base from "../layouts/Base.astro";
 import Table from "../components/Table.astro";
-import { project, rows, companyName, tel, email } from "../lib/site";
+import { project, rows, companyName, tel, email, photoOf } from "../lib/site";
+import Figure from "../components/Figure.astro";
 
 const b = project.basics ?? ({} as any);
 const profile = rows([
@@ -25,6 +26,7 @@ const history = (b.history ?? []).filter((h: any) => h.year || h.event);
 <Base title="会社概要" description={`${companyName}の会社概要・沿革`}>
   <div class="page-head"><div class="inner"><h1>会社概要</h1></div></div>
   <section class="section"><div class="inner">
+    <Figure photo={photoOf("外観")} className="hero-photo" />
     <Table rows={profile} />
     {history.length > 0 && (
       <>

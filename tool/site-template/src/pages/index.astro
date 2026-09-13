@@ -9,7 +9,9 @@
 import Base from "../layouts/Base.astro";
 import Prose from "../components/Prose.astro";
 import CaseCard from "../components/CaseCard.astro";
-import { project, companyName, cases } from "../lib/site";
+import { project, companyName, cases, photoOf, photosOf } from "../lib/site";
+import Figure from "../components/Figure.astro";
+import Gallery from "../components/Gallery.astro";
 
 const cap = project.capability ?? ({} as any);
 const facts = [
@@ -32,6 +34,7 @@ const desc = [project.basics?.address, cap.processes?.join("・"), cap.materials
       {facts.length > 0 && (
         <div class="facts">{facts.map((f) => <span>{f}</span>)}</div>
       )}
+      <Figure photo={photoOf("外観")} className="hero-photo" eager={true} />
     </div>
   </section>
 
@@ -55,6 +58,7 @@ const desc = [project.basics?.address, cap.processes?.join("・"), cap.materials
           {cases.slice(0, 6).map((c, i) => <CaseCard index={i} item={c} />)}
         </div>
         {cases.length > 6 && <p style="margin-top:20px"><a href="/cases/">加工事例をすべて見る</a></p>}
+        <Gallery photos={photosOf("工場・設備").slice(0, 3)} heading="工場・設備" />
       </div>
     </section>
   )}
