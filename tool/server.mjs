@@ -1,8 +1,11 @@
 /**
- * KOBO v0.1 — ヒアリングフォームのローカルサーバー
+ * KOBO — ヒアリングフォームのローカルサーバー
  *
  * 依存パッケージなし。Node の型ストリッピングで lib/*.ts を直接読む。
  *   npm start   → http://localhost:5173
+ *
+ * 同じWi-Fiのタブレットからも開ける（起動時にアドレスを出す）。
+ * ただし**その網にいる誰からも見える**ので、取材先のWi-Fiでは使わないこと。
  *
  * 案件データは projects/{案件ID}/project.json に保存する（Git管理外）。
  * 工場のネットは不安定なので、ネット接続を前提にしない設計にしている。
@@ -12,6 +15,7 @@ import { createServer } from "node:http";
 import { readFile, writeFile, rename, mkdir, readdir, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, dirname, extname, resolve } from "node:path";
+import { networkInterfaces } from "node:os";
 import { fileURLToPath } from "node:url";
 
 // lib/*.ts を直接読むため、Node の型ストリッピングが要る。
@@ -200,7 +204,31 @@ const server = createServer(async (req, res) => {
   }
 });
 
+/** 同じWi-Fiのタブレットから開くためのアドレス。毎回調べなくて済むように起動時に出す */
+function lanAddresses() {
+  return Object.values(networkInterfaces())
+    .flat()
+    .filter((n) => n && n.family === "IPv4" && !n.internal)
+    .map((n) => n.address);
+}
+
 server.listen(PORT, () => {
-  console.log(`KOBO v0.1  →  http://localhost:${PORT}`);
-  console.log(`案件データ: ${PROJECTS}`);
+  console.log(`\nKOBO v0.2`);
+  console.log(`\n  このパソコン       http://localhost:${PORT}`);
+  const lan = lanAddresses();
+  for (const ip of lan) {
+    console.log(`  タブレット・スマホ http://${ip}:${PORT}`);
+  }
+  console.log(`\n  案件データ: ${PROJECTS}`);
+
+  if (lan.length) {
+    // 顧客の技術情報・連絡先が入るツールなので、どこまで見えるのかは明示しておく。
+    // 工場のゲストWi-Fiに繋いだまま使うと、他社の案件データまで同じ網の中から見える
+    console.log(
+      `\n  ※ 同じWi-Fiにいる端末からは、誰でもこの画面を開けます。` +
+      `\n    取材先のWi-Fiに繋いだまま使わないでください。` +
+      `\n    タブレットを使うときは、このパソコンのインターネット共有（テザリング）に繋ぐのが安全です。`,
+    );
+  }
+  console.log("");
 });
