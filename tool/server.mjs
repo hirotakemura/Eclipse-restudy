@@ -65,6 +65,14 @@ function codeVersion() {
 const CODE_VERSION = codeVersion();
 const PUBLIC = join(ROOT, "public");
 const PROJECTS = join(ROOT, "projects");
+/**
+ * 削除した案件の置き場。
+ *
+ * **本当には消さない。** 案件データには顧客の技術情報・取引先・連絡先が入っており、
+ * 取材90分ぶんの記録が誤クリックで消えるのは割に合わない。
+ * ここに移しておけば、Finder から戻せる。
+ */
+const TRASH = join(PROJECTS, ".trash");
 const PORT = Number(process.env.PORT ?? 5173);
 
 const MIME = {
@@ -139,7 +147,7 @@ async function listProjects() {
   const entries = await readdir(PROJECTS, { withFileTypes: true });
   const out = [];
   for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
+    if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
     const file = join(PROJECTS, entry.name, "project.json");
     if (!existsSync(file)) continue;
     try {
@@ -217,6 +225,16 @@ const server = createServer(async (req, res) => {
         project.id = id; // 案件IDはURLを正とする
         await writeJsonAtomic(file, project);
         return json(res, 200, { ...withCompletion(project), savedAt: new Date().toISOString() });
+      }
+
+      if (req.method === "DELETE") {
+        if (!existsSync(file)) return json(res, 404, { error: "案件が見つかりません" });
+        // 消さずにゴミ箱へ移す。戻せる状態を残しておく
+        const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+        const dest = join(TRASH, `${id}_${stamp}`);
+        await mkdir(TRASH, { recursive: true });
+        await rename(projectDir(id), dest);
+        return json(res, 200, { movedTo: dest });
       }
     }
 

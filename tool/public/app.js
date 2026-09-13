@@ -1,5 +1,5 @@
 /**
- * KOBO v0.1 — ヒアリングフォーム
+ * KOBO — ヒアリングフォーム
  *
  * 対面の取材中に使うため、以下を最優先にしている。
  *   - 取材台本の質問文を各項目に表示する（これを読み上げながら埋める）
@@ -107,6 +107,7 @@ const unconfirmedNote = (path) => state.project?.unconfirmedNotes?.[path] ?? "";
 
 // ── 描画：メーター／ナビ／不足項目 ──────────────────────────
 function renderMeters(c) {
+  state.completion = c;
   $("#bar-filled").style.width = `${c.filledPct}%`;
   $("#bar-covered").style.width = `${c.coveredPct}%`;
   $("#pct-filled").textContent = `${c.filledPct}%`;
@@ -489,6 +490,7 @@ async function openProject(id) {
   document.title = `KOBO — ${set.label}`;
   $("#empty").hidden = true;
   $("#main").hidden = false;
+  $("#delete-project").hidden = false;
   renderMeters(data.completion);
   renderNav(data.completion);
   renderMissing(data.completion);
@@ -526,6 +528,32 @@ async function openProject(id) {
     dialog.showModal();
     $("#new-name").focus();
   };
+  // 削除は「消す」のではなく「ゴミ箱に移す」。
+  // 案件データには顧客の技術情報が入っており、取材90分ぶんが誤クリックで消えるのは割に合わない
+  const delDialog = $("#delete-dialog");
+  $("#delete-project").onclick = () => {
+    if (!state.project) return;
+    const c = state.completion;
+    const name = state.project.basics?.name || state.project.id;
+    // 94%まで入力した案件を消すのは重大事。何を失うのかを数字で見せる
+    const detail = c ? `必須 ${c.filled}/${c.requiredTotal} 項目を入力済み` : "";
+    $("#delete-target").textContent = `${name}　（${state.project.id}）\n${detail}`;
+    delDialog.showModal();
+  };
+  $("#delete-cancel").onclick = () => delDialog.close();
+  $("#delete-confirm").onclick = async () => {
+    const id = state.project.id;
+    const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+    delDialog.close();
+    if (!res.ok) return alert((await res.json()).error);
+    state.project = null;
+    $("#main").hidden = true;
+    $("#empty").hidden = false;
+    $("#delete-project").hidden = true;
+    setSaveStatus("削除しました");
+    await loadProjectList();
+  };
+
   $("#new-project").onclick = openNew;
   $("#new-project-empty").onclick = openNew;
   $("#new-cancel").onclick = () => dialog.close();
@@ -536,6 +564,13 @@ async function openProject(id) {
     const formSet = document.querySelector('input[name="formSet"]:checked').value;
     const err = $("#new-error");
 
+    // 会社名は必須。無いと一覧が案件ID（20260913-1）だけになり、後から探せなくなる
+    if (!name) {
+      err.textContent = "会社名を入力してください。";
+      err.hidden = false;
+      $("#new-name").focus();
+      return;
+    }
     if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) {
       err.textContent = "案件IDは英数字・ハイフン・アンダースコアで入力してください。";
       err.hidden = false;

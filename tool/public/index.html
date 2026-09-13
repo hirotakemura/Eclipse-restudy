@@ -40,7 +40,23 @@
 
 <footer>
   <div id="missing-summary"></div>
+  <button id="delete-project" type="button" class="danger" hidden>この案件を削除</button>
 </footer>
+
+<dialog id="delete-dialog">
+  <div class="dialog-body">
+    <h2>この案件を削除しますか</h2>
+    <p class="delete-target" id="delete-target"></p>
+    <p class="hint">
+      すぐに消えるわけではありません。<code>projects/.trash/</code> に移動するので、
+      間違えた場合は Finder から戻せます。
+    </p>
+    <div class="dialog-actions">
+      <button type="button" id="delete-cancel">キャンセル</button>
+      <button type="button" id="delete-confirm" class="danger-solid">ゴミ箱に移す</button>
+    </div>
+  </div>
+</dialog>
 
 <!-- 新規案件。ブラウザのポップアップではなく画面内で完結させる -->
 <dialog id="new-dialog">
@@ -66,8 +82,8 @@
     </fieldset>
 
     <div class="dialog-field">
-      <label for="new-name">会社名</label>
-      <input type="text" id="new-name" placeholder="後から変更できます。未定のままでも作れます">
+      <label for="new-name">会社名　<span class="req">必須</span></label>
+      <input type="text" id="new-name" required placeholder="正式名称。後から変更できます">
     </div>
 
     <div class="dialog-field">
