@@ -856,6 +856,15 @@ function renderFollowup() {
     `${p.basics?.name || p.id}　／　未確認 ${paths.length}件` +
     (p.hearingDate ? `　／　第1回 ${p.hearingDate}` : "");
 
+  // 第2回の日程を決めないまま第1回を終えると、そのまま止まる
+  const visit = (p.secondVisit ??= {});
+  const dateEl = $("#fu-date");
+  const whoEl = $("#fu-who");
+  dateEl.value = visit.date ?? "";
+  whoEl.value = visit.attendees ?? "";
+  dateEl.oninput = () => { visit.date = dateEl.value || undefined; scheduleSave(); };
+  whoEl.oninput = () => { visit.attendees = whoEl.value || undefined; scheduleSave(); };
+
   const body = $("#fu-body");
   body.replaceChildren();
 
@@ -904,6 +913,24 @@ function renderFollowup() {
     };
     label.append(input);
     row.append(label);
+
+    // 第2回の現場で、その場で埋められるようにする
+    const jump = document.createElement("button");
+    jump.type = "button";
+    jump.className = "fu-jump";
+    jump.textContent = "この項目を開く";
+    jump.onclick = () => {
+      closeFollowup();
+      if (found) {
+        state.activeBlock = found.block.id;
+        renderNav(state.completion ?? { byBlock: [] });
+        renderBlock();
+        const el = document.querySelector(`.field[data-path="${CSS.escape(path)}"]`);
+        el?.scrollIntoView({ block: "center" });
+        el?.querySelector("input, textarea, select")?.focus();
+      }
+    };
+    row.append(jump);
     body.append(row);
   }
 }

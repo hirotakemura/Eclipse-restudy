@@ -338,6 +338,14 @@ footer {
   font-size: 14px; color: #5a4520; line-height: 1.8;
 }
 .fu-empty { color: var(--muted); }
+.fu-visit { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 22px; }
+.fu-visit-field { flex: 1 1 220px; }
+.fu-visit-field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.fu-jump {
+  margin-top: 10px; background: var(--panel); border: 1px solid var(--line); color: inherit;
+  border-radius: var(--radius); padding: 7px 14px; cursor: pointer; min-height: 36px; font-size: 13px;
+}
+.fu-jump:hover { border-color: var(--accent); color: var(--accent); }
 .fu-item { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; background: var(--panel); }
 .fu-item-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
 .fu-item-head strong { font-size: 17px; }
@@ -356,7 +364,7 @@ footer {
 }
 .fu-actions .primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 @media print {
-  .fu-actions, .fu-note { display: none !important; }
+  .fu-actions, .fu-note, .fu-jump { display: none !important; }
   #followup { padding: 0; }
   .fu-item { break-inside: avoid; }
   .fu-ask input { border: 0; border-bottom: 1px solid #999; border-radius: 0; }
