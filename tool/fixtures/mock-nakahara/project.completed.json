@@ -11,7 +11,7 @@
     "address": "北九州市小倉南区",
     "tel": "093-000-1111",
     "currentUrl": "",
-    "businessSummary": "住宅の水まわりの設備工事。給湯器の交換が売上の半分ほど、水まわりの修理が3割、浴室やトイレの小規模なリフォームが2割。1988年に現社長が independent して創業し、現在は社長と職人2名、事務1名の4名。"
+    "businessSummary": "住宅の水まわりの設備工事。給湯器の交換が売上の半分ほど、水まわりの修理が3割、浴室やトイレの小規模なリフォームが2割。1988年に現社長が独立して創業し、現在は社長と職人2名、事務1名の4名。"
   },
   "general": {
     "serviceArea": "北九州市全域と、遠賀郡・中間市。それ以上遠いところは、出張費を別途いただければ相談に応じる。",
@@ -98,5 +98,11 @@
   },
   "unconfirmed": [],
   "unconfirmedNotes": {},
-  "photos": []
+  "photos": [],
+  "theme": {
+    "palette": "kohaku",
+    "font": "maru",
+    "mood": "yawaraka",
+    "layout": "standard"
+  }
 }

@@ -341,6 +341,15 @@ export const BLOCKS: Block[] = [
         required: true,
         help: "取引先名／価格／特定の技術など、出せない情報はありますか"
       },
+      {
+        path: "theme",
+        label: "サイトの見た目",
+        customerLabel: "サイトの見た目",
+        type: "theme",
+        help:
+          "その場で選んでいただく。**見本を見せながら決めるのが一番早い。**" +
+          "後から変えられるので、迷ったら既定のままでよい",
+      },
       { path: "terms.photo.hasExisting", label: "使える既存写真があるか", type: "boolean" },
       {
         path: "photos",

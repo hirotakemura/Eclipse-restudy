@@ -359,6 +359,8 @@ function renderInput(field, path, target, localKey = null) {
       }
       return box;
     }
+    case "theme":
+      return renderTheme(field, read, write);
     case "photos":
       return renderPhotos(field, read, write);
     case "tags":
@@ -374,6 +376,119 @@ function renderInput(field, path, target, localKey = null) {
       return el;
     }
   }
+}
+
+/**
+ * サイトの見た目（配色・書体・雰囲気・レイアウト）。
+ *
+ * **テンプレートは1つしか持たない**（D-096）。見た目の違いはコードではなくデータで出す。
+ * 選択肢の中身は `lib/theme.ts` が単一の正で、ここでは `/api/form` から受け取ったものを並べるだけ。
+ * 画面側で選択肢を定義しない。**選べるのに反映されない、が一番まずい。**
+ *
+ * 取材のその場でお客様と一緒に選ぶので、**言葉ではなく見本で選べるようにする。**
+ */
+function renderTheme(field, read, write) {
+  const opts = state.theme;
+  const box = document.createElement("div");
+  box.className = "theme-picker";
+  if (!opts) {
+    box.textContent = "見た目の選択肢を読み込めませんでした";
+    return box;
+  }
+
+  const current = () => ({ ...opts.default, ...(read() ?? {}) });
+  const set = (key, value) => { write({ ...current(), [key]: value }); draw(); };
+
+  const preview = document.createElement("div");
+  preview.className = "theme-preview";
+
+  const rows = document.createElement("div");
+
+  const draw = () => {
+    const t = current();
+    rows.replaceChildren();
+
+    rows.append(
+      choiceRow("配色", opts.palettes, t.palette, (v) => set("palette", v), (p) => {
+        const sw = document.createElement("span");
+        sw.className = "swatch";
+        sw.style.background = p.accent;
+        return sw;
+      }),
+      choiceRow("書体", opts.fonts, t.font, (v) => set("font", v), (f) => {
+        const sample = document.createElement("span");
+        sample.className = "font-sample";
+        sample.style.fontFamily = f.body;
+        sample.textContent = "御社の強み";
+        return sample;
+      }),
+      choiceRow("雰囲気", opts.moods, t.mood, (v) => set("mood", v)),
+      choiceRow("レイアウト", opts.layouts, t.layout, (v) => set("layout", v)),
+    );
+
+    drawPreview(preview, opts, t);
+  };
+
+  draw();
+  box.append(rows, preview);
+  return box;
+}
+
+function choiceRow(title, items, selected, onPick, decorate) {
+  const row = document.createElement("div");
+  row.className = "theme-row";
+  const h = document.createElement("div");
+  h.className = "theme-row-title";
+  h.textContent = title;
+  row.append(h);
+
+  const list = document.createElement("div");
+  list.className = "theme-choices";
+  for (const item of items) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "theme-choice";
+    btn.setAttribute("aria-pressed", String(item.id === selected));
+    if (decorate) btn.append(decorate(item));
+    const label = document.createElement("span");
+    label.className = "theme-label";
+    label.textContent = item.label;
+    btn.append(label);
+    const note = document.createElement("span");
+    note.className = "theme-note";
+    note.textContent = item.note ?? "";
+    btn.append(note);
+    btn.onclick = () => onPick(item.id);
+    list.append(btn);
+  }
+  row.append(list);
+  return row;
+}
+
+/** 選んだ組み合わせの見本。**言葉で説明するより、出して見せたほうが早い** */
+function drawPreview(el, opts, t) {
+  const p = opts.palettes.find((x) => x.id === t.palette) ?? opts.palettes[0];
+  const f = opts.fonts.find((x) => x.id === t.font) ?? opts.fonts[0];
+  const m = opts.moods.find((x) => x.id === t.mood) ?? opts.moods[1];
+  const l = opts.layouts.find((x) => x.id === t.layout) ?? opts.layouts[0];
+
+  el.style.cssText =
+    `--tp-accent:${p.accent};--tp-accent-dark:${p.accentDark};--tp-accent-soft:${p.accentSoft};` +
+    `--tp-ink:${p.ink};--tp-ink-soft:${p.inkSoft};--tp-bg:${p.bg};--tp-bg-soft:${p.bgSoft};--tp-line:${p.line};` +
+    `--tp-body:${f.body};--tp-head:${f.heading};` +
+    `--tp-radius:${m.radius};--tp-leading:${m.leading};--tp-line-width:${m.lineWidth}`;
+  el.dataset.layout = l.id;
+
+  const name = state.project?.basics?.name || "御社名";
+  el.innerHTML =
+    `<div class="tp-head"><b>${escapeHtml(name)}</b><span class="tp-btn">お問い合わせ</span></div>` +
+    `<div class="tp-nav">${["トップ", "強み", "実績", "会社概要"].map((x) => `<span>${x}</span>`).join("")}</div>` +
+    `<div class="tp-body">` +
+      `<h4>他社様で難しいと言われた案件を、お受けしています</h4>` +
+      `<p>ここに本文が入ります。行間や余白の詰まり具合、文字の形を見てください。</p>` +
+      `<table><tr><th>対応材質</th><td>アルミ・ステンレス</td></tr><tr><th>最短納期</th><td>3日</td></tr></table>` +
+      `<span class="tp-btn tp-btn-lg">お問い合わせはこちら</span>` +
+    `</div>`;
 }
 
 /**
@@ -736,6 +851,18 @@ function renderReviewField(field, blockTitle) {
 
   const raw = getByPath(state.project, field.path);
 
+  if (field.type === "theme") {
+    const t = { ...(state.theme?.default ?? {}), ...(raw ?? {}) };
+    const name = (list, id) => (state.theme?.[list] ?? []).find((x) => x.id === id)?.label ?? "";
+    const text = [
+      `配色：${name("palettes", t.palette)}`,
+      `書体：${name("fonts", t.font)}`,
+      `雰囲気：${name("moods", t.mood)}`,
+      `レイアウト：${name("layouts", t.layout)}`,
+    ].join("　／　");
+    return reviewRow(label, text);
+  }
+
   // 写真は、お預かりしたものをそのままお見せして「これを載せてよいか」を確認いただく。
   // 工場の写真には、社外に出せない設備や図面が写り込んでいることがある
   if (field.type === "photos") {
@@ -931,6 +1058,7 @@ async function openProject(id) {
 (async function init() {
   const form = await (await fetch("/api/form")).json();
   state.sets = form.sets;
+  state.theme = form.theme;
   // 「pull したのに反映されていない気がする」を、画面で確かめられるようにする
   if (form.version) {
     const v = document.createElement("span");

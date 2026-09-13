@@ -9,6 +9,7 @@
  */
 import "../styles/site.css";
 import { companyName, tel, telHref, email, address, nav, project, photoOf, photoSrc, isGeneral } from "../lib/site";
+import { themeStyle, layoutId, webfont } from "../lib/theme";
 
 const logo = photoOf("ロゴ");
 
@@ -32,13 +33,19 @@ const jsonLd = {
 };
 ---
 <!doctype html>
-<html lang="ja">
+<html lang="ja" data-layout={layoutId} style={themeStyle}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{pageTitle}</title>
   {description && <meta name="description" content={description} />}
   <link rel="canonical" href={new URL(here, Astro.site).href}>
+  {webfont && (
+    <>
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+      <link rel="stylesheet" href={webfont} />
+    </>
+  )}
   <meta property="og:title" content={pageTitle}>
   <meta property="og:type" content="website">
   {description && <meta property="og:description" content={description} />}

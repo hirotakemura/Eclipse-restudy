@@ -5,6 +5,10 @@
   中小製造業の現場写真は、取材時点で使えるものが揃わないことが多い（docs/06 ブロック6）。
   写真待ちでサイトが止まらないよう、文字と表だけで読める設計にしておく。
 */
+/*
+  色・書体・余白は、案件ごとに選ばれた値が <html> の style で上書きされる（tool/lib/theme.ts）。
+  **ここに書いてあるのは、選ばれていないときの既定値。**
+*/
 :root {
   --ink: #17202a;
   --ink-soft: #5b6673;
@@ -14,15 +18,22 @@
   --accent: #10456f;      /* 濃い青。工業系で浮かない色 */
   --accent-dark: #0b3252;
   --accent-soft: #e8eff5;
+  --font-body: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  --font-head: var(--font-body);
+  --radius: 8px;
+  --leading: 1.85;
+  --tracking: .01em;
+  --line-width: 1px;
+  --section: 52px;
   --max: 1040px;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+  font-family: var(--font-body);
   font-size: 17px;
-  line-height: 1.85;
+  line-height: var(--leading);
   color: var(--ink);
   background: var(--bg);
   -webkit-text-size-adjust: 100%;
@@ -31,12 +42,12 @@ img { max-width: 100%; height: auto; }
 a { color: var(--accent); }
 
 /* ── ヘッダー ───────────────────────────── */
-.site-header { border-bottom: 1px solid var(--line); }
+.site-header { border-bottom: var(--line-width) solid var(--line); }
 .bar {
   max-width: var(--max); margin: 0 auto; padding: 14px 20px;
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
 }
-.logo { font-size: 20px; font-weight: 700; color: var(--ink); text-decoration: none; letter-spacing: .02em; display: inline-flex; align-items: center; }
+.logo { font-size: 20px; font-weight: 700; font-family: var(--font-head); color: var(--ink); text-decoration: none; letter-spacing: .02em; display: inline-flex; align-items: center; }
 .logo img { height: 34px; width: auto; display: block; }
 
 /* ── スマホのメニュー開閉 ─────────────────── */
@@ -61,7 +72,7 @@ a { color: var(--accent); }
 .btn:hover { background: var(--accent-dark); }
 .btn-lg { padding: 15px 28px; font-size: 17px; }
 
-.site-nav { background: var(--bg-soft); border-top: 1px solid var(--line); }
+.site-nav { background: var(--bg-soft); border-top: var(--line-width) solid var(--line); }
 .site-nav ul {
   max-width: var(--max); margin: 0 auto; padding: 0 12px;
   display: flex; flex-wrap: wrap; list-style: none; gap: 2px;
@@ -76,11 +87,11 @@ a { color: var(--accent); }
 /* ── 本文の枠 ───────────────────────────── */
 main { display: block; }
 .inner { max-width: var(--max); margin: 0 auto; padding: 0 20px; }
-.section { padding: 52px 0; }
+.section { padding: var(--section) 0; }
 .section + .section { border-top: 1px solid var(--line); }
-h1 { font-size: 31px; line-height: 1.45; margin: 0 0 18px; letter-spacing: .01em; }
-h2 { font-size: 24px; line-height: 1.5; margin: 0 0 16px; }
-h3 { font-size: 19px; margin: 30px 0 8px; }
+h1 { font-size: 31px; line-height: 1.45; margin: 0 0 18px; letter-spacing: var(--tracking); font-family: var(--font-head); }
+h2 { font-size: 24px; line-height: 1.5; margin: 0 0 16px; font-family: var(--font-head); letter-spacing: var(--tracking); }
+h3 { font-size: 19px; margin: 30px 0 8px; font-family: var(--font-head); }
 p { margin: 0 0 16px; }
 .lead { font-size: 19px; color: var(--ink-soft); margin-bottom: 28px; }
 
@@ -116,7 +127,7 @@ p { margin: 0 0 16px; }
 .table-wrap { overflow-x: auto; margin: 0 0 26px; }
 table { width: 100%; border-collapse: collapse; font-size: 16px; }
 caption { text-align: left; font-weight: 700; padding: 0 0 8px; }
-th, td { border: 1px solid var(--line); padding: 12px 14px; text-align: left; vertical-align: top; }
+th, td { border: var(--line-width) solid var(--line); padding: 12px 14px; text-align: left; vertical-align: top; }
 th { background: var(--bg-soft); font-weight: 600; white-space: nowrap; width: 220px; }
 thead th { width: auto; }
 
@@ -124,7 +135,7 @@ thead th { width: auto; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 .case-card {
   display: flex; flex-direction: column; gap: 6px;
-  border: 1px solid var(--line); border-left: 4px solid var(--accent);
+  border: var(--line-width) solid var(--line); border-left: 4px solid var(--accent);
   padding: 18px 20px; text-decoration: none; color: var(--ink); background: var(--bg);
 }
 .case-card:hover { background: var(--bg-soft); }
@@ -218,4 +229,36 @@ thead th { width: auto; }
 }
 @media print {
   .site-nav, .cta, .btn { display: none !important; }
+}
+
+/* ── レイアウトの型（案件ごとに選ぶ・tool/lib/theme.ts） ── */
+
+/* 左メニュー：ページ数が多い会社向け。スマホでは標準と同じ扱いにする */
+@media (min-width: 900px) {
+  html[data-layout="sidebar"] .site-nav ul {
+    flex-direction: column; gap: 0; max-width: none; padding: 8px 0;
+  }
+  html[data-layout="sidebar"] .site-nav {
+    position: fixed; top: 0; left: 0; bottom: 0; width: 210px; z-index: 20;
+    border-right: var(--line-width) solid var(--line); border-top: 0;
+    padding-top: 64px; overflow-y: auto;
+  }
+  html[data-layout="sidebar"] .site-nav a[aria-current="page"] { box-shadow: inset 3px 0 0 var(--accent); }
+  html[data-layout="sidebar"] body { padding-left: 210px; }
+  html[data-layout="sidebar"] .site-header { position: relative; z-index: 30; }
+  html[data-layout="sidebar"] .bar { padding-left: 24px; }
+}
+
+/* 写真を大きく：トップの外観写真を全幅にして、見出しを大きくする */
+html[data-layout="wide"] .hero { padding-top: 0; }
+html[data-layout="wide"] .hero .inner { max-width: none; padding: 0; }
+html[data-layout="wide"] .hero h1,
+html[data-layout="wide"] .hero .lead,
+html[data-layout="wide"] .hero .facts { max-width: var(--max); margin-left: auto; margin-right: auto; padding: 0 20px; }
+html[data-layout="wide"] .hero h1 { font-size: 40px; padding-top: 38px; }
+html[data-layout="wide"] .hero-photo { margin-top: 30px; }
+html[data-layout="wide"] .hero-photo img { aspect-ratio: 21 / 9; border-radius: 0; }
+@media (max-width: 720px) {
+  html[data-layout="wide"] .hero h1 { font-size: 27px; }
+  html[data-layout="wide"] .hero-photo img { aspect-ratio: 4 / 3; }
 }

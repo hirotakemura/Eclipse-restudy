@@ -233,6 +233,15 @@ export const BLOCKS: Block[] = [
         help: "取引先名・価格など、載せないでほしいものはありますか"
       },
       { path: "terms.inquiryNotifyEmail", label: "問い合わせの通知先メール", type: "text", required: true },
+      {
+        path: "theme",
+        label: "サイトの見た目",
+        customerLabel: "サイトの見た目",
+        type: "theme",
+        help:
+          "その場で選んでいただく。**見本を見せながら決めるのが一番早い。**" +
+          "後から変えられるので、迷ったら既定のままでよい",
+      },
       { path: "terms.photo.hasExisting", label: "使える写真があるか", type: "boolean", help: "無い場合はスマホでの撮影指示書をこちらで作る" },
       {
         path: "photos",

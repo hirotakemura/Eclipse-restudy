@@ -278,6 +278,14 @@ export interface Project {
   reviewedAt?: string;
 
   /**
+   * サイトの見た目。配色・書体・雰囲気・レイアウトを案件データとして持つ。
+   *
+   * **テンプレートは1つしか持たない**（D-096）ので、見た目の違いはここで出す。
+   * 選択肢の中身は `lib/theme.ts`（単一の正）。
+   */
+  theme?: { palette: string; font: string; mood: string; layout: string };
+
+  /**
    * お預かりした写真。
    *
    * **写真が無くてもサイトは建つ**（D-099）。ただし「事業所や社長の写真は載せたい」は

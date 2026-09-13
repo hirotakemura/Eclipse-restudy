@@ -240,5 +240,11 @@
       "file": "logo.svg",
       "category": "ロゴ"
     }
-  ]
+  ],
+  "theme": {
+    "palette": "hagane",
+    "font": "mixed",
+    "mood": "katai",
+    "layout": "sidebar"
+  }
 }

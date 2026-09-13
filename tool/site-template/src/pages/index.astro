@@ -23,7 +23,7 @@ const cap = project.capability ?? ({} as any);
  */
 const facts = (isGeneral
   ? [
-      serviceArea ? `対応エリア：${serviceArea}` : null,
+      serviceArea ? `対応エリア：${serviceArea.split(/[。\n]/)[0]!.slice(0, 28)}` : null,
       ...offerings.slice(0, 4).map((o: any) => o.name).filter(Boolean),
     ]
   : [

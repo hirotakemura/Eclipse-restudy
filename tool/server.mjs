@@ -36,6 +36,7 @@ if (process.features.typescript !== "strip") {
 }
 
 const { FORM_SETS, getFormSet } = await import("./lib/form-definition.ts");
+const THEME = await import("./lib/theme.ts");
 const { computeCompletion } = await import("./lib/completion.ts");
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -230,7 +231,15 @@ const server = createServer(async (req, res) => {
 
   try {
     if (path === "/api/form") {
-      return json(res, 200, { sets: FORM_SETS, version: CODE_VERSION });
+      return json(res, 200, {
+        sets: FORM_SETS,
+        version: CODE_VERSION,
+        // 見た目の選択肢は lib/theme.ts が単一の正。画面側で定義を持たない
+        theme: {
+          palettes: THEME.PALETTES, fonts: THEME.FONTS,
+          moods: THEME.MOODS, layouts: THEME.LAYOUTS, default: THEME.DEFAULT_THEME,
+        },
+      });
     }
 
     if (path === "/api/projects" && req.method === "GET") {

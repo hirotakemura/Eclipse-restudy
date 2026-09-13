@@ -23,6 +23,7 @@ export type FieldType =
   | "date"
   | "boolean"
   | "photos" // 写真。ファイルを預かって置き場所（カテゴリ）を決める
+  | "theme" // サイトの見た目（配色・書体・雰囲気・レイアウト）
   | "list"; // オブジェクトの配列
 
 export interface Field {
