@@ -102,6 +102,9 @@ td.num, th.num { font-family: var(--mono); font-variant-numeric: tabular-nums; w
 .a::before { content: "A"; font-family: var(--mono); color: var(--rule-strong); margin-right: 9px; font-size: 13px; }
 
 .note { background: var(--panel); border-left: 3px solid var(--ai); padding: 14px 18px; margin: 0 0 18px; max-width: 42em; font-size: 15px; }
+figure { margin: 0 0 30px; }
+figure img { width: 100%; height: auto; display: block; border: 1px solid var(--rule-strong); background: var(--panel); }
+figcaption { font-size: 14.5px; line-height: 1.8; color: var(--ink-2); margin-top: 9px; max-width: 42em; }
 footer { padding-block: 34px 60px; color: var(--ink-2); font-size: 13.5px; }
 footer p { max-width: 42em; }
 @media (max-width: 560px) { .flow li { grid-template-columns: 1fr; gap: 2px; } }
@@ -162,8 +165,12 @@ footer p { max-width: 42em; }
     </tbody>
   </table>
   </div>
+  <div class="note">
+    <p style="margin:0"><strong>最初の数件は、汎用ベーシック（198,000円）で受けます。</strong> 実績がゼロの状態で98万円の案件を追うより、まず数件を通して<strong>納品までの工程を実際に回す</strong>ことを優先します。汎用は<strong>サイトを持っていない会社</strong>が対象なので、既存サイトからの引っ越し事故も起きません。<br>製造業スタンダードは、その実績を持って提案します。</p>
+  </div>
   <div class="todo-line">
     <p><span class="todo">要相談</span> <strong>値引きを求められたときの引き方</strong>（どこまで下げるか、何を削るか）と、<strong>着手金の比率</strong>。社長案は「着手金30%＋検収後70%」ですが、押し返されたときの順番を決めていません。</p>
+    <p><span class="todo">要相談</span> <strong>公開後の保守の費用。</strong> 月額をいただかないこと・都度対応にすることは決めていますが、<strong>1回いくらにするかは決めていません。</strong></p>
   </div>
 </section>
 
@@ -247,14 +254,14 @@ footer p { max-width: 42em; }
   <div class="qa">
     <p class="q">実績を見せてください</p>
     <p class="a"><strong>正直に「これが最初の案件です」と言ってください。</strong> 隠すと後で必ず崩れます。代わりに、作り方の中身（取材の台本、原稿の作り方、引き渡しの内容）を全部お見せできます。自社サイトも準備中です。</p>
-    <div class="todo-line" style="margin-top:12px">
-      <p><span class="todo">要相談</span> <strong>1件目をどういう条件で受けるか。</strong> 実績づくりとして価格を下げるのか、通常価格で受けるのか。下げる場合の「実績として公開させていただく」条件も決めていません。</p>
+    <div class="note" style="margin-top:12px">
+      <p style="margin:0"><strong>最初の数件は、汎用ベーシック（198,000円）で受けます。</strong> 実績ゼロで98万円を追うより、まず工程を通すことを優先します。「小さく始めさせてください」と言えるほうが、相手も決めやすいはずです。</p>
     </div>
   </div>
 
   <div class="qa">
     <p class="q">公開したあと、自分で更新できますか</p>
-    <p class="a">ご自身での編集には対応していません。更新はこちらが承ります（1回15,000円〜、軽微なものは48時間以内）。<strong>電話でも受けます。</strong> そのぶん表示が速く、保守の費用がかからない作りです。</p>
+    <p class="a">ご自身での編集には対応していません。更新はこちらが承ります。軽微なものは48時間以内に反映します。<strong>電話でも受けます。</strong> そのぶん表示が速く、維持の費用がかからない作りです。<br><span class="todo">要相談</span> 1回いくらにするかは未定です。<strong>金額を聞かれたら「追ってお伝えします」で止めてください。</strong></p>
   </div>
 
   <div class="qa">
@@ -264,7 +271,7 @@ footer p { max-width: 42em; }
 
   <div class="qa">
     <p class="q">月々いくらかかりますか</p>
-    <p class="a"><strong>いただきません。</strong> 死活監視・フォームの疎通確認・月次レポートは無償で続けます。かかるのはドメイン代（年1,600円前後）だけで、これはお客様名義の契約です。</p>
+    <p class="a"><strong>月々の固定費はいただきません。</strong> 死活監視・フォームの疎通確認・月次レポートは無償で続けます。かかり続けるのはドメイン代（年1,600円前後）だけで、これはお客様名義の契約です。更新をご依頼いただいたときだけ、その都度いただきます。</p>
   </div>
 
   <div class="qa">
@@ -308,6 +315,49 @@ footer p { max-width: 42em; }
 </section>
 
 <section>
+  <p class="no">10-2</p>
+  <h2>実際の画面</h2>
+  <p>「これから作ります」ではないことを、画面で見ていただくのが一番早いです。<strong>以下はすべて動いているものです</strong>（会社名・データは検証用の架空の会社です）。</p>
+
+  <figure>
+    <img src="captures/01-取材フォーム.png" alt="KOBOの取材フォーム。左に6ブロックの一覧、中央に質問と入力欄、上部に充足率のメーター">
+    <figcaption><strong>取材フォーム。</strong> 左が取材の流れ（6ブロック・90分）。緑の枠が<strong>追い質問</strong>で、「相手がこう言ったら、こう聞く」が画面に出しっぱなしになります。<strong>製造業に詳しくなくても掘れるようにするため</strong>です。右上の％は「聞くべきことがどれだけ埋まったか」。</figcaption>
+  </figure>
+
+  <figure>
+    <img src="captures/02-未確認の控え.png" alt="未確認にするときのダイアログ。その場で何と言われたかを記録する欄がある">
+    <figcaption><strong>答えてもらえなかったときの記録。</strong> 「未確認」を押すと、<strong>その場で何とおっしゃったか</strong>を控えます。これがあると、後日工場長に「社長はこうおっしゃっていました」と聞けます。<strong>この発言は原稿には使いません。</strong></figcaption>
+  </figure>
+
+  <figure>
+    <img src="captures/04-後日確認リスト.png" alt="後日確認リスト。未確認の項目と、誰にいつ聞くかの記入欄">
+    <figcaption><strong>後日確認リスト。</strong> 第1回で埋まらなかった項目と、<strong>第2回の日程・同席いただく方</strong>を決める画面です。印刷して第2回に持って行けます。</figcaption>
+  </figure>
+
+  <figure>
+    <img src="captures/03-見た目の選択.png" alt="配色・書体・雰囲気などを選ぶ画面と、その組み合わせの見本">
+    <figcaption><strong>見た目の選択。</strong> 業種に合う「型」を押すと、配色・書体・レイアウトがまとめて決まります。<strong>下に見本が出て、選ぶたびに変わります。</strong> 取材のその場で、画面をお客様に向けて選べます。</figcaption>
+  </figure>
+
+  <figure>
+    <img src="captures/05-お客様確認画面.png" alt="聞き取り内容をお客様に確認いただく画面">
+    <figcaption><strong>取材の最後に、その場で確認していただく画面。</strong> 数字・型番・材質の誤りは、我々には検算できません。<strong>その場で本人に見ていただくのが、唯一で最も安い検算です。</strong></figcaption>
+  </figure>
+
+  <figure>
+    <img src="captures/06-サイト_製造業.png" alt="書き出された製造業向けサイトのトップページ">
+    <figcaption><strong>書き出されるサイト（製造業）。</strong> 最初の画面に<strong>対応材質・ロット・納期</strong>を置く型です。調達担当者は綺麗な写真ではなく、この4つを見て「自分の案件を頼めるか」を判断します。</figcaption>
+  </figure>
+
+  <figure>
+    <img src="captures/07-サイト_汎用.png" alt="書き出された汎用サイトのサービス・料金ページ">
+    <figcaption><strong>書き出されるサイト（汎用ベーシック）。</strong> 同じ道具から作っていますが、<strong>配色も書体も余白も別物</strong>です。「何を、いくらで」が最初に出ます。</figcaption>
+  </figure>
+
+  <p style="color:var(--ink-2);font-size:14px"><strong>※ 画面に出ている「★SEOの本体」「社長が自分では言えない部分」などは、我々だけが見る言い方です。</strong> お客様にお見せする確認画面には出ません。</p>
+</section>
+
+<section>
   <p class="no">11</p>
   <h2>決まっていないこと（一覧）</h2>
   <p><strong>次に会うときに、この5つを決めたいです。</strong></p>
@@ -318,7 +368,7 @@ footer p { max-width: 42em; }
       <tr><th>報酬の％</th><td>開拓 25〜30% ／ 紹介 10%（チャネルで分ける）</td></tr>
       <tr><th>屋号</th><td>「ものづくりウェブ」＋「北九州の製造業専門のホームページ制作」</td></tr>
       <tr><th>着手金の比率と、値引きの引き方</th><td>着手金30%＋検収後70%から始める</td></tr>
-      <tr><th>1件目をどう受けるか</th><td>未定。実績づくりの条件を含めて相談したい</td></tr>
+      <tr><th>公開後の保守の費用</th><td>未定。月額なし・都度対応までは決定。1回いくらかを決めたい</td></tr>
       <tr><th>リストの作り方と当たる順番</th><td>未定。商工会議所のデータベースは使える見込み</td></tr>
     </tbody>
   </table>
