@@ -20,39 +20,50 @@ export interface Palette {
   inkSoft: string;
   bg: string;
   bgSoft: string;
+  /** 枠線。装飾なので薄くてよい */
   line: string;
+  /**
+   * 表の罫線。**`line` より濃い。**
+   *
+   * 「写真が無くても、文字と表だけで読める」と謳っている以上、
+   * その表の罫線が見えないのは通らない。対応材質・設備一覧は調達担当者が最も見る部分で、
+   * ここだけは背景に対して 3:1 を確保する（`contrast.test.mjs` で検査）。
+   */
+  tableLine: string;
 }
 
 export const PALETTES: Palette[] = [
   {
     id: "ai", label: "藍", note: "製造業の既定。堅い・実直。青は業種を問わず外さない",
     accent: "#10456f", accentDark: "#0b3252", accentSoft: "#e8eff5",
-    ink: "#17202a", inkSoft: "#5b6673", bg: "#ffffff", bgSoft: "#f4f6f8", line: "#d9dee4",
+    ink: "#17202a", inkSoft: "#5b6673", bg: "#ffffff", bgSoft: "#f4f6f8", line: "#d9dee4", tableLine: "#929599",
   },
   {
     id: "hagane", label: "鋼", note: "金属加工・機械。無彩色に近く、設備写真が映える",
     accent: "#3d4852", accentDark: "#272f36", accentSoft: "#eceef0",
-    ink: "#1c1f22", inkSoft: "#5d646b", bg: "#ffffff", bgSoft: "#f3f4f5", line: "#dcdee0",
+    ink: "#1c1f22", inkSoft: "#5d646b", bg: "#ffffff", bgSoft: "#f3f4f5", line: "#dcdee0", tableLine: "#909192",
   },
   {
     id: "fukamidori", label: "深緑", note: "食品・環境・農業まわり。清潔さと落ち着き",
     accent: "#1f6f4a", accentDark: "#17573a", accentSoft: "#e6f1ea",
-    ink: "#1b241f", inkSoft: "#586460", bg: "#ffffff", bgSoft: "#f3f7f4", line: "#d8e0da",
+    ink: "#1b241f", inkSoft: "#586460", bg: "#ffffff", bgSoft: "#f3f7f4", line: "#d8e0da", tableLine: "#8d928e",
   },
   {
     id: "enji", label: "臙脂", note: "老舗・職人仕事。和の色。創業が古い会社に効く",
     accent: "#8d2f36", accentDark: "#6d2329", accentSoft: "#f6eaea",
-    ink: "#231a1a", inkSoft: "#6b5b5b", bg: "#fffdfc", bgSoft: "#f8f4f2", line: "#e3d9d6",
+    ink: "#231a1a", inkSoft: "#6b5b5b", bg: "#fffdfc", bgSoft: "#f8f4f2", line: "#e3d9d6", tableLine: "#999290",
   },
   {
     id: "sumi", label: "墨", note: "設計・デザイン寄り。写真が少なくても締まる",
     accent: "#1d1d1d", accentDark: "#000000", accentSoft: "#ededed",
-    ink: "#141414", inkSoft: "#5e5e5e", bg: "#ffffff", bgSoft: "#f4f4f4", line: "#dcdcdc",
+    ink: "#141414", inkSoft: "#5e5e5e", bg: "#ffffff", bgSoft: "#f4f4f4", line: "#dcdcdc", tableLine: "#949494",
   },
   {
-    id: "kohaku", label: "琥珀", note: "生活サービス・住宅まわり。硬すぎず、親しみが要るとき",
-    accent: "#b06a10", accentDark: "#8a520a", accentSoft: "#fbefdd",
-    ink: "#241d14", inkSoft: "#6a6055", bg: "#fffdfa", bgSoft: "#f8f4ee", line: "#e6ddd0",
+    id: "kohaku", label: "琥珀",
+    // 【2026-09-13 修正】#b06a10 はリンク・ボタンでWCAG AA（4.5:1）を落としていた
+    note: "生活サービス・住宅まわり。硬すぎず、親しみが要るとき。※黄〜橙は加齢で見分けづらくなる色",
+    accent: "#94580c", accentDark: "#7a4809", accentSoft: "#fbefdd",
+    ink: "#241d14", inkSoft: "#6a6055", bg: "#fffdfa", bgSoft: "#f8f4ee", line: "#e6ddd0", tableLine: "#969088",
   },
 ];
 
@@ -90,13 +101,17 @@ export const FONTS: FontSet[] = [
     webfont: null,
   },
   {
-    id: "maru", label: "丸ゴシック", note: "やわらかい。生活サービス・個人のお客様が多い会社に",
+    id: "maru", label: "丸ゴシック",
+    // **選べるのに反映されない選択肢を作らない**（D-138）。出ない環境があるなら、そう書く
+    note: "やわらかい。ただし丸ゴシックで出るのは iPhone・Mac のみで、Windows・Androidでは普通のゴシック体になります",
     body: '"Hiragino Maru Gothic ProN", "Yu Gothic", system-ui, sans-serif',
     heading: '"Hiragino Maru Gothic ProN", "Yu Gothic", system-ui, sans-serif',
     webfont: null,
   },
   {
-    id: "noto", label: "Noto Sans JP（Webフォント）", note: "★どの端末でも同じ見た目になる。ただし表示が少し遅くなり、Googleへの依存が1つ増える",
+    id: "noto", label: "Noto Sans JP（Webフォント）",
+    // 実測（2026-09-13）：製造業サイトの典型的な本文で 26ファイル・約497KB
+    note: "★どの端末でも同じ見た目になる。ただし約500KB・26ファイルを追加で読み込むため表示が遅くなり、Googleへの依存が1つ増える",
     body: '"Noto Sans JP", system-ui, sans-serif',
     heading: '"Noto Sans JP", system-ui, sans-serif',
     webfont: "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&display=swap",
@@ -173,6 +188,23 @@ export const HEADINGS: Choice[] = [
   { id: "band", label: "背景帯", note: "強い。章が多いページで迷子になりにくい" },
 ];
 
+/**
+ * 本文の文字サイズ。
+ *
+ * **読み手は60代前後の社長と調達担当者**（docs/06）。若い人向けのサイトではない。
+ *
+ * 何pxが正しいかの一次根拠（JIS S 0032）は未入手で、**推測で既定を決めない。**
+ * 代わりに、**第2回取材で実物を並べて、社長ご本人の端末・ご本人の目で選んでいただく**
+ * （取材が2回になったので、その場がある・D-147）。
+ * 3段階に留めるのは時間の都合ではなく、17→18→20は並べれば違いが分かるが、
+ * 17.5pxを挟むと**見せても選べない**から。
+ */
+export const TEXT_SIZES: Choice[] = [
+  { id: "normal", label: "標準（17px）", note: "既定。PCでの一般的な本文" },
+  { id: "large", label: "大きめ（18px）", note: "紙の資料に慣れた方に。迷ったらこちら" },
+  { id: "xlarge", label: "かなり大きい（20px）", note: "お客様が高齢の方中心のとき" },
+];
+
 /** 表の罫線。対応可能範囲・設備一覧は表が主役になる */
 export const TABLES: Choice[] = [
   { id: "all", label: "全部に罫線", note: "既定。仕様書に近い" },
@@ -184,6 +216,7 @@ export interface Theme {
   palette: string;
   font: string;
   mood: string;
+  textSize: string;
   nav: string;
   hero: string;
   sections: string;
@@ -192,8 +225,21 @@ export interface Theme {
 }
 
 export const DEFAULT_THEME: Theme = {
-  palette: "ai", font: "gothic", mood: "futsu",
+  palette: "ai", font: "gothic", mood: "futsu", textSize: "normal",
   nav: "standard", hero: "headline", sections: "line", headings: "plain", tables: "all",
+};
+
+/**
+ * 本文の文字サイズと、それに応じた1行の長さ。
+ *
+ * **1行が58.8文字あった**（本文幅1000px ÷ 17px）。長すぎると、行の折り返しで
+ * 次の行の頭を見失う。60代の読み手ではとくに起きる。
+ * 1行の長さは em で持つので、**文字を大きくしたら行も長くなる、を避けられる。**
+ */
+const TEXT_SIZE_VALUES: Record<string, { size: string; measure: string }> = {
+  normal: { size: "17px", measure: "40em" },
+  large: { size: "18px", measure: "38em" },
+  xlarge: { size: "20px", measure: "34em" },
 };
 
 /**
@@ -225,27 +271,27 @@ export interface Preset {
 export const PRESETS: Preset[] = [
   {
     id: "hyojun", label: "標準", note: "迷ったらこれ。業種を問わず外さない",
-    theme: { palette: "ai", font: "gothic", mood: "futsu", nav: "standard", hero: "headline", sections: "line", headings: "plain", tables: "all" },
+    theme: { palette: "ai", font: "gothic", mood: "futsu", textSize: "normal", nav: "standard", hero: "headline", sections: "line", headings: "plain", tables: "all" },
   },
   {
     id: "seimitsu", label: "精密加工", note: "金属加工・機械部品。ページ数が多く、設備や仕様を読ませる会社",
-    theme: { palette: "hagane", font: "mixed", mood: "katai", nav: "sidebar", hero: "spec", sections: "line", headings: "rule", tables: "stripe" },
+    theme: { palette: "hagane", font: "mixed", mood: "katai", textSize: "normal", nav: "sidebar", hero: "spec", sections: "line", headings: "rule", tables: "stripe" },
   },
   {
     id: "shinise", label: "老舗・職人", note: "創業が古い会社。代表挨拶や沿革が効くとき",
-    theme: { palette: "enji", font: "mincho", mood: "futsu", nav: "standard", hero: "headline", sections: "space", headings: "underline", tables: "horizontal" },
+    theme: { palette: "enji", font: "mincho", mood: "futsu", textSize: "normal", nav: "standard", hero: "headline", sections: "space", headings: "underline", tables: "horizontal" },
   },
   {
     id: "seiketsu", label: "食品・環境", note: "清潔さが問われる業種。工場の写真が主役になる",
-    theme: { palette: "fukamidori", font: "gothic", mood: "futsu", nav: "standard", hero: "photo", sections: "alternate", headings: "band", tables: "all" },
+    theme: { palette: "fukamidori", font: "gothic", mood: "futsu", textSize: "normal", nav: "standard", hero: "photo", sections: "alternate", headings: "band", tables: "all" },
   },
   {
     id: "seikatsu", label: "生活サービス", note: "個人のお客様が多い会社。住宅・設備・店舗",
-    theme: { palette: "kohaku", font: "maru", mood: "yawaraka", nav: "standard", hero: "photo", sections: "alternate", headings: "underline", tables: "horizontal" },
+    theme: { palette: "kohaku", font: "maru", mood: "yawaraka", textSize: "normal", nav: "standard", hero: "photo", sections: "alternate", headings: "underline", tables: "horizontal" },
   },
   {
     id: "sekkei", label: "設計・技術", note: "写真が少なくても締まる。図面や技術資料が中心の会社",
-    theme: { palette: "sumi", font: "mixed", mood: "katai", nav: "sidebar", hero: "spec", sections: "line", headings: "rule", tables: "stripe" },
+    theme: { palette: "sumi", font: "mixed", mood: "katai", textSize: "normal", nav: "sidebar", hero: "spec", sections: "line", headings: "rule", tables: "stripe" },
   },
 ];
 
@@ -267,6 +313,7 @@ export function resolveTheme(theme: Partial<Theme> | undefined) {
     palette: pick(PALETTES, t.palette, PALETTES[0]!),
     font: pick(FONTS, t.font, FONTS[0]!),
     mood: pick(MOODS, t.mood, MOODS[1]!),
+    textSize: pick(TEXT_SIZES, t.textSize, TEXT_SIZES[0]!),
     nav: pick(NAVS, t.nav, NAVS[0]!),
     hero: pick(HEROES, t.hero, HEROES[0]!),
     sections: pick(SECTIONS, t.sections, SECTIONS[0]!),
@@ -277,11 +324,14 @@ export function resolveTheme(theme: Partial<Theme> | undefined) {
 
 /** テンプレートの :root に流し込むCSS変数 */
 export function themeVars(theme: Partial<Theme> | undefined): string {
-  const { palette: p, font: f, mood: m } = resolveTheme(theme);
+  const { palette: p, font: f, mood: m, textSize } = resolveTheme(theme);
+  const t = TEXT_SIZE_VALUES[textSize.id] ?? TEXT_SIZE_VALUES.normal!;
   return [
     `--accent:${p.accent}`, `--accent-dark:${p.accentDark}`, `--accent-soft:${p.accentSoft}`,
-    `--ink:${p.ink}`, `--ink-soft:${p.inkSoft}`, `--bg:${p.bg}`, `--bg-soft:${p.bgSoft}`, `--line:${p.line}`,
+    `--ink:${p.ink}`, `--ink-soft:${p.inkSoft}`, `--bg:${p.bg}`, `--bg-soft:${p.bgSoft}`,
+    `--line:${p.line}`, `--table-line:${p.tableLine}`,
     `--font-body:${f.body}`, `--font-head:${f.heading}`,
+    `--font-size:${t.size}`, `--measure:${t.measure}`,
     `--radius:${m.radius}`, `--leading:${m.leading}`, `--tracking:${m.tracking}`,
     `--line-width:${m.lineWidth}`, `--section:${m.section}`,
   ].join(";");

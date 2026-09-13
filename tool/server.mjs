@@ -238,6 +238,7 @@ const server = createServer(async (req, res) => {
         theme: {
           presets: THEME.PRESETS,
           palettes: THEME.PALETTES, fonts: THEME.FONTS, moods: THEME.MOODS,
+          textSizes: THEME.TEXT_SIZES,
           navs: THEME.NAVS, heroes: THEME.HEROES,
           sections: THEME.SECTIONS, headings: THEME.HEADINGS, tables: THEME.TABLES,
           default: THEME.DEFAULT_THEME,

@@ -479,6 +479,8 @@ function renderTheme(field, read, write) {
         return sample;
       }),
       choiceRow("雰囲気", opts.moods, t.mood, (v) => set("mood", v)),
+      // **第2回取材で、実物を並べて社長ご本人に選んでいただく項目**（D-153）
+      choiceRow("本文の文字サイズ", opts.textSizes, t.textSize, (v) => set("textSize", v)),
       choiceRow("メニューの位置", opts.navs, t.nav, (v) => set("nav", v)),
       // 最初の画面の型は、材料が無いと成立しない。無いものは選ばせない
       choiceRow("最初の画面", opts.heroes.map(withAvailability), t.hero, (v) => set("hero", v)),
@@ -541,9 +543,11 @@ function drawPreview(el, opts, t) {
   const m = opts.moods.find((x) => x.id === t.mood) ?? opts.moods[1];
   const nav = opts.navs.find((x) => x.id === t.nav) ?? opts.navs[0];
 
+  const size = { normal: "14px", large: "15px", xlarge: "17px" }[t.textSize] ?? "14px";
   el.style.cssText =
+    `font-size:${size};` +
     `--tp-accent:${p.accent};--tp-accent-dark:${p.accentDark};--tp-accent-soft:${p.accentSoft};` +
-    `--tp-ink:${p.ink};--tp-ink-soft:${p.inkSoft};--tp-bg:${p.bg};--tp-bg-soft:${p.bgSoft};--tp-line:${p.line};` +
+    `--tp-ink:${p.ink};--tp-ink-soft:${p.inkSoft};--tp-bg:${p.bg};--tp-bg-soft:${p.bgSoft};--tp-line:${p.tableLine};` +
     `--tp-body:${f.body};--tp-head:${f.heading};` +
     `--tp-radius:${m.radius};--tp-leading:${m.leading};--tp-line-width:${m.lineWidth}`;
   el.dataset.layout = nav.id === "sidebar" ? "sidebar" : t.hero === "photo" ? "wide" : "standard";
@@ -1047,6 +1051,7 @@ function renderReviewField(field, blockTitle) {
       `配色：${name("palettes", t.palette)}`,
       `書体：${name("fonts", t.font)}`,
       `雰囲気：${name("moods", t.mood)}`,
+      `文字の大きさ：${name("textSizes", t.textSize)}`,
       `最初の画面：${name("heroes", t.hero)}`,
       `メニュー：${name("navs", t.nav)}`,
     ].join("　／　");

@@ -196,7 +196,7 @@ button { font: inherit; }
 .theme-preview {
   margin-top: 18px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
   background: var(--tp-bg); color: var(--tp-ink); font-family: var(--tp-body);
-  line-height: var(--tp-leading); font-size: 14px;
+  line-height: var(--tp-leading);
 }
 .theme-preview .tp-head {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
