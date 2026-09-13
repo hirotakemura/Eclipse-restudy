@@ -170,6 +170,10 @@ button { font: inherit; }
 /* ── サイトの見た目（テーマ） ─────────────── */
 /* 取材のその場でお客様と一緒に選ぶ。**言葉ではなく見本で選ぶ** */
 .theme-row { margin-bottom: 16px; }
+.theme-sep {
+  font-size: 12px; color: var(--muted); margin: 20px 0 10px;
+  border-top: 1px solid var(--line); padding-top: 12px;
+}
 .theme-row-title { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
 .theme-choices { display: flex; flex-wrap: wrap; gap: 8px; }
 .theme-choice {

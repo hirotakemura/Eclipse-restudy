@@ -236,6 +236,7 @@ const server = createServer(async (req, res) => {
         version: CODE_VERSION,
         // 見た目の選択肢は lib/theme.ts が単一の正。画面側で定義を持たない
         theme: {
+          presets: THEME.PRESETS,
           palettes: THEME.PALETTES, fonts: THEME.FONTS,
           moods: THEME.MOODS, layouts: THEME.LAYOUTS, default: THEME.DEFAULT_THEME,
         },

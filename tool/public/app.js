@@ -408,6 +408,26 @@ function renderTheme(field, read, write) {
     const t = current();
     rows.replaceChildren();
 
+    // 型を押すと4軸がまとめて決まる。そこから1軸だけ直す使い方を想定している
+    const presetId = matchPreset(opts.presets, t);
+    rows.append(
+      choiceRow("型から選ぶ", opts.presets ?? [], presetId, (id) => {
+        const preset = (opts.presets ?? []).find((p) => p.id === id);
+        if (preset) { write({ ...preset.theme }); draw(); }
+      }, (p) => {
+        const sw = document.createElement("span");
+        sw.className = "swatch";
+        const pal = opts.palettes.find((x) => x.id === p.theme.palette);
+        sw.style.background = pal?.accent ?? "#ccc";
+        return sw;
+      }),
+    );
+
+    const sep = document.createElement("div");
+    sep.className = "theme-sep";
+    sep.textContent = "1つずつ選ぶ";
+    rows.append(sep);
+
     rows.append(
       choiceRow("配色", opts.palettes, t.palette, (v) => set("palette", v), (p) => {
         const sw = document.createElement("span");
@@ -432,6 +452,15 @@ function renderTheme(field, read, write) {
   draw();
   box.append(rows, preview);
   return box;
+}
+
+/** いま選ばれている組み合わせが、どの型と一致するか（lib/theme.ts の matchPreset と同じ判定） */
+function matchPreset(presets, t) {
+  return (presets ?? []).find(
+    (p) =>
+      p.theme.palette === t.palette && p.theme.font === t.font &&
+      p.theme.mood === t.mood && p.theme.layout === t.layout,
+  )?.id ?? null;
 }
 
 function choiceRow(title, items, selected, onPick, decorate) {

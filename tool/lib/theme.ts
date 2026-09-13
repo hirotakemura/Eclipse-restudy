@@ -144,6 +144,61 @@ export interface Theme {
 
 export const DEFAULT_THEME: Theme = { palette: "ai", font: "gothic", mood: "futsu", layout: "standard" };
 
+/**
+ * 型（プリセット）。
+ *
+ * **4軸を1つずつ選ぶのは、90分の取材では重い。**
+ * 業種に合う組み合わせを先に用意しておき、押せば4つとも決まるようにする。
+ * そこから1軸だけ直す、という使い方を想定している。
+ */
+export interface Preset {
+  id: string;
+  label: string;
+  note: string;
+  theme: Theme;
+}
+
+export const PRESETS: Preset[] = [
+  {
+    id: "hyojun", label: "標準", note: "迷ったらこれ。業種を問わず外さない",
+    theme: { palette: "ai", font: "gothic", mood: "futsu", layout: "standard" },
+  },
+  {
+    id: "seimitsu", label: "精密加工", note: "金属加工・機械部品。ページ数が多く、設備や仕様を読ませる会社",
+    theme: { palette: "hagane", font: "mixed", mood: "katai", layout: "sidebar" },
+  },
+  {
+    id: "shinise", label: "老舗・職人", note: "創業が古い会社。代表挨拶や沿革が効くとき",
+    theme: { palette: "enji", font: "mincho", mood: "futsu", layout: "standard" },
+  },
+  {
+    id: "seiketsu", label: "食品・環境", note: "清潔さが問われる業種。工場の写真が主役になる",
+    theme: { palette: "fukamidori", font: "gothic", mood: "futsu", layout: "wide" },
+  },
+  {
+    id: "seikatsu", label: "生活サービス", note: "個人のお客様が多い会社。住宅・設備・店舗",
+    theme: { palette: "kohaku", font: "maru", mood: "yawaraka", layout: "standard" },
+  },
+  {
+    id: "sekkei", label: "設計・技術", note: "写真が少なくても締まる。図面や技術資料が中心の会社",
+    theme: { palette: "sumi", font: "mixed", mood: "katai", layout: "standard" },
+  },
+];
+
+/** いま選ばれている組み合わせが、どの型と一致するか。一致しなければ null */
+export function matchPreset(theme: Partial<Theme> | undefined): string | null {
+  const t = { ...DEFAULT_THEME, ...(theme ?? {}) };
+  return (
+    PRESETS.find(
+      (p) =>
+        p.theme.palette === t.palette &&
+        p.theme.font === t.font &&
+        p.theme.mood === t.mood &&
+        p.theme.layout === t.layout,
+    )?.id ?? null
+  );
+}
+
 export function resolveTheme(theme: Partial<Theme> | undefined) {
   const t = { ...DEFAULT_THEME, ...(theme ?? {}) };
   // 知らないIDが入っていても落とさない。既定に戻す
