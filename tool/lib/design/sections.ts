@@ -179,7 +179,10 @@ function dedupe(sections: Section[]): Section[] {
 /** 説明用。**なぜこの構成になったかを、社長に言えるようにしておく** */
 export function explain(sections: Section[]): string {
   return sections
-    .map((s, i) => `${i + 1}. ${s.heading ?? s.kind}　[${s.width}/${s.emphasis}]　${s.why ?? ""}`)
+    .map((s, i) => {
+      const name = s.kind === "prose" ? "（ここに原稿が入ります）" : (s.heading ?? s.kind);
+      return `${i + 1}. ${name}　[${s.width}/${s.emphasis}]　${s.why ?? ""}`;
+    })
     .join("\n");
 }
 
@@ -243,4 +246,39 @@ export function composePage(
   }
 
   return dedupe(out);
+}
+
+/**
+ * そのセクションが、**すでに画面に出しているもの**。
+ *
+ * 原稿を書く側に渡すために要る。
+ * これまでは構成と原稿が別々に決まっていたので、
+ * **材質の札がすぐ下に出ているのに、原稿でも材質を並べる**ということが起きていた。
+ * 「何がすでに出ているか」を伝えれば、繰り返さずに済む（D-193）。
+ */
+const SHOWS: Record<Section["kind"], string> = {
+  hero: "会社名・事業の概要・（型によっては）対応材質や納期の一覧・外観写真",
+  figures: "対応ロット・最短納期・対応精度・対応材質を、大きな文字で",
+  declined: "他社様が断った案件の記録（聞き取った文章そのまま）",
+  technique: "工程の工夫（聞き取った文章そのまま）",
+  materials: "対応材質と加工法を、ひとつずつ札にして",
+  equipment: "メーカー・型番の分かっている設備（名称・メーカー・台数）",
+  equipmentTable: "保有設備の一覧表（設備名・メーカー・台数）",
+  specTable: "対応材質・加工法・サイズ・精度・ロット・納期・資格の一覧表",
+  cases: "加工事例のカード（業界・表題・相談内容の冒頭）",
+  gallery: "工場・設備の写真",
+  timeline: "創業年と沿革の年表",
+  people: "5年後のビジョン・代表者名",
+  points: "褒め言葉・同業が敬遠する仕事・最も難しかった仕事（聞き取った文章そのまま）",
+  prose: "——ここにあなたの文章が入ります——",
+};
+
+/** 原稿を書く人に見せる、このページの構成 */
+export function describeForWriter(sections: Section[]): string {
+  return sections
+    .map((s, i) => {
+      const head = s.kind === "prose" ? "**あなたの文章**" : (s.heading ?? s.kind);
+      return `${i + 1}. ${head}　… ${SHOWS[s.kind]}`;
+    })
+    .join("\n");
 }

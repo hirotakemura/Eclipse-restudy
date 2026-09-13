@@ -57,7 +57,30 @@ if (key && !key.startsWith("sk-ant-")) {
 const { generateSite, estimateCost } = await import("./lib/generate/pipeline.ts");
 const project = JSON.parse(fs.readFileSync(file, "utf8"));
 
-console.log(`\n${project.basics?.name ?? id} の原稿を生成します\n`);
+console.log(`\n${project.basics?.name ?? id} の原稿を生成します`);
+
+/**
+ * **構成を先に決めてから書く**（D-193）。
+ * どのセクションがどの順で出るかを原稿を書く側に渡すので、
+ * すでに画面に出ているものを文章で繰り返さなくなる。
+ * ここで見せるのは、書き出し（build:site）が出すものと同じ構成。
+ */
+{
+  const [{ analyze }, { composeTop, explain }, { resolveTheme }, { DIRECTIONS }] = await Promise.all([
+    import("./lib/design/analysis.ts"),
+    import("./lib/design/sections.ts"),
+    import("./lib/theme.ts"),
+    import("./lib/design/direction.ts"),
+  ]);
+  const r = resolveTheme(project.theme);
+  const label = DIRECTIONS.find((d) => d.id === r.direction)?.label ?? r.direction;
+  const sections = composeTop(project, analyze(project), {
+    hero: r.hero.id, direction: r.direction, hasProse: true,
+  });
+  console.log(`\n  型「${label}」の構成を先に決めて、その隙間を書かせます`);
+  for (const line of explain(sections).split("\n")) console.log(`    ${line.split("　")[0]}`);
+  console.log("");
+}
 
 /**
  * APIのエラーを、そのままスタックトレースで出さない。

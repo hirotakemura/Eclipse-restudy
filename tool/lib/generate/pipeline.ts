@@ -11,6 +11,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { Project } from "../schema.ts";
 import { verifyDraft, hasBlockingError, type Finding } from "../verify.ts";
 import { decidePages, type PageSpec } from "./pages.ts";
+import { analyze } from "../design/analysis.ts";
+import { composeTop, composePage, type Section } from "../design/sections.ts";
+import { resolveTheme } from "../theme.ts";
 import { SYSTEM_RULES, projectContext, pagePrompt, retryPrompt } from "./prompts.ts";
 
 export interface PageResult {
@@ -44,6 +47,26 @@ export async function generateSite(
   const context = projectContext(project);
   const results: PageResult[] = [];
 
+  /**
+   * **構成を先に決めてから、原稿を書く**（D-193）。
+   *
+   * これまでは、どのセクションがどの順で出るかを知らないまま原稿を書いていた。
+   * その結果、すぐ下に材質の札が出ているのに原稿でも材質を並べる、が起きていた。
+   * 書き出し（build-site.mjs）と同じ関数を使うので、**画面と原稿がずれない。**
+   */
+  const analysis = analyze(project);
+  const resolved = resolveTheme((project as any).theme);
+  const direction = resolved.direction;
+  const layoutOf = (slug: string): { sections: Section[]; analysis: typeof analysis; direction?: string } | undefined => {
+    let sections: Section[] = [];
+    if (slug === "index") {
+      sections = composeTop(project, analysis, { hero: resolved.hero.id, direction, hasProse: true });
+    } else if (slug === "strengths" || slug === "capability" || slug === "equipment") {
+      sections = composePage(slug, project, analysis, { direction, hasProse: true });
+    }
+    return sections.length ? { sections, analysis, direction } : undefined;
+  };
+
   for (const [i, page] of pages.entries()) {
     onProgress(`[${i + 1}/${pages.length}] ${page.title}`);
 
@@ -54,7 +77,7 @@ export async function generateSite(
         role: "user",
         content: [
           { type: "text", text: context, cache_control: { type: "ephemeral" } },
-          { type: "text", text: pagePrompt(page, project) },
+          { type: "text", text: pagePrompt(page, project, layoutOf(page.slug)) },
         ],
       },
     ];

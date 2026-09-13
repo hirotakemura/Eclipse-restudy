@@ -8,6 +8,10 @@
 import type { Project } from "../schema.ts";
 import { BANNED_PHRASES, NEEDS_REVIEW_MARKER } from "../schema.ts";
 import type { PageSpec } from "./pages.ts";
+import type { Analysis } from "../design/analysis.ts";
+import type { Section } from "../design/sections.ts";
+import { describeForWriter } from "../design/sections.ts";
+import { getDirection } from "../design/direction.ts";
 
 /**
  * 全ページ共通のルール。プロンプトキャッシュに載せるため、案件によって変えない。
@@ -56,7 +60,29 @@ ${BANNED_PHRASES.map((p) => `   ・${p}`).join("\n")}
   × 「±5μmに対応」　　　　　← データにない数値の捏造。最も危険
   ○ 「対応精度：${NEEDS_REVIEW_MARKER}」← これが正解
 
-**未確認の項目を、それらしく埋めないでください。**`;
+**未確認の項目を、それらしく埋めないでください。**
+
+# 社内の判断材料を、そのまま書かない　★重要
+
+inquiry の次の項目は、**我々がサイトの作り方を決めるために聞いたもの**で、
+お客様のサイトに載せる言葉ではありません。
+
+- wantMoreOf（もっと受けたい仕事）… **実績が無いことが多い。** 実績の無い分野を「得意」と書かない
+- wantLessOf（減らしたい問い合わせ）… 「価格でしか勝負にならない」等、**社内の本音**が入っている
+- mostProfitableWork（最も利益率の高い仕事）… **利益率を公開する会社はない**
+- lostDealReasons（失注の理由）／outlookConcern（先行きの懸念）／monthlyInquiries（問い合わせ数）
+
+これらは**書く内容ではなく、何を前に出すかの判断に使われています。**
+たとえば「価格で比べられる引き合いを減らしたい」会社なら、
+**安さではなく難しさで選ばれる書き方にする**、という形で応えてください。
+
+# 構成の中での役割
+
+あなたの文章は、**すでに画面に出ているものの隙間に入ります。**
+下に「このページの構成」が示されている場合は、
+**すでに表示されている内容を、文章で繰り返さないでください。**
+材質の札が出ているなら材質を並べ直さない。表が出ているなら表の中身を文章にしない。
+**その代わりに、それらをつなぐ文脈と、データだけでは伝わらない理由を書いてください。**`;
 
 /** 案件データ。キャッシュに載せるため、ページごとに変えない */
 export function projectContext(project: Project): string {
@@ -69,8 +95,18 @@ ${JSON.stringify(project, null, 2)}
 \`\`\``;
 }
 
-/** ページごとの指示 */
-export function pagePrompt(page: PageSpec, project: Project): string {
+/**
+ * ページごとの指示。
+ *
+ * **構成が決まってから原稿を書く**（D-193）。
+ * これまでは、どのセクションがどの順で出るかを知らないまま原稿を書いていたため、
+ * すぐ下に材質の札が出ているのに原稿でも材質を並べる、ということが起きていた。
+ */
+export function pagePrompt(
+  page: PageSpec,
+  project: Project,
+  layout?: { sections: Section[]; analysis: Analysis; direction?: string },
+): string {
   const extra =
     page.caseIndex !== undefined
       ? `\n\n## この事例のデータ\n\n\`\`\`json\n${JSON.stringify(project.cases?.[page.caseIndex], null, 2)}\n\`\`\``
@@ -84,12 +120,47 @@ ${page.purpose}
 
 ## 構成
 
-${page.outline}${extra}
+${page.outline}${extra}${layoutPrompt(layout)}
 
 ---
 
 上記のページの原稿を、Markdown で書いてください。
 解説や前置きは不要です。**原稿だけ**を出力してください。`;
+}
+
+/**
+ * このページに何がどの順で出るか。
+ *
+ * **見立て（何で見せる会社か）も渡す。**
+ * 「他社様が断った案件で選ばれている会社」と分かっていれば、書き出しが変わる。
+ */
+function layoutPrompt(layout?: { sections: Section[]; analysis: Analysis; direction?: string }): string {
+  if (!layout || layout.sections.length === 0) return "";
+  const d = getDirection(layout.direction);
+  const strands = layout.analysis.strands
+    .slice(0, 3)
+    .map((s, i) => `${i + 1}位 ${s.why}`)
+    .join("\n");
+
+  return `
+
+---
+
+## この会社の見立て（聞き取りから機械的に判定したもの）
+
+${strands}
+
+**型「${d.label}」**（${d.note}）で組み立てます。
+
+## このページの構成
+
+このページには、下のものが**この順で**出ます。
+「…」より後ろは、**テンプレートが聞き取ったデータから直接出す部分**です。
+
+${describeForWriter(layout.sections)}
+
+**すでに出ているものを、文章で繰り返さないでください。**
+あなたが書くのは、**その前後をつなぐ文脈**と、**データだけでは伝わらない理由**です。`;
 }
 
 /**
