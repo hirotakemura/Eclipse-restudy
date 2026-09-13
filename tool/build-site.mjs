@@ -1,10 +1,16 @@
 /**
  * KOBO — 案件データからサイトを書き出す
  *
- *   node build-site.mjs <案件ID> [--dev] [--draft]
+ *   node build-site.mjs <案件ID> [--dev]
  *
- *     --dev    　書き出さずに開発サーバーを起動する
- *     --draft  　公開できない状態でも、確認用に書き出しを残す
+ *     --dev  　書き出さずに開発サーバーを起動する
+ *
+ * 書き出し先は、公開してよいかどうかで分ける。
+ *
+ *   projects/<ID>/site/        **そのまま公開してよいもの**しか入らない
+ *   projects/<ID>/site-draft/  公開できない状態の書き出し。中身の確認用
+ *
+ * **「フォルダにある＝公開してよい」にしない。** 迷ったら site/ を見ればよい状態にしておく。
  *
  * site-template に案件データ（project.json と、あれば draft/*.md）を流し込み、
  * projects/<案件ID>/site/ に静的サイトを書き出す。
@@ -21,7 +27,6 @@ import { spawnSync } from "node:child_process";
 // npm run dev:site -- <案件ID> の形でも、順番が入れ替わっても拾えるようにする
 const args = process.argv.slice(2);
 const dev = args.includes("--dev");
-const draftMode = args.includes("--draft");
 const id = args.find((a) => !a.startsWith("--"));
 
 if (!id) {
@@ -97,7 +102,10 @@ if (!fs.existsSync(path.join(templateDir, "node_modules"))) {
 
 const domain = project.terms?.domain?.existing || project.terms?.domain?.desired || "";
 const siteUrl = domain ? (domain.startsWith("http") ? domain : `https://${domain}`) : "https://example.com";
-const outDir = path.resolve(projectDir, "site");
+const siteDir = path.resolve(projectDir, "site");
+const draftDir = path.resolve(projectDir, "site-draft");
+// いったん作業用に書き出し、検査を通ったものだけ site/ に移す
+const outDir = path.resolve(projectDir, ".build");
 
 if (dev) {
   console.log(`\n  開発サーバーを起動します。Ctrl+C で終了\n`);
@@ -119,9 +127,8 @@ if (build.status !== 0) process.exit(build.status ?? 1);
 const files = fs.existsSync(outDir) ? fs.readdirSync(outDir, { recursive: true }) : [];
 const html = files.filter((f) => String(f).endsWith(".html"));
 console.log(`\n  ${html.length}ページを書き出しました`);
-console.log(`  書き出し先: ${path.relative(process.cwd(), outDir)}`);
 // **file:// で開くとリンクも写真も切れる。**必ずサーバー経由で見てもらう
-console.log(`\n  見るには：  npm run preview:site -- ${id}`);
+console.log(`  見るには：  npm run preview:site -- ${id}`);
 if (!domain) console.log(`  ※ ドメイン未定のため ${siteUrl} で書き出しています。決まったら聞き取りに入れて再実行してください。`);
 
 /**
@@ -150,7 +157,16 @@ if (!b.tel) missing.push("電話番号");
 if (!b.address) missing.push("所在地");
 if (!project.terms?.inquiryNotifyEmail) missing.push("問い合わせの通知先メール");
 
+const move = (to) => {
+  fs.rmSync(to, { recursive: true, force: true });
+  fs.renameSync(outDir, to);
+};
+
 if (leaked.length || missing.length) {
+  // 公開できるものだけを site/ に置く。**中身は消さず、確認用として site-draft/ に回す**
+  fs.rmSync(siteDir, { recursive: true, force: true });
+  move(draftDir);
+
   console.log("\n━━━ このままでは公開できません ━━━");
   for (const [f, why] of leaked) console.log(`  ✗ ${f}  ${why}`);
   if (missing.length) {
@@ -158,12 +174,12 @@ if (leaked.length || missing.length) {
     console.log("     電話番号のないBtoB製造業サイトは、作った意味がありません。");
   }
   console.log("\n  KOBOで該当の項目を埋めてから、もう一度実行してください。");
-  if (!draftMode) {
-    // 公開できないものを残しておくと、いつか誰かがそのまま上げる。
-    // 確認したいときは --draft を付ける
-    fs.rmSync(outDir, { recursive: true, force: true });
-    console.log("  書き出したものは消しました。中身を見たいときは --draft を付けてください。");
-    process.exit(1);
-  }
-  console.log("  （--draft のため、確認用として書き出しは残します）");
+  console.log(`\n  中身の確認はできます：  npm run preview:site -- ${id}`);
+  console.log(`  （確認用の書き出し: ${path.relative(process.cwd(), draftDir)}）\n`);
+  process.exit(1);
 }
+
+// 検査を通った。公開してよいものとして site/ に置き、古い確認用は消す
+move(siteDir);
+fs.rmSync(draftDir, { recursive: true, force: true });
+console.log("\n  公開してよい状態です。");

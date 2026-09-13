@@ -19,9 +19,17 @@ if (!id) {
   process.exit(1);
 }
 
-const root = resolve(join("projects", id, "site"));
+/**
+ * 公開してよいもの（site/）を優先して見せる。
+ * 無ければ、公開できない状態の書き出し（site-draft/）を見せる。**そのことを必ず言う。**
+ */
+const siteDir = resolve(join("projects", id, "site"));
+const draftDir = resolve(join("projects", id, "site-draft"));
+const isDraft = !existsSync(siteDir) && existsSync(draftDir);
+const root = isDraft ? draftDir : siteDir;
+
 if (!existsSync(root)) {
-  console.error(`\n  まだ書き出されていません: ${join("projects", id, "site")}`);
+  console.error(`\n  まだ書き出されていません: projects/${id}/site`);
   console.error(`  先に  npm run build:site -- ${id}  を実行してください。\n`);
   process.exit(1);
 }
@@ -67,6 +75,10 @@ const server = createServer(async (req, res) => {
 server.listen(PORT, "127.0.0.1", () => {
   const url = `http://localhost:${PORT}/`;
   console.log(`\n  ${id} のサイトを開きます\n`);
+  if (isDraft) {
+    console.log("  ※ これは**公開できない状態**の書き出しです（確認用）。");
+    console.log("     足りない項目をKOBOで埋めて、もう一度 build:site を実行してください。\n");
+  }
   console.log(`    ${url}\n`);
   console.log("  終わるときは Control + C\n");
   // macOS なら自動でブラウザを開く

@@ -4,9 +4,9 @@ KOBOで聞き取った案件データから、静的サイトを書き出しま�
 
 ```
 cd tool
-npm run build:site -- matsubara-seiki        # projects/matsubara-seiki/site/ に書き出す
-npm run build:site -- matsubara-seiki --draft # 公開できない状態でも、確認用に残す
-npm run dev:site   -- matsubara-seiki        # ブラウザで見ながら直す
+npm run build:site   -- matsubara-seiki   # 書き出す
+npm run preview:site -- matsubara-seiki   # ブラウザで見る（file:// では見られない）
+npm run dev:site     -- matsubara-seiki   # 直しながら見る
 ```
 
 初回だけ、テンプレートの依存（Astro）を取りに行きます。数分かかります。
@@ -23,7 +23,8 @@ npm run dev:site   -- matsubara-seiki        # ブラウザで見ながら直す
 
 ## 書き出す前に止まる場合
 
-次のときは書き出しを消して止まります（`--draft` で確認用に残せます）。
+次のときは、書き出しを `site/` ではなく `site-draft/` に回して止まります。
+**`site/` には、そのまま公開してよいものしか入りません。**
 
 - ページに `{{要確認}}` が残っている
 - 未確認欄に控えた発言が出ている

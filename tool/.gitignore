@@ -12,3 +12,6 @@ site-template/src/site-data/*
 !site-template/src/site-data/.gitkeep
 site-template/dist/
 site-template/.astro/
+
+# サイト書き出しの作業用フォルダ
+projects/*/.build/
