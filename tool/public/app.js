@@ -392,7 +392,11 @@ function renderTheme(field, read, write) {
   const box = document.createElement("div");
   box.className = "theme-picker";
   if (!opts) {
-    box.textContent = "見た目の選択肢を読み込めませんでした";
+    box.className = "theme-picker theme-stale";
+    box.innerHTML =
+      "<b>見た目の選択肢を読み込めませんでした。</b><br>" +
+      "起動中のコードが古い可能性があります。<b>サーバーを一度止めて、起動し直してください。</b><br>" +
+      "<span>ターミナルで Control + C → <code>npm start</code>／または start.command をダブルクリック</span>";
     return box;
   }
 

@@ -358,6 +358,9 @@ function lanAddresses() {
 // 同じ網にいる端末から繋がらないことがある
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`\nKOBO v0.2  （コード ${CODE_VERSION}）`);
+  // 「pullしたのに反映されない」は、たいてい再起動していないだけ。起動時に中身を出しておく
+  const fields = Object.values(FORM_SETS).map((s) => s.blocks.flatMap((b) => b.fields).length);
+  console.log(`  項目 ${fields.join(" / ")}　見た目の選択肢 ${THEME.PALETTES.length}配色・${THEME.PRESETS.length}型`);
   console.log(`\n  このパソコン       http://localhost:${PORT}`);
   const lan = lanAddresses();
   for (const { name, address, likelyWifi } of lan) {
