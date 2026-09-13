@@ -3,15 +3,13 @@
 **実写ではありません。** レイアウトの確認用に生成した差し替え前提の画像です。
 画像の中にも「仮の画像／差し替え前提」と描いてあります。
 
-案件フォルダに取り込むには、KOBOを起動した状態で：
+案件フォルダに取り込むには、`tool` で：
 
 ```
-cd tool/fixtures/mock-matsubara/photos
-for f in *.svg; do
-  curl -s -X POST --data-binary "@$f" \
-    "http://localhost:5173/api/projects/matsubara-seiki/photos?name=$f"
-done
+npm run import:photos -- matsubara-seiki fixtures/mock-matsubara/photos
+npm run build:site    -- matsubara-seiki
+npm run preview:site  -- matsubara-seiki
 ```
 
-そのあとKOBOの「制作条件」→「お預かりした写真」で置き場所を選びます。
-`project.completed.json` には、振り分け済みの状態が入っています。
+`photos.json` に置き場所（外観・代表者・工場・設備・加工事例…）が書いてあるので、
+**振り分け済みの状態で入ります。** KOBOの画面で選び直す必要はありません。
