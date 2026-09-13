@@ -149,7 +149,20 @@ th { background: var(--bg-soft); font-weight: 600; white-space: nowrap; width: 2
 thead th { width: auto; }
 
 /* ── 事例カード ─────────────────────────── */
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+/*
+ * 列数は**件数から決める**（`--cols`）。
+ * auto-fill に任せると、4件のときに1枚だけ次の行の左に取り残される。
+ * 枠線と左の縦線を持つカードが1枚で左に残ると、**壊れて見える**（D-176）。
+ */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  gap: 16px;
+}
+@media (max-width: 1000px) { .cards { grid-template-columns: repeat(min(var(--cols, 3), 2), minmax(0, 1fr)); } }
+@media (max-width: 1000px) { .cards.has-orphan > :last-child { grid-column: 1 / -1; } }
+@media (max-width: 680px) { .cards { grid-template-columns: 1fr; } }
+.cards.has-orphan > :last-child { grid-column: 1 / -1; }
 .case-card {
   display: flex; flex-direction: column; gap: 6px;
   border: var(--line-width) solid var(--line); border-left: 4px solid var(--accent);

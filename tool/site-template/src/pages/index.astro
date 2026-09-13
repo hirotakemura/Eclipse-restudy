@@ -9,6 +9,7 @@
 import Base from "../layouts/Base.astro";
 import Prose from "../components/Prose.astro";
 import CaseCard from "../components/CaseCard.astro";
+import { cardGrid } from "../lib/cards";
 import { project, companyName, cases, photoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen, caseHref } from "../lib/site";
 import { heroId } from "../lib/theme";
 import Figure from "../components/Figure.astro";
@@ -58,6 +59,8 @@ const specs = (isGeneral
 const declined = project.strengths?.wonAfterOthersDeclined;
 const desc = [project.basics?.address, cap.processes?.join("・"), cap.materials?.join("・")]
   .filter(Boolean).join("／");
+const shownCases = cases.slice(0, 6);
+const topCards = cardGrid(shownCases.length);
 ---
 <Base title="トップ" description={`${companyName}｜${desc}`}>
   <section class="hero">
@@ -117,8 +120,8 @@ const desc = [project.basics?.address, cap.processes?.join("・"), cap.materials
     <section class="section">
       <div class="inner">
         <h2>{isGeneral ? "実績" : "加工事例"}</h2>
-        <div class="cards">
-          {cases.slice(0, 6).map((c, i) => <CaseCard index={i} item={c} />)}
+        <div class={`cards${topCards.orphan ? " has-orphan" : ""}`} style={`--cols:${topCards.cols}`}>
+          {shownCases.map((c, i) => <CaseCard index={i} item={c} />)}
         </div>
         {cases.length > 6 && (
           <p style="margin-top:20px"><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>

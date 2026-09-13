@@ -136,6 +136,15 @@ export const nav: NavItem[] = isGeneral
       { href: "/contact/", label: "お問い合わせ" },
     ];
 
+/**
+ * 頭のメニューには「お問い合わせ」を入れない。
+ *
+ * **同じ画面の中に、緑のボタンとメニュー項目で2回出ていた。**
+ * ボタンのほうが目立つうえ、常に見えているので、メニュー項目は重複でしかない（D-175）。
+ * 脚のメニューには残す。会社情報を探す人は、脚を見るから。
+ */
+export const headerNav: NavItem[] = nav.filter((n) => n.href !== "/contact/");
+
 /** 値があるものだけを表の行にする。空欄の行を作らない */
 export function rows(pairs: [string, unknown][]): [string, string][] {
   const out: [string, string][] = [];

@@ -8,7 +8,7 @@
  * 電話とメールが載っていれば、お客様の商売は止まらない（docs/17）。
  */
 import "../styles/site.css";
-import { companyName, tel, telHref, email, address, nav, project, photoOf, photoSrc, isGeneral } from "../lib/site";
+import { companyName, tel, telHref, address, nav, headerNav, project, photoOf, photoSrc, isGeneral } from "../lib/site";
 import { themeStyle, navId, heroId, sectionsId, headingsId, tablesId, webfont } from "../lib/theme";
 
 const logo = photoOf("ロゴ");
@@ -20,6 +20,11 @@ interface Props {
 const { title, description = "" } = Astro.props;
 const here = Astro.url.pathname;
 const isHome = here === "/" || here === "";
+/**
+ * お問い合わせページでは、下の誘導帯を出さない。
+ * **今いるページに「お問い合わせはこちら」と書いてある状態**になっていた。
+ */
+const isContact = here.startsWith("/contact");
 const pageTitle = isHome ? `${companyName}｜${title}` : `${title}｜${companyName}`;
 
 const jsonLd = {
@@ -86,7 +91,7 @@ const jsonLd = {
     </button>
     <nav class="site-nav" id="site-menu" aria-label="メインメニュー">
       <ul>
-        {nav.map((item) => (
+        {headerNav.map((item) => (
           <li>
             <a href={item.href} aria-current={here === item.href ? "page" : undefined}>{item.label}</a>
           </li>
@@ -104,6 +109,7 @@ const jsonLd = {
     **「図面をお持ちでしたら」は、加工屋にしか通じない。**
     汎用は業種を問わないので、どの業種でも成り立つ言い方にとどめる
   -->
+  {!isContact && (
   <section class="cta">
     <div class="inner">
       <h2>{isGeneral ? "まずはお気軽にご相談ください" : "図面をお持ちでしたら、そのままご相談ください"}</h2>
@@ -112,13 +118,19 @@ const jsonLd = {
           ? "お電話・メールで承っております。"
           : "他社様で難しいと言われた案件も、一度ご相談ください。可否だけでもお答えします。"}
       </p>
-      <p class="cta-lines">
-        {tel && <a class="tel-big" href={`tel:${telHref}`}>{tel}</a>}
-        {email && <a class="mail" href={`mailto:${email}`}>{email}</a>}
-      </p>
+      {/*
+        **メールアドレスは、お問い合わせページにだけ置く。**
+        誘導帯と全ページの脚に出していたため、13ページすべてに2回ずつ出ていた（D-175）。
+        電話は残す。調達担当者は電話を使うし、撤退時にも生きる導線だから（D-060）。
+      */}
+      {/*
+        電話番号もここには置かない。**頭にも脚にも出ている3つ目**になる。
+        誘導帯は「一言＋ボタン1つ」に絞る（D-175）。
+      */}
       <a class="btn btn-lg" href="/contact/">お問い合わせはこちら</a>
     </div>
   </section>
+  )}
 
   <footer class="site-footer">
     <div class="inner">
@@ -126,8 +138,6 @@ const jsonLd = {
       <p>
         {address}<br>
         {tel && <>TEL <a href={`tel:${telHref}`}>{tel}</a></>}
-        {tel && email && <> ／ </>}
-        {email && <a href={`mailto:${email}`}>{email}</a>}
       </p>
       <ul class="f-nav">
         {nav.map((item) => <li><a href={item.href}>{item.label}</a></li>)}
