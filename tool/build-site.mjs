@@ -251,6 +251,15 @@ for (const f of html) {
 /**
  * 写真。**プレースホルダの画像が入ったまま「公開してよい」と言わない。**
  * 第1回は仮のSVGが9枚あり、枚数の上では埋まって見えていた。
+ *
+ * 見るのは2つ。
+ *   ① 仮のSVG（中に「仮の画像」などと描いてあるもの）
+ *   ② **案件データで `mock: true` と印を付けた写真**（D-242）
+ *
+ * ②が要るのは、**架空の画像を JPEG で作れてしまう**ため。
+ * 拡張子や中身の文字では見分けられないので、データ側に印を持たせる。
+ * デザインの検討には実写と同じに扱い（`analyze` は写真として数える）、
+ * **公開判定だけが止める。**
  */
 const placeholders = [];
 if (fs.existsSync(photoDst)) {
@@ -259,6 +268,9 @@ if (fs.existsSync(photoDst)) {
     const svg = fs.readFileSync(path.join(photoDst, f), "utf8");
     if (/仮の(?:画像|写真)|ダミー|差し替え前提|placeholder/i.test(svg)) placeholders.push(f);
   }
+}
+for (const ph of project.photos ?? []) {
+  if (ph?.mock && ph.file && !placeholders.includes(ph.file)) placeholders.push(ph.file);
 }
 
 // 公開に必須の情報。**電話番号のないBtoB製造業サイトは、作った意味がない**（D-060）

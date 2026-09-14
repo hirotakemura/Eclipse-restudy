@@ -142,7 +142,12 @@ p { margin: 0 0 16px; }
 .photo img { width: 100%; height: auto; border-radius: var(--radius); display: block; }
 .photo figcaption { font-size: 14px; color: var(--ink-soft); margin-top: 6px; }
 .gallery-wrap { margin-top: 30px; }
-.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+/**
+ * 写真の格子。**`auto-fill` ではなく `auto-fit`**（D-242）。
+ * `auto-fill` は入るだけ枠を作るので、**写真が3枚のとき4枠目の空きが残り、
+ * 写真が左に寄って右が空く。**`auto-fit` なら空いた枠がつぶれて、写真が伸びる。
+ */
+.gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
 .gallery .photo { margin: 0; }
 .gallery .photo img { aspect-ratio: 4 / 3; object-fit: cover; }
 /* 外観写真は横長で受けるので、切らずに出す */
