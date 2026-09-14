@@ -62,7 +62,9 @@ function materialLine(project: Project, a: Analysis, content: ContentId): string
   return bits.join("・");
 }
 
-export function userPrompt(project: Project, a: Analysis, rules: DesignBrief): string {
+export function userPrompt(
+  project: Project, a: Analysis, rules: DesignBrief, onTop?: Set<ContentId>,
+): string {
   const contents = rules.blocks.map((b) => b.content);
   const cands = candidatesFor(project, a, contents);
   const lines: string[] = [];
@@ -82,7 +84,12 @@ export function userPrompt(project: Project, a: Analysis, rules: DesignBrief): s
   lines.push("**選べる表現は、可否表と材料の両方を通したものだけを載せています。**");
   lines.push("ここに無い表現は選べません（選んでも検査で落ちて、規則版に戻ります）。\n");
   for (const c of cands) {
-    lines.push(`### ${c.content}（${getContent(c.content).label}）`);
+    /**
+     * **どれがトップページに出るか**（D-260）。
+     * 判断が効くのはトップだけ（D-225）。効かない場所に手を入れさせても費用が増えるだけ。
+     */
+    const where = !onTop ? "" : onTop.has(c.content) ? "　【トップページに出ます】" : "　【下層ページのみ】";
+    lines.push(`### ${c.content}（${getContent(c.content).label}）${where}`);
     lines.push(`　材料：${materialLine(project, a, c.content)}`);
     if (c.usable.length === 0) {
       lines.push("　選べる表現：（材料が足りないため、規則版に任せます）");
@@ -102,6 +109,21 @@ export function userPrompt(project: Project, a: Analysis, rules: DesignBrief): s
   lines.push("```\n");
   lines.push("この会社にとって**何が重要か**を考えて、必要なら順番・表現・強さを変えてください。");
   lines.push("**内容は減らさないでください。** 変える必要がなければ、たたき台のまま返して構いません。");
+  if (onTop) {
+    lines.push("");
+    lines.push("**【下層ページのみ】と書かれた内容への判断は、画面には出ません。**");
+    lines.push("そのページには、そのページ自身の筋があるためです。**たたき台のまま返してください。**");
+  }
+  /**
+   * **情報の少ない表現に乗り換えない**（D-259）。
+   * 実測では、AIが変えた5箇所が5箇所とも情報の少ないほうへ動いた。
+   * 検査でも止めるが、**先に伝えておけば、落ちる判断を作らせずに済む。**
+   */
+  lines.push("");
+  lines.push("**画面に出る情報が減る乗り換えは、検査で落ちます。**");
+  lines.push("たとえば、設備を「カードの格子」から「箇条書き」に変えるとメーカー名が消え、");
+  lines.push("「大きな数字」に変えると総台数の1語になり、型番が残りません。");
+  lines.push("**強さ（emphasis）を下げるのは構いません。** 制限しているのは表現のほうです。");
   lines.push("JSONだけを返してください。");
   return lines.join("\n");
 }

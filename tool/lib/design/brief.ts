@@ -11,6 +11,9 @@
  *   2. 語彙   すべての値が語彙表にあるか
  *   3. 可否   content × presentation が可否表の○か
  *   4. 材料   その表現に必要なデータが実際にあるか
+ *   5. 情報量 規則版より、画面に出る情報が減っていないか（D-259）
+ *
+ * **5段目は、AIの判断にだけ当てる。** 規則版は材料を見て選んでいるので制限しない。
  */
 
 import {
@@ -105,7 +108,7 @@ export interface StoredBrief extends DesignBrief {
 
 export interface BriefProblem {
   /** どの段で落ちたか */
-  stage: "form" | "vocabulary" | "compatibility" | "material";
+  stage: "form" | "vocabulary" | "compatibility" | "material" | "information";
   where: string;
   message: string;
 }

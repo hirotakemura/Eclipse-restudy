@@ -256,6 +256,14 @@ if (USE_AI) {
   const dAvg = div.avg - baseDiv.avg;
   console.log(`  ${"平均".padEnd(34)} ${baseDiv.avg.toFixed(2)} → ${div.avg.toFixed(2)}`
     + (dAvg > 0.001 ? "　← **AI版のほうが、会社ごとの差が小さい**" : dAvg < -0.001 ? "　← AI版のほうが差が大きい" : "　（同じ）"));
+  /**
+   * **この数字が良くなっても、良いとは限らない**（D-259）。
+   * 実測では 0.37 → 0.31 と「広がった」が、その広がりは
+   * **設備の帯からメーカー名を消した判断がひとりで作っていた。**
+   * 情報を削れば、会社ごとの差は簡単に広がる。D-192 の再演である。
+   */
+  console.log("\n  **差が広がっても、良くなったとは限りません。**");
+  console.log("  情報を削れば差は広がります。下の 10 と、実際の画面で確かめてください。");
 
   console.log("\n━━━ AI OFF → AI ON で、最終HTMLの何が変わったか ━━━\n");
   let changedPages = 0, changedBands = 0;

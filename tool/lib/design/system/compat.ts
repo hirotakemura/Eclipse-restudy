@@ -10,7 +10,7 @@
  */
 
 import type { ContentId } from "./content.ts";
-import type { PresentationId } from "./presentation.ts";
+import { getPresentation, type PresentationId } from "./presentation.ts";
 
 /** 内容ごとに使ってよい表現。**先頭が既定** */
 export const COMPATIBLE: Record<ContentId, PresentationId[]> = {
@@ -110,3 +110,23 @@ export function hasMaterial(p: PresentationId, m: Materials): boolean {
 export function usablePresentations(content: ContentId, m: Materials): PresentationId[] {
   return (COMPATIBLE[content] ?? []).filter((p) => hasMaterial(p, m));
 }
+
+/**
+ * **その乗り換えで、画面に出る情報が減るか**（D-259）。
+ *
+ * 可否表（`canPresent`）は「見せられるか」だけを見ている。
+ * **どれだけ落ちるかは、いままで誰も見ていなかった。**
+ *
+ * 実測（3社のAI版Brief・キャプチャで確認）：
+ *   AIが変えた5箇所は、**5箇所とも情報の少ないほうへの乗り換えだった。**
+ *   多いほうへ動いたものは1つも無い。
+ *   ・設備 `cardGrid` → `list`　　　メーカー名（ブラザー工業・ミツトヨ）と一覧への導線が消えた
+ *   ・設備 `spec` → `largeNumber`　「保有設備 7台」の1語に潰れる
+ *   ・お客様の言葉 `cardGrid` → `quote`　3項目が1発言になる
+ * どれも4段検査は「問題なし」で通した。**可否も材料も、確かに満たしていたからである。**
+ *
+ * **情報を削らせない**（D-204）は、いままで帯の取捨にしか効いていなかった。
+ * 同じ帯のまま、表現の選び方で削れることに気づいていなかった。ここで塞ぐ。
+ */
+export const keepsLess = (from: PresentationId, to: PresentationId): boolean =>
+  getPresentation(to).detail < getPresentation(from).detail;

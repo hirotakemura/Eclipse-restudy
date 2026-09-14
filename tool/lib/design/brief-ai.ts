@@ -8,10 +8,10 @@
  * 【この関数の約束】
  * ① **例外を投げない。** 鍵が無くても、通信が切れても、429でも、
  *    規則版に落として**最後まで書き出せる**（ご指示）。
- * ② **AIの判断を、4段検査より先に信頼しない。**
- *    形 → 語彙 → 可否 → 材料 のどこで落ちても、規則版に戻す。
- * ③ **情報を削らせない。** 規則版が出す内容が1つでも欠けていたら、
- *    その判断は丸ごと捨てる（D-204）。
+ * ② **AIの判断を、検査より先に信頼しない。**
+ *    形 → 語彙 → 可否 → 材料 → 情報量 のどこで落ちても、規則版に戻す。
+ * ③ **情報を削らせない。** 規則版が出す内容が1つでも欠けていたら、その判断は丸ごと捨てる。
+ *    **帯の取捨だけでなく、表現の選び方でも削らせない**（D-204／D-259）。
  * ④ **出所を偽らせない。** `source` は AI が書く欄ではなく、こちらが付ける。
  *
  * 【AIを呼ぶ場所】
@@ -22,11 +22,12 @@
 import type { Project } from "../schema.ts";
 import type { Analysis } from "./analysis.ts";
 import { materialsOf } from "./materials.ts";
-import type { ContentId } from "./system/index.ts";
+import { keepsLess, getPresentation, type ContentId } from "./system/index.ts";
 import {
   validateBrief, type BriefProblem, type DesignBrief, type StoredBrief,
 } from "./brief.ts";
 import { ruleBrief, sameDecision, stored, type BriefContext } from "./brief-rules.ts";
+import { composeTop } from "./sections.ts";
 import { SYSTEM, userPrompt } from "./brief-prompt.ts";
 
 /** Claude Opus 5。原稿生成と同じ（D-019） */
@@ -117,6 +118,25 @@ export function checkAIResponse(
   // ここから先は既存の4段検査（形 → 語彙 → 可否 → 材料）にそのまま通す
   const materials = (c: ContentId) => materialsOf(project, c, a.hasRealPhotos);
   problems.push(...validateBrief(brief, materials));
+  if (problems.length) return { brief: null, problems };
+
+  /**
+   * **5段目：情報量**（D-259）。
+   *
+   * 可否も材料も満たしているのに、**画面に出る情報が減る**乗り換えがある。
+   * 実測では、AIが変えた5箇所が5箇所とも情報の少ないほうへ動き、
+   * 設備の帯からメーカー名（ブラザー工業・ミツトヨ）と一覧への導線が消えた。
+   * 4段検査は「問題なし」で通した。可否も材料も、確かに満たしていたからである。
+   *
+   * **情報を削らせない**（D-204）を、帯の取捨だけでなく**表現の選び方にも当てる。**
+   * 規則版と同じか、より多く出す表現なら通る。**強さ（emphasis）は制限しない。**
+   */
+  for (const r of rules.blocks) {
+    const y = brief.blocks.find((z) => z.content === r.content);
+    if (!y || !keepsLess(r.presentation, y.presentation)) continue;
+    bad("information", `blocks/${r.content}`,
+      `「${getPresentation(y.presentation).label}」は「${getPresentation(r.presentation).label}」より画面に出る情報が少なくなります（${r.content}）`);
+  }
   return { brief: problems.length ? null : brief, problems };
 }
 
@@ -155,7 +175,19 @@ export async function decideBrief(
   let text: string;
   try {
     onProgress("  情報の優先順位をAIに判断させます（語彙のIDだけを返させます）");
-    text = await ask(SYSTEM, userPrompt(project, a, rules));
+    /**
+     * **効かない場所を判断させない**（D-260）。
+     *
+     * Brief が効くのはトップページだけ（D-225）。ところがたたき台は
+     * 下層ページの帯まで並べており、**AIが変えた5箇所のうち4箇所は、
+     * そもそも画面に出ない場所だった**（実測）。費用を払って、効かない判断をさせていた。
+     * **内容の一覧からは外さない**（外すと「その内容は無い」と思って順位をつける・D-224）。
+     * どれがトップに出るかを、その場で伝える。
+     */
+    const onTop = new Set(
+      composeTop(project, a, ctx).filter((s) => s.kind !== "hero").map((s) => s.content),
+    );
+    text = await ask(SYSTEM, userPrompt(project, a, rules, onTop));
   } catch (err) {
     /**
      * **止めない。**

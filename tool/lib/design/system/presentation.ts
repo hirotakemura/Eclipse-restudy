@@ -26,6 +26,24 @@ export interface Presentation {
    */
   needs: string;
   worksWithoutPhotos: boolean;
+  /**
+   * **その内容の、どこまでが画面に出るか**（D-259）。
+   *
+   *   0 … ひとつの値・ひとつの発言に畳む
+   *   1 … 各件を1行ずつ
+   *   2 … 各件の項目まで
+   *
+   * 可否表は「見せられるか」しか見ていない。**どれだけ落ちるかは見ていなかった。**
+   * 実測（キャプチャで確認）：
+   *   設備を `cardGrid`     → 型番・メーカー・台数・一覧への導線
+   *   設備を `list`         → 型番と台数だけ。**メーカー名と導線が消える**
+   *   設備を `largeNumber`  → 「保有設備 7台」の1語。**型番も何も残らない**
+   *   お客様の言葉を `cardGrid` → 3項目　`quote` → 1発言
+   *
+   * **AIが規則版より小さい段へ落とすことを禁じる**ために使う（`compat.ts` の `keepsLess`）。
+   * 規則版が自分で選ぶぶんには制限しない。手順書は材料を見て選んでいる。
+   */
+  detail: 0 | 1 | 2;
 }
 
 export const PRESENTATIONS: Presentation[] = [
@@ -33,47 +51,47 @@ export const PRESENTATIONS: Presentation[] = [
     id: "prose", label: "散文",
     // **`longform` と役割を分ける**（D-207）
     note: "短い説明・通常の本文。数行で用が足りるもの。1行の長さは40em前後に保つ",
-    needs: "文章が1つ", worksWithoutPhotos: true,
+    needs: "文章が1つ", worksWithoutPhotos: true, detail: 2,
   },
   {
     id: "list", label: "箇条書き",
-    note: "数が少なく、並列に読めるもの", needs: "2件以上", worksWithoutPhotos: true,
+    note: "数が少なく、並列に読めるもの", needs: "2件以上", worksWithoutPhotos: true, detail: 1,
   },
   {
     id: "chips", label: "札",
-    note: "検索される語をひとつずつ。材質・加工法に向く", needs: "2件以上", worksWithoutPhotos: true,
+    note: "検索される語をひとつずつ。材質・加工法に向く", needs: "2件以上", worksWithoutPhotos: true, detail: 1,
   },
   {
     id: "cardGrid", label: "カードの格子",
     // **禁止ではない。「既定にしない」だけ**（D-207）
     note: "件数があり、各件が独立して読まれるもの。加工事例・設備に向く。“情報だからカード”にはしない",
-    needs: "2件以上", worksWithoutPhotos: true,
+    needs: "2件以上", worksWithoutPhotos: true, detail: 2,
   },
   {
     id: "largeNumber", label: "大きな数字",
     note: "1〜3個の強い数値を、本文に埋めずに大きく出す",
-    needs: "短く言い切れる値が1つ以上（14文字以内・句読点なし）", worksWithoutPhotos: true,
+    needs: "短く言い切れる値が1つ以上（14文字以内・句読点なし）", worksWithoutPhotos: true, detail: 0,
   },
   {
     id: "spec", label: "仕様表",
-    note: "項目が多く、突き合わせて読むもの", needs: "3行以上", worksWithoutPhotos: true,
+    note: "項目が多く、突き合わせて読むもの", needs: "3行以上", worksWithoutPhotos: true, detail: 2,
   },
   {
     id: "comparison", label: "対比",
-    note: "2つの値を並べて見せる（標準7日 ／ 最短3日）", needs: "対になる2つの値", worksWithoutPhotos: true,
+    note: "2つの値を並べて見せる（標準7日 ／ 最短3日）", needs: "対になる2つの値", worksWithoutPhotos: true, detail: 0,
   },
   {
     id: "timeline", label: "年表",
     // **薄い年表は、無いより悪い**
-    note: "時系列。3件未満では作らない", needs: "3件以上", worksWithoutPhotos: true,
+    note: "時系列。3件未満では作らない", needs: "3件以上", worksWithoutPhotos: true, detail: 2,
   },
   {
     id: "process", label: "工程の流れ",
-    note: "順序に意味があるもの（相談→図面→加工→検査）", needs: "順序のある記述2つ以上", worksWithoutPhotos: true,
+    note: "順序に意味があるもの（相談→図面→加工→検査）", needs: "順序のある記述2つ以上", worksWithoutPhotos: true, detail: 2,
   },
   {
     id: "quote", label: "引用",
-    note: "人の言葉をそのまま大きく出す", needs: "鍵括弧つきの発言", worksWithoutPhotos: true,
+    note: "人の言葉をそのまま大きく出す", needs: "鍵括弧つきの発言", worksWithoutPhotos: true, detail: 0,
   },
   {
     id: "longform", label: "読み物",
@@ -83,11 +101,11 @@ export const PRESENTATIONS: Presentation[] = [
       同じ名前を2つの軸で使わない（D-207）。
     */
     note: "長めの文章を、余白・段落・引用で読ませる。読ませることが目的",
-    needs: "200文字以上の文章", worksWithoutPhotos: true,
+    needs: "200文字以上の文章", worksWithoutPhotos: true, detail: 2,
   },
   {
     id: "fullWidth", label: "全幅",
-    note: "写真や図を画面いっぱいに", needs: "実写の写真", worksWithoutPhotos: false,
+    note: "写真や図を画面いっぱいに", needs: "実写の写真", worksWithoutPhotos: false, detail: 2,
   },
 ];
 

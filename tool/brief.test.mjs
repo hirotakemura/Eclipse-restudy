@@ -16,7 +16,7 @@ import { composeTop, composePage, traceOf } from "./lib/design/sections.ts";
 import { ruleBrief, sameDecision, describeDiff } from "./lib/design/brief-rules.ts";
 import { decideBrief, checkAIResponse } from "./lib/design/brief-ai.ts";
 import { userPrompt, SYSTEM } from "./lib/design/brief-prompt.ts";
-import { usablePresentations } from "./lib/design/system/index.ts";
+import { usablePresentations, keepsLess } from "./lib/design/system/index.ts";
 import { materialsOf } from "./lib/design/materials.ts";
 import { projectHashOf } from "./lib/design/brief.ts";
 
@@ -356,6 +356,100 @@ console.log("\n━━━ AI版は、採用するまで効かないか（D-256）
     diff[0].includes("equipment") && diff[0].includes("目立たなくなります"), diff[0]);
 
   fs.rmSync(dir, { recursive: true, force: true });
+}
+
+
+/**
+ * **情報の少ない表現への乗り換えを止める**（D-259）。
+ *
+ * 3社の実測で、AIが変えた5箇所は**5箇所とも情報の少ないほうへの乗り換え**だった。
+ * 多いほうへ動いたものは1つも無い。そして4段検査は全部「問題なし」で通した。
+ * 可否も材料も、確かに満たしていたからである。
+ */
+console.log("\n━━━ 情報が減る乗り換えを止めるか（D-259）━━━");
+{
+  const { project, a, ctx } = setup("a-precision");
+  const rules = ruleBrief(project, a, ctx);
+  const swap = (content, presentation) => ({
+    primaryStrength: rules.primaryStrength,
+    secondaryStrength: rules.secondaryStrength,
+    blocks: rules.blocks.map((b) => b.content === content ? { ...b, presentation } : { ...b }),
+  });
+  const run = (ai) => checkAIResponse(JSON.stringify(ai), project, a, rules);
+
+  check("規則版が設備をカードの格子にしている（前提）",
+    rules.blocks.find((b) => b.content === "equipment")?.presentation === "cardGrid");
+
+  /** 実測でそのまま画面に出た乗り換え。メーカー名と一覧への導線が消えた */
+  const toList = run(swap("equipment", "list"));
+  check("設備を箇条書きに落とす判断は、検査で落ちる", toList.brief === null);
+  check("落ちた理由が「情報量」だと分かる",
+    toList.problems.some((p) => p.stage === "information" && p.message.includes("少なくなります")),
+    JSON.stringify(toList.problems));
+
+  /** 実測でB社が返した判断。画面に出ていたら「保有設備 7台」の1語になっていた */
+  const toBig = run(swap("equipment", "largeNumber"));
+  check("設備を大きな数字に潰す判断も、検査で落ちる", toBig.brief === null);
+
+  /** お客様の言葉：カードの格子は3項目、引用は1発言 */
+  const toQuote = run(swap("praise", "quote"));
+  check("お客様の言葉を引用1つに絞る判断も、検査で落ちる", toQuote.brief === null);
+
+  /**
+   * **減らないほうは通す。** 禁止したいのは「減ること」であって「変えること」ではない。
+   * 材料のある表現の中から、情報が減らないものを探して試す
+   * （`spec` は3行以上が要るので、決め打ちにすると材料の段で落ちる）。
+   */
+  const richer = rules.blocks
+    .map((b) => ({
+      b,
+      to: usablePresentations(b.content, materialsOf(project, b.content, a.hasRealPhotos))
+        .find((pp) => pp !== b.presentation && !keepsLess(b.presentation, pp)),
+    }))
+    .find((x) => x.to);
+  check("情報が減らない乗り換えが、この会社にも1つはある", Boolean(richer),
+    "見つからなければ、この確認は意味をなさない");
+  if (richer) {
+    const up = run(swap(richer.b.content, richer.to));
+    check(`情報が減らない乗り換えは、通る（${richer.b.content}：${richer.b.presentation} → ${richer.to}）`,
+      up.brief !== null, JSON.stringify(up.problems));
+  }
+
+  /** **強さは制限しない。** 何を主役にするかはAIの仕事である */
+  const quieter = run({
+    primaryStrength: rules.primaryStrength, secondaryStrength: rules.secondaryStrength,
+    blocks: rules.blocks.map((b) => b.content === "equipment" ? { ...b, emphasis: "quiet" } : { ...b }),
+  });
+  check("強さを下げるだけなら、通る", quieter.brief !== null, JSON.stringify(quieter.problems));
+
+  check("同じ表現のままなら、当然通る", run(swap("equipment", "cardGrid")).brief !== null);
+}
+
+/**
+ * **効かない場所を判断させない**（D-260）。
+ * Brief が効くのはトップページだけ（D-225）。実測では、AIが変えた5箇所のうち
+ * **4箇所が、そもそも画面に出ない下層ページの帯**だった。
+ */
+console.log("\n━━━ どれがトップに出るかを、AIに伝えているか（D-260）━━━");
+{
+  const { project, a, ctx } = setup("a-precision");
+  const rules = ruleBrief(project, a, ctx);
+  const onTop = new Set(composeTop(project, a, ctx).filter((s) => s.kind !== "hero").map((s) => s.content));
+  const text = userPrompt(project, a, rules, onTop);
+
+  check("トップに出ない内容が、たたき台に混ざっている（前提）",
+    rules.blocks.some((b) => !onTop.has(b.content)),
+    rules.blocks.map((b) => b.content).join(" "));
+  check("トップに出る内容に、その印がある", text.includes("【トップページに出ます】"));
+  check("トップに出ない内容に、その印がある", text.includes("【下層ページのみ】"));
+  check("下層は触らなくてよいと伝えている", text.includes("画面には出ません"));
+  check("内容の一覧からは外していない（D-224の理由を守る）",
+    rules.blocks.every((b) => text.includes(`### ${b.content}`)));
+  check("情報が減る乗り換えは落ちる、と先に伝えている",
+    text.includes("画面に出る情報が減る乗り換えは、検査で落ちます"));
+  check("強さは下げてよい、と断っている", text.includes("強さ（emphasis）を下げるのは構いません"));
+  check("印を渡さなければ、これまでどおりの文面",
+    !userPrompt(project, a, rules).includes("【トップページに出ます】"));
 }
 
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);
