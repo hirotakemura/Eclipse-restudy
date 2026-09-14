@@ -20,6 +20,15 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { writeBrief } from "./brief.mjs";
+
+/**
+ * `--compare` を付けると、**規則版とAI版を並べて出す。**
+ * `--ai` を付けたときだけ本物のAIを呼ぶ（鍵が無ければ規則版に落ちて、そのまま最後まで進む）。
+ */
+const FLAGS = process.argv.slice(2);
+const COMPARE = FLAGS.includes("--compare");
+const USE_AI = FLAGS.includes("--ai");
 
 const SRC = path.join("fixtures", "design-diversity");
 const COMPANIES = [
@@ -41,7 +50,19 @@ for (const [file, label] of COMPANIES) {
   fs.mkdirSync(dir, { recursive: true });
   const p = JSON.parse(fs.readFileSync(path.join(SRC, `${file}.json`), "utf8"));
   p.id = id;
-  fs.writeFileSync(path.join(dir, "project.json"), JSON.stringify(p, null, 2));
+  const projectFile = path.join(dir, "project.json");
+  fs.writeFileSync(projectFile, JSON.stringify(p, null, 2));
+
+  /**
+   * **比べるときだけ Brief を作る。**
+   * 付けなければ `designBrief` は無く、**いままでどおり規則版だけで決まる。**
+   */
+  let brief = null;
+  if (COMPARE) {
+    brief = await writeBrief(JSON.parse(fs.readFileSync(projectFile, "utf8")), projectFile, {
+      useAI: USE_AI, onProgress: (m) => { if (USE_AI) console.log(`  ${label}${m}`); },
+    });
+  }
 
   const r = spawnSync("node", ["build-site.mjs", id], { encoding: "utf8" });
   const file1 = path.join(dir, "site", "index.html");
@@ -59,7 +80,14 @@ for (const [file, label] of COMPANIES) {
     return `${at("content")}:${at("presentation")}`;
   });
   const hero = /data-hero="([a-z]+)"/.exec(html)?.[1] ?? "-";
-  results.push({ label, strength, bands, hero });
+  /**
+   * **HTMLそのものから読む。**
+   * 「AIがそう判断した」ではなく「画面がそうなった」を見ないと、
+   * AIを入れた意味があったのかを確かめようがない（ご指示6）。
+   */
+  const decided = [...html.matchAll(/data-content="([a-z]+)" data-presentation="([a-zA-Z]+)" data-decided-by="([a-z-]+)"/g)]
+    .map((m) => ({ content: m[1], presentation: m[2], by: m[3] }));
+  results.push({ label, strength, bands, hero, brief, decided });
 }
 
 console.log("━━━ 同じ型「精密加工」で、会社だけを変えた結果 ━━━\n");
@@ -84,6 +112,29 @@ for (let i = 0; i < results.length; i++) {
 console.log("\n━━━ まとめ ━━━");
 console.log(`  組み合わせ ${n}通り　平均 ${(tot / n).toFixed(2)}`);
 console.log(`  **まったく同じ見せ方になった組み合わせ： ${same}/${n}通り**`);
+if (COMPARE) {
+  console.log("\n━━━ 規則版とAI版 ━━━\n");
+  console.log(`  AIの呼び出し：${USE_AI ? "あり（--ai）" : "なし。--ai を付けると呼びます"}\n`);
+  for (const r of results) {
+    const b = r.brief;
+    const SOURCE = { rules: "規則版", ai: "AI版", "ai-fallback": "AI版→規則版に戻した" };
+    console.log(`  ${r.label}　判断の出所：${SOURCE[b?.source] ?? "-"}`
+      + (b?.source === "ai" ? `　規則版と${b.agreedWithRules ? "同じ" : "違う"}判断` : ""));
+    if (b?.problems?.length) for (const p of b.problems) console.log(`      検査落ち：${p.stage}　${p.where}　${p.message}`);
+    /** **画面に出ている印**で数える。Briefの中身ではない */
+    const byAI = r.decided.filter((d) => d.by === "ai");
+    const fell = r.decided.filter((d) => d.by === "ai-fallback");
+    console.log(`      トップの帯 ${r.decided.length}本　うちAIの判断で変わった ${byAI.length}本　検査で規則版に戻した ${fell.length}本`);
+    for (const d of r.decided) {
+      if (d.by === "rules") continue;
+      console.log(`        ${d.content}:${d.presentation}　[${d.by}]`);
+    }
+    console.log("");
+  }
+  console.log("  **AIが規則版と同じ判断をしても失敗ではありません。**");
+  console.log("  規則で十分なところで、AIが余計なことをしていないかを見ています。\n");
+}
+
 console.log(`\n  目で見て確かめる：`);
 for (const [file] of COMPANIES) console.log(`    npm run preview:site -- qc-${file}`);
 console.log("");

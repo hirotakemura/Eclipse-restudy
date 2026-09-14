@@ -27,7 +27,8 @@ import { findInternalLanguage, visibleText, contextFor } from "./lib/internal-la
 import { internalValues } from "./lib/form-definition.ts";
 import { analyze } from "./lib/design/analysis.ts";
 import { sanitizeProject } from "./lib/sanitize.ts";
-import { composeTop, explain } from "./lib/design/sections.ts";
+import { composeTop, explain, traceOf } from "./lib/design/sections.ts";
+import { projectHashOf } from "./lib/design/brief.ts";
 import { resolveTheme } from "./lib/theme.ts";
 import { DIRECTIONS } from "./lib/design/direction.ts";
 
@@ -113,12 +114,22 @@ console.log(`  写真 ${photoCount}枚${unplaced ? `（うち置き場所が未�
  * 「なぜこの順番なのか」を社長に説明できない。黙って決めない。
  */
 {
-  // **ページと同じデータを見る。** 生データを見て説明すると、実物とずれる（D-213）
-  const analysis = analyze(sanitizeProject(project));
+  /**
+   * **ページと同じデータを見る。** 生データを見て説明すると、実物とずれる（D-213）。
+   * 見立てだけでなく**構成も**同じデータから作る。materialsOf は構成の側で使うので、
+   * ここが生データのままだと「未確認で落とした値」を材料として数えてしまう。
+   */
+  const clean = sanitizeProject(project);
+  const analysis = analyze(clean);
   const resolved = resolveTheme(project.theme, project.formSet === "general" ? "general" : "manufacturing");
   const hero = resolved.hero.id;
   const direction = resolved.direction;
-  const sections = composeTop(project, analysis, { hero, direction, hasProse: drafts > 0 });
+  /**
+   * 情報の見せ方の判断（Design Brief）。**あれば使う。無ければ規則版。**
+   * **ここでAIは呼ばない。** 判断は `npm run brief` / `npm run generate` の時点で済んでいる。
+   */
+  const brief = project.designBrief;
+  const sections = composeTop(clean, analysis, { hero, direction, hasProse: drafts > 0, brief });
   const label = DIRECTIONS.find((d) => d.id === direction)?.label ?? direction;
   console.log(`\n  ── 型「${label}」で組み立てます ──`);
   console.log(`\n  この会社の最大の強み：${analysis.primaryStrength}（${analysis.primaryWhy}）`);
@@ -126,6 +137,40 @@ console.log(`  写真 ${photoCount}枚${unplaced ? `（うち置き場所が未�
   for (const s of analysis.strands) console.log(`  ${String(s.score).padStart(3)}  ${s.id.padEnd(10)} ${s.why}`);
   console.log("\n  ── トップページの構成 ──");
   for (const line of explain(sections).split("\n")) console.log(`  ${line}`);
+
+  if (brief) {
+    const SOURCE = { rules: "規則版", ai: "AI版", "ai-fallback": "AI版→規則版に戻した" };
+    console.log(`\n  ── 情報の見せ方の判断：${SOURCE[brief.source] ?? brief.source} ──`);
+    if (brief.source === "ai-fallback" && brief.problems?.length) {
+      console.log("  AIの判断は検査で落ちたので、規則版で組み立てています。");
+      for (const p of brief.problems) console.log(`    ${p.stage}　${p.where}　${p.message}`);
+    }
+    /**
+     * **案件データが変わったのに Brief が古いまま、を黙って通さない**（ご指示④）。
+     * 聞き取りを1項目足しただけで見せ方の前提は変わる。
+     */
+    if (brief.sourceProjectHash && brief.sourceProjectHash !== projectHashOf(project)) {
+      console.log("\n  △ この Brief は、いまの案件データとは別の内容から作られています。");
+      console.log(`     作り直す：  npm run brief -- ${id}${brief.source === "rules" ? "" : " --ai"}`);
+    }
+    /**
+     * **誰が何を決めたかを、毎回見せる**（ご指示）。
+     * 「AIは判断を変えたが、画面では何が変わったのか」が分からないと、
+     * AIを入れた意味があったのかを確かめようがない。
+     */
+    const trace = traceOf(sections);
+    const changed = trace.filter((t) => t.source !== "rules");
+    if (changed.length) {
+      console.log("\n  ── 規則版とAI版で判断が分かれたところ ──");
+      for (const t of trace) {
+        if (t.source === "rules") continue;
+        const arrow = t.rules.presentation === t.final.presentation ? "＝" : "→";
+        console.log(`    ${t.heading}　規則版 ${t.rules.presentation} ${arrow} 最終 ${t.final.presentation}　[${t.source}]`);
+      }
+    } else if (brief.source === "ai") {
+      console.log("  AIの判断は、規則版とすべて同じでした。");
+    }
+  }
 }
 
 // 依存は初回だけ入れる

@@ -15,7 +15,7 @@ import Figures from "../../components/sections/Figures.astro";
 import Materials from "../../components/sections/Materials.astro";
 import { analyze } from "../../../../lib/design/analysis.ts";
 import { composePage } from "../../../../lib/design/sections.ts";
-import { project, rows, companyName, isGeneral } from "../../lib/site";
+import { project, designBrief, rows, companyName, isGeneral } from "../../lib/site";
 import { theme } from "../../lib/theme";
 import { hasDraft } from "../../lib/draft";
 
@@ -37,6 +37,7 @@ const analysis = analyze(project as any);
 const sections = composePage("capability", project as any, analysis, {
   direction: theme.direction,
   hasProse: hasDraft("capability"),
+  brief: designBrief,
 });
 
 /**
@@ -54,22 +55,22 @@ export function getStaticPaths() {
   </div></div>
 
   {sections.map((sec) => {
-    if (sec.kind === "prose") return <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation}><Prose slug="capability" /></Band>;
+    if (sec.kind === "prose") return <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy}><Prose slug="capability" /></Band>;
 
     if (sec.kind === "figures") return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} heading={sec.heading}>
+      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy} heading={sec.heading}>
         <Figures figures={analysis.figures} />
       </Band>
     );
 
     if (sec.kind === "materials") return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} heading={sec.heading}>
+      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy} heading={sec.heading}>
         <Materials materials={cap.materials ?? []} processes={cap.processes ?? []} />
       </Band>
     );
 
     if (sec.kind === "specTable") return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} heading={sec.heading}>
+      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy} heading={sec.heading}>
         <Table rows={spec} />
         <p>記載のない条件についても、まずはご相談ください。可否だけでもお答えします。</p>
       </Band>

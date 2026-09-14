@@ -14,7 +14,7 @@ import Points from "../components/sections/Points.astro";
 import Figures from "../components/sections/Figures.astro";
 import { analyze } from "../../../lib/design/analysis.ts";
 import { composePage } from "../../../lib/design/sections.ts";
-import { project, companyName, isGeneral, reasonChosen, idealCustomer } from "../lib/site";
+import { project, designBrief, companyName, isGeneral, reasonChosen, idealCustomer } from "../lib/site";
 import { theme } from "../lib/theme";
 import { hasDraft } from "../lib/draft";
 
@@ -23,6 +23,7 @@ const analysis = analyze(project as any);
 const sections = composePage("strengths", project as any, analysis, {
   direction: theme.direction,
   hasProse: hasDraft("strengths"),
+  brief: designBrief,
 });
 
 /** 塊として並べるもの。**最も強い1つは上で別に扱う**ので、ここには入れない */
@@ -50,28 +51,28 @@ const lead = isGeneral
   </div></div>
 
   {sections.map((sec) => {
-    if (sec.kind === "prose") return <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation}><Prose slug="strengths" /></Band>;
+    if (sec.kind === "prose") return <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy}><Prose slug="strengths" /></Band>;
 
     if (sec.kind === "declined") return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} heading={sec.heading}>
+      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy} heading={sec.heading}>
         <Declined text={isGeneral ? reasonChosen : s.wonAfterOthersDeclined} />
       </Band>
     );
 
     if (sec.kind === "technique") return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} heading={sec.heading}>
+      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy} heading={sec.heading}>
         <Technique text={s.followUpFindings} />
       </Band>
     );
 
     if (sec.kind === "points" && points.length > 0) return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} heading={sec.heading}>
+      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy} heading={sec.heading}>
         <Points points={points} />
       </Band>
     );
 
     if (sec.kind === "figures") return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} heading={sec.heading}>
+      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy} heading={sec.heading}>
         <Figures figures={analysis.figures} />
       </Band>
     );

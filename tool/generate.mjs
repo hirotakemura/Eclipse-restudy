@@ -9,7 +9,15 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const id = process.argv[2];
+const args = process.argv.slice(2);
+const id = args.find((a) => !a.startsWith("--"));
+/**
+ * **実案件の既定は規則版のまま**（ご指示）。
+ * AIに情報の優先順位を判断させるのは、`--ai-brief` を明示したときだけ。
+ */
+const aiBrief = args.includes("--ai-brief");
+/** 案件データが変わっていなければ Brief を作り直さない（ご指示④） */
+const keepBrief = args.includes("--keep-brief");
 if (!id) {
   console.error("使い方: npm run generate -- <案件ID>\n例:     npm run generate -- matsubara-seiki");
   process.exit(1);
@@ -66,16 +74,29 @@ console.log(`\n${project.basics?.name ?? id} の原稿を生成します`);
  * ここで見せるのは、書き出し（build:site）が出すものと同じ構成。
  */
 {
-  const [{ analyze }, { composeTop, explain }, { resolveTheme }, { DIRECTIONS }] = await Promise.all([
+  const [{ analyze }, { composeTop, explain }, { resolveTheme }, { DIRECTIONS }, { sanitizeProject }, { writeBrief }] = await Promise.all([
     import("./lib/design/analysis.ts"),
     import("./lib/design/sections.ts"),
     import("./lib/theme.ts"),
     import("./lib/design/direction.ts"),
+    import("./lib/sanitize.ts"),
+    import("./brief.mjs"),
   ]);
+  /**
+   * **情報の見せ方の判断は、原稿より先に決める。**
+   * AIを呼ぶのはここ（`--ai-brief` のときだけ）で、**サイトの書き出しでは呼ばない。**
+   * AIが使えなければ規則版に落ちる。**止まらない。**
+   */
+  const brief = await writeBrief(project, file, {
+    useAI: aiBrief, keep: keepBrief, onProgress: (m) => console.log(m),
+  });
+  project.designBrief = brief;
+
+  const clean = sanitizeProject(project);
   const r = resolveTheme(project.theme, project.formSet === "general" ? "general" : "manufacturing");
   const label = DIRECTIONS.find((d) => d.id === r.direction)?.label ?? r.direction;
-  const sections = composeTop(project, analyze(project), {
-    hero: r.hero.id, direction: r.direction, hasProse: true,
+  const sections = composeTop(clean, analyze(clean), {
+    hero: r.hero.id, direction: r.direction, hasProse: true, brief,
   });
   console.log(`\n  型「${label}」の構成を先に決めて、その隙間を書かせます`);
   for (const line of explain(sections).split("\n")) console.log(`    ${line.split("　")[0]}`);

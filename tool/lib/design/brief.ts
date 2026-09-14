@@ -19,31 +19,42 @@ import {
   type ContentId, type PresentationId, type SurfaceId, type LayoutId,
   type MotifId, type MediaId, type MotionId, type HeroId,
 } from "./system/index.ts";
+/**
+ * 最大の強みの語彙は、**`analysis.ts` が単一の正**。
+ *
+ * ここに書き写していた表は、`analyze()` が一度も返さない値（`response` `coverage`
+ * `design` `heritage`）を並べていた。つまり **`speed` を返しても「語彙にありません」で
+ * 落ちる検査**になっていた。表を2箇所に置いた時点で、ずれるのは時間の問題だった（D-197）。
+ */
+import { PRIMARY_STRENGTHS, type PrimaryStrength } from "./analysis.ts";
+export { PRIMARY_STRENGTHS, type PrimaryStrength };
 
 /**
- * 最大の強み。**推測で決めない**（D-205）。
- * 根拠となる聞き取りが無ければ `unknown` とし、規則版の安全な構成へ落とす。
+ * 強さ。**3段で固定**（ご指示）。
+ * `support` は新設しない。CSS と検査もこの3つで動いている。
  */
-export type PrimaryStrength =
-  | "precision" | "difficulty" | "response" | "coverage"
-  | "design" | "equipment" | "craft" | "heritage" | "unknown";
-
-export const PRIMARY_STRENGTHS: PrimaryStrength[] = [
-  "precision", "difficulty", "response", "coverage",
-  "design", "equipment", "craft", "heritage", "unknown",
-];
+export type Emphasis = "lead" | "normal" | "quiet";
+export const EMPHASES: Emphasis[] = ["lead", "normal", "quiet"];
 
 export interface BriefBlock {
   content: ContentId;
   presentation: PresentationId;
-  emphasis: "lead" | "normal" | "quiet";
+  emphasis: Emphasis;
   surface?: SurfaceId;
   layout?: LayoutId;
   media?: MediaId;
 }
 
+/**
+ * Brief 本体。**AIが触れてよいのはこの形だけ。**
+ *
+ * `blocks` は**順序に意味がある**（前にあるものほど先に見せる）。
+ * ご指示の `priority` はこれにあたる。名前を2つ持たない。
+ */
 export interface DesignBrief {
   primaryStrength: PrimaryStrength;
+  /** 2番目の強み。主役を入れ替えてよいかの判断に使う */
+  secondaryStrength: PrimaryStrength;
   hero: { form: HeroId; media: MediaId };
   blocks: BriefBlock[];
   motif: MotifId;
@@ -54,6 +65,44 @@ export interface DesignBrief {
   sourceProjectHash?: string;
 }
 
+/** 最終判断の出所 */
+export type BriefSource = "rules" | "ai" | "ai-fallback";
+
+/**
+ * 1つの帯について、**誰が何を決めたか**（ご指示）。
+ *
+ * 「AIは判断を変えたが、実際のHTMLでは何が変わったのか」を後から確かめるためのもの。
+ * **`final` は描く直前の値**であって、AIが言った値ではない。
+ * Brief 経由でも可否表と材料をもう一度通すので、**AIの判断がここで落ちることがある。**
+ */
+export interface BriefTrace {
+  content: ContentId;
+  heading: string;
+  /** 1. 規則版の判断 */
+  rules: { presentation: PresentationId; emphasis: Emphasis };
+  /** 2. AI版の判断。AIを使っていなければ null */
+  ai: { presentation: PresentationId; emphasis: Emphasis } | null;
+  /** 3. 最終的に画面へ出たもの */
+  final: { presentation: PresentationId; emphasis: Emphasis };
+  /** 4. その出所 */
+  source: BriefSource;
+}
+
+/**
+ * 案件データに保存する形。**本体＋来歴**。
+ *
+ * 来歴を本体と分けるのは、**検査に通すのは本体だけ**にするため。
+ * AIが `source: "rules"` と書いて出所を偽れる形にしない。
+ */
+export interface StoredBrief extends DesignBrief {
+  source: BriefSource;
+  /** 規則版とまったく同じ判断だったか。**同じでも失敗ではない**（ご指示） */
+  agreedWithRules: boolean;
+  /** 4段検査で落ちた内容。`ai-fallback` のときだけ中身が入る */
+  problems: BriefProblem[];
+  generatedAt: string;
+}
+
 export interface BriefProblem {
   /** どの段で落ちたか */
   stage: "form" | "vocabulary" | "compatibility" | "material";
@@ -62,7 +111,7 @@ export interface BriefProblem {
 }
 
 const ids = <T extends { id: string }>(list: T[]) => new Set(list.map((x) => x.id));
-const EMPHASIS = new Set(["lead", "normal", "quiet"]);
+const EMPHASIS = new Set<string>(EMPHASES);
 
 /**
  * Brief を検査する。**問題の一覧を返す。空なら合格。**
@@ -83,7 +132,7 @@ export function validateBrief(
     return problems;
   }
   const b = raw as Record<string, unknown>;
-  const KNOWN = new Set(["primaryStrength", "hero", "blocks", "motif", "motionLevel", "why", "sourceProjectHash"]);
+  const KNOWN = new Set(["primaryStrength", "secondaryStrength", "hero", "blocks", "motif", "motionLevel", "why", "sourceProjectHash"]);
   for (const k of Object.keys(b)) {
     if (!KNOWN.has(k)) bad("form", k, "知らない項目です");
   }
@@ -98,6 +147,10 @@ export function validateBrief(
   const inList = (v: unknown, set: Set<string>) => typeof v === "string" && set.has(v);
   if (!inList(b.primaryStrength, new Set(PRIMARY_STRENGTHS))) {
     bad("vocabulary", "primaryStrength", `語彙にありません：${String(b.primaryStrength)}`);
+  }
+  // 2番目は省略できる（無い会社がある）。書いてあれば語彙を見る
+  if (b.secondaryStrength !== undefined && !inList(b.secondaryStrength, new Set(PRIMARY_STRENGTHS))) {
+    bad("vocabulary", "secondaryStrength", `語彙にありません：${String(b.secondaryStrength)}`);
   }
   if (!inList(b.motif, ids(MOTIFS))) bad("vocabulary", "motif", `語彙にありません：${String(b.motif)}`);
   if (!inList(b.motionLevel, ids(MOTIONS))) bad("vocabulary", "motionLevel", `語彙にありません：${String(b.motionLevel)}`);
@@ -140,7 +193,13 @@ export function validateBrief(
   return problems;
 }
 
-/** 案件データが変わったら Brief を作り直すための印（ご指示④） */
+/**
+ * 案件データが変わったら Brief を作り直すための印（ご指示④）。
+ *
+ * **必ず `projectHashOf` を通すこと。** 直接呼ぶと、
+ * 「保存するときは生データ、照合するときは落としたデータ」のように
+ * 見る対象がずれ、**変えていないのに毎回「古い Brief です」と言われる**ようになる。
+ */
 export function projectHash(project: unknown): string {
   const s = JSON.stringify(project);
   let h = 2166136261;
@@ -149,4 +208,15 @@ export function projectHash(project: unknown): string {
     h = Math.imul(h, 16777619);
   }
   return (h >>> 0).toString(16).padStart(8, "0");
+}
+
+/**
+ * Brief の印を取る、唯一の入口。
+ *
+ * **Brief 自身は数えない。** 数えると、保存するたびに印が変わって永久に一致しない。
+ * **生の案件データを見る。** 未確認で落とす前の状態が変われば、見せ方の前提も変わる。
+ */
+export function projectHashOf(project: unknown): string {
+  const { designBrief, ...bare } = (project ?? {}) as Record<string, unknown>;
+  return projectHash(bare);
 }

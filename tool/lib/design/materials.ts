@@ -54,9 +54,12 @@ export function materialsOf(project: Project, content: ContentId, hasRealPhotos:
       const eq = arr(cap.equipment);
       const named = eq.filter((e: any) => text(e?.maker) && text(e?.model));
       const total = eq.reduce((s: number, e: any) => s + (Number(e?.count) || 0), 0);
-      // カードは**型番の分かっているもの**から作るので、その数を数える。
-      // 台数の合計は「大きな数字」として出せる（13台、のように）
-      return { ...base, count: named.length, length: eq.length, hasShortValue: total > 0 };
+      /**
+       * カードは**型番の分かっているもの**から作るので、その数を数える（`count`）。
+       * 一覧表は**全台**を並べるので、行数は別に数える（`rows`）。
+       * 台数の合計は「大きな数字」として出せる（13台、のように）。
+       */
+      return { ...base, count: named.length, rows: eq.length, length: eq.length, hasShortValue: total > 0 };
     }
     case "cases": {
       const cs = arr(p.cases);

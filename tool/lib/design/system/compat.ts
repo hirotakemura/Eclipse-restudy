@@ -32,8 +32,18 @@ export const canPresent = (content: ContentId, presentation: PresentationId): bo
 
 /** 材料の量。`hasMaterial` に渡す */
 export interface Materials {
-  /** その内容が何件あるか */
+  /** その内容が何件あるか（札やカードに**出せる**件数） */
   count: number;
+  /**
+   * 全件を並べたときの行数。**表はこちらで判断する。**
+   *
+   * 設備は「カードに出せる数（メーカー・型番の分かっているもの）」と
+   * 「一覧表に出せる数（全台）」が違う。ここを1つの数で兼ねていたため、
+   * **8台のうち型番が2台しか分からない案件で、保有設備一覧の表が出せない**と判定され、
+   * 表が台数の数字に置き換わって**残り6台がページから消える**ようになっていた（D-204）。
+   * 省略したときは `count` と同じ。
+   */
+  rows?: number;
   /** 文章の長さ（文字数） */
   length: number;
   /** 短く言い切れる値があるか（14文字以内・句読点なし） */
@@ -61,7 +71,8 @@ export function hasMaterial(p: PresentationId, m: Materials): boolean {
     case "list": return m.count >= 2;
     case "chips": return m.count >= 2;
     case "cardGrid": return m.count >= 2;
-    case "spec": return m.count >= 3;
+    // 表は**全件**で判断する。カードに出せる数ではない
+    case "spec": return (m.rows ?? m.count) >= 3;
     case "timeline": return m.count >= 3;
     case "largeNumber": return m.hasShortValue;
     case "comparison": return m.hasPair;

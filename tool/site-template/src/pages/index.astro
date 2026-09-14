@@ -15,7 +15,7 @@ import Present from "../components/Present.astro";
 import Figure from "../components/Figure.astro";
 import { analyze } from "../../../lib/design/analysis.ts";
 import { composeTop, resolveHero } from "../../../lib/design/sections.ts";
-import { project, companyName, cases, photoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen } from "../lib/site";
+import { project, designBrief, companyName, cases, photoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen } from "../lib/site";
 import { heroId, theme } from "../lib/theme";
 import { hasDraft } from "../lib/draft";
 
@@ -34,10 +34,15 @@ const analysis = analyze(project as any);
  */
 /** 選んだ型に材料が無ければ、その型の次の候補へ落とす（D-203） */
 const hero = resolveHero(heroId, analysis, theme.direction);
+/**
+ * **保存された Brief があれば、それに従う**（AI版）。
+ * 無ければ規則版が決める。**ここでAIを呼ぶことはない。**
+ */
 const sections = composeTop(project as any, analysis, {
   hero,
   direction: theme.direction,
   hasProse: hasDraft("index"),
+  brief: designBrief,
 });
 
 /**
@@ -122,9 +127,9 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
     );
 
     return (
-      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} content={s.content} presentation={s.presentation}
+      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} content={s.content} presentation={s.presentation} decidedBy={s.decidedBy}
             heading={s.kind === "prose" ? undefined : s.heading}>
-        <Present content={s.content} presentation={s.presentation} analysis={analysis} slug={s.slug} />
+        <Present content={s.content} presentation={s.presentation} decidedBy={s.decidedBy} analysis={analysis} slug={s.slug} />
       </Band>
     );
   })}

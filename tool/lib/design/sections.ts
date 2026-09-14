@@ -21,8 +21,10 @@ import type { Analysis, ShowBy, Strand } from "./analysis.ts";
 import { getDirection, type Tone } from "./direction.ts";
 import type { SurfaceId, LayoutId, MotifId, MediaId, ContentId, PresentationId } from "./system/index.ts";
 import { MOTIFS } from "./system/index.ts";
+import { canPresent, hasMaterial } from "./system/index.ts";
 import { choosePresentation, PLAYBOOK, LABEL } from "./playbook.ts";
 import { materialsOf } from "./materials.ts";
+import type { BriefSource, BriefTrace, DesignBrief, Emphasis } from "./brief.ts";
 
 /** セクションの幅。**全部同じ幅にしない**のが今回の主眼 */
 export type Width =
@@ -31,8 +33,11 @@ export type Width =
   | "wide" // 表・カード・設備
   | "full"; // 写真・大きな数字。画面いっぱい
 
-/** 強さ。**重要情報と補助情報を同じ大きさで出さない** */
-export type Emphasis = "lead" | "normal" | "quiet";
+/**
+ * 強さ。**重要情報と補助情報を同じ大きさで出さない**
+ * 語彙は `brief.ts` が単一の正（3段で固定・ご指示）。
+ */
+export type { Emphasis };
 
 export interface Section {
   kind:
@@ -70,8 +75,30 @@ export interface Section {
   heading?: string;
   /** `prose` のとき、どの原稿を流すか */
   slug?: string;
+  /**
+   * **形の決まっている帯**。材料がある限り、この形から動かさない。
+   *
+   * 「仕様」「保有設備一覧」は、**全項目を突き合わせて読むための表**であって、
+   * 会社の強みで形を変える場所ではない。ここを強みで動かしたために、
+   * 「仕様」という見出しの下に大きな数字が並ぶ、という画面になった（実測・3社中2社）。
+   * 変えてよいのは、その上にある「対応できる条件」「主な設備」のほうである。
+   */
+  form?: PresentationId;
   /** なぜこの順・この形なのか。**社長に説明できるようにする**（画面には出さない） */
   why?: string;
+  /**
+   * この帯の見せ方を、**最終的に誰が決めたか**（ご指示）。
+   *
+   * `rules`       規則版がそのまま決めた
+   * `ai`          Brief（AI版）の判断が、可否表と材料をもう一度通って採用された
+   * `ai-fallback` Brief の判断が描く直前の確認で落ち、規則版に戻した
+   *
+   * **画面にも `data-decided-by` として出す。**
+   * 出さないと「AIが判断を変えた」と「HTMLが変わった」の区別がつかない。
+   */
+  decidedBy?: BriefSource;
+  /** 規則版なら何を選んでいたか。比較のために残す */
+  ruleChoice?: { presentation: PresentationId; emphasis: Emphasis };
 }
 
 /**
@@ -188,6 +215,8 @@ function decorate(
  */
 function repress(
   sec: Omit<Section, "why">, project: Project, a: Analysis, hero: string,
+  used: Map<ContentId, Set<PresentationId>>,
+  brief?: DesignBrief,
 ): { sec: Omit<Section, "why">; note: string } {
   if (sec.kind === "hero" || sec.content === "draft") return { sec, note: "" };
   const m = materialsOf(project, sec.content, a.hasRealPhotos);
@@ -197,15 +226,103 @@ function repress(
    * 「数字を大きく」の最初の画面なら、条件の帯は別の見せ方にする。
    * **帯そのものは消さない。** 消すと必要な情報が落ちる（D-204）。
    */
-  const avoid: PresentationId[] =
+  const byHero: PresentationId[] =
     sec.content !== "conditions" ? []
-    // 最初の画面が出している形と同じ形で、すぐ下に繰り返さない（D-183）
     : hero === "figure" ? ["largeNumber"]
     : hero === "spec" ? ["spec", "list"]
     : [];
-  const { presentation, why } = choosePresentation(sec.content, a, m, { isLead, avoid });
-  if (presentation === sec.presentation) return { sec, note: "" };
-  return { sec: { ...sec, presentation }, note: `／${why}「${presentation}」で見せる` };
+  /**
+   * **同じページで、同じ内容を同じ形で2度出さない。**
+   *
+   * 対応可能範囲のページは「対応できる条件」と「仕様」の2帯で、
+   * わざと**同じ内容を違う形**（大きな数字／仕様表）で出す作りになっている。
+   * ところが D-214 で見せ方を強みに寄せたとき、この2帯が**どちらも大きな数字**になり、
+   * 同じ4項目が1ページに二度、同じ顔で並んだ（実測・3社とも）。
+   * 設備ページでも札の格子が2つ続いていた。
+   * **消すのではなく、2つ目の形を変える**（D-204）。
+   */
+  const avoid: PresentationId[] = [...byHero, ...(used.get(sec.content) ?? [])];
+
+  /**
+   * 形の決まっている帯は、ここで終わり。**強みでも Brief でも動かさない。**
+   * ただし材料が無ければ（型番の分かる設備が3件未満など）、下の通常の道に落ちる。
+   */
+  if (sec.form && canPresent(sec.content, sec.form) && hasMaterial(sec.form, m)) {
+    (used.get(sec.content) ?? used.set(sec.content, new Set()).get(sec.content)!).add(sec.form);
+    const fixed = {
+      ...sec, presentation: sec.form, decidedBy: "rules" as BriefSource,
+      ruleChoice: { presentation: sec.form, emphasis: sec.emphasis },
+    };
+    return { sec: fixed, note: sec.form === sec.presentation ? "" : `／突き合わせて読む表なので「${sec.form}」で見せる` };
+  }
+
+  const rules = choosePresentation(sec.content, a, m, { isLead, avoid });
+  const rulesEmphasis = sec.emphasis;
+
+  /**
+   * Brief（AI版）の判断を優先する。**ただし通すのは、もう一度検査してから。**
+   *
+   * `validateBrief` で一度通っていても、ここで**描く直前にもう一度**
+   * 可否表・材料・重複を確認する（ご指示「AIの判断を4段検査より先に信頼しない」を
+   * 2重にして守る）。落ちたら規則版に戻す。**止めない。**
+   */
+  const want = brief?.blocks.find((b) => b.content === sec.content && !avoid.includes(b.presentation));
+  const ok = Boolean(want && canPresent(want.content, want.presentation) && hasMaterial(want.presentation, m));
+  /**
+   * **規則版と同じ判断なら、AIが決めたことにしない。**
+   *
+   * ここを「Brief が通った＝ai」にすると、AIがたたき台をそのまま返しただけの帯まで
+   * `ai` と印がつき、**「AIが何を変えたのか」が読み取れなくなる**（ご指示5）。
+   * 印を付けるのは、**実際に画面が変わったところだけ**にする。
+   */
+  const same = ok && want!.presentation === rules.presentation && want!.emphasis === rulesEmphasis;
+  const decidedBy: BriefSource = !brief || same ? "rules" : ok ? "ai" : want ? "ai-fallback" : "rules";
+
+  const presentation = ok ? want!.presentation : rules.presentation;
+  const emphasis: Emphasis = ok ? want!.emphasis : rulesEmphasis;
+  const why = ok ? "Briefの判断で" : decidedBy === "ai-fallback"
+    ? `Briefの「${want!.presentation}」は材料が足りないので、規則版の` : rules.why;
+
+  (used.get(sec.content) ?? used.set(sec.content, new Set()).get(sec.content)!).add(presentation);
+
+  const next = {
+    ...sec, presentation, emphasis, decidedBy,
+    ruleChoice: { presentation: rules.presentation, emphasis: rulesEmphasis },
+  };
+  if (presentation === sec.presentation && emphasis === sec.emphasis) return { sec: next, note: "" };
+  return { sec: next, note: `／${why}「${presentation}」で見せる` };
+}
+
+/**
+ * 形の決まっている帯のために、その形を先に押さえる。
+ * **材料が無ければ押さえない**（押さえた形をその帯が使えないと、ただ選択肢が減る）。
+ */
+function reserve(
+  used: Map<ContentId, Set<PresentationId>>,
+  content: ContentId, form: PresentationId, project: Project, a: Analysis,
+): void {
+  if (!hasMaterial(form, materialsOf(project, content, a.hasRealPhotos))) return;
+  (used.get(content) ?? used.set(content, new Set()).get(content)!).add(form);
+}
+
+/**
+ * 誰が何を決めたかの一覧（ご指示）。
+ *
+ * **`final` は、実際に描かれた値。** AIが言った値ではない。
+ */
+export function traceOf(sections: Section[]): BriefTrace[] {
+  return sections
+    .filter((s) => s.kind !== "hero" && s.content !== "draft" && s.ruleChoice)
+    .map((s) => ({
+      content: s.content,
+      heading: s.heading ?? s.kind,
+      rules: s.ruleChoice!,
+      ai: s.decidedBy === "ai" || s.decidedBy === "ai-fallback"
+        ? { presentation: s.presentation, emphasis: s.emphasis }
+        : null,
+      final: { presentation: s.presentation, emphasis: s.emphasis },
+      source: s.decidedBy ?? "rules",
+    }));
 }
 
 const getStrength = (a: Analysis) => a.primaryStrength;
@@ -231,9 +348,16 @@ export function pickMotif(candidates: MotifId[], a: Analysis): MotifId {
 export function composeTop(
   project: Project,
   a: Analysis,
-  opts: { maxStrands?: number; hero?: string; hasProse?: boolean; direction?: string } = {},
+  opts: {
+    maxStrands?: number; hero?: string; hasProse?: boolean; direction?: string;
+    /**
+     * 保存された Brief。**無ければ、いままでどおり規則版だけで決まる**（ご指示）。
+     * 実案件の既定は規則版のまま。AI版は明示したときだけ作られる。
+     */
+    brief?: DesignBrief;
+  } = {},
 ): Section[] {
-  const { maxStrands = 4, hero = "headline", hasProse = false, direction } = opts;
+  const { maxStrands = 4, hero = "headline", hasProse = false, direction, brief } = opts;
   const tone = getDirection(direction).tone;
   const p = project as any;
   const has = {
@@ -258,9 +382,11 @@ export function composeTop(
   const d = getDirection(direction);
   let prev: SurfaceId | null = null;
   let n = 0;
+  /** このページで、その内容をどの形ですでに出したか（同じ形を2度出さない） */
+  const used = new Map<ContentId, Set<PresentationId>>();
   const put = (base: Base, why: string) => {
     const decorated = decorate(applyTone(base, tone), d, a, n++, prev);
-    const { sec, note } = repress(decorated, project, a, hero);
+    const { sec, note } = repress(decorated, project, a, hero, used, brief);
     prev = sec.surface;
     out.push({ ...sec, why: why + note });
   };
@@ -345,9 +471,9 @@ export function composePage(
   slug: "strengths" | "capability" | "equipment",
   project: Project,
   a: Analysis,
-  opts: { direction?: string; hasProse?: boolean } = {},
+  opts: { direction?: string; hasProse?: boolean; brief?: DesignBrief } = {},
 ): Section[] {
-  const { direction, hasProse = false } = opts;
+  const { direction, hasProse = false, brief } = opts;
   const tone = getDirection(direction).tone;
   const p = project as any;
   const cap = p.capability ?? {};
@@ -357,9 +483,10 @@ export function composePage(
   const d = getDirection(direction);
   let prev: SurfaceId | null = null;
   let n = 0;
+  const used = new Map<ContentId, Set<PresentationId>>();
   const add = (base: Base, why: string) => {
     const decorated = decorate(applyTone(base, tone), d, a, n++, prev);
-    const { sec, note } = repress(decorated, project, a, "headline");
+    const { sec, note } = repress(decorated, project, a, "headline", used, brief);
     prev = sec.surface;
     out.push({ ...sec, why: why + note });
   };
@@ -383,19 +510,25 @@ export function composePage(
   }
 
   if (slug === "capability") {
+    /**
+     * **下の「仕様」が表で出せるなら、上の帯は表以外にする。**
+     * 同じ内容を、同じページに、同じ形で2度出さないため（先に席を取っておく）。
+     */
+    reserve(used, "conditions", "spec", project, a);
     if (a.figures.length) add({ kind: "figures", width: "full", emphasis: "lead", heading: "対応できる条件" }, "調達担当者が最初に見るもの");
     if ((cap.materials ?? []).length) {
       add({ kind: "materials", width: "wide", emphasis: "normal", heading: "対応できる材質・加工法" }, "検索される語そのもの");
     }
-    add({ kind: "specTable", width: "wide", emphasis: "normal", heading: "仕様" }, "数字で確かめてもらう部分");
+    add({ kind: "specTable", width: "wide", emphasis: "normal", heading: "仕様", form: "spec" }, "数字で確かめてもらう部分");
   }
 
   if (slug === "equipment") {
+    reserve(used, "equipment", "spec", project, a);
     const named = (cap.equipment ?? []).filter((e: any) => e?.model && e?.maker);
     if (named.length) {
       add({ kind: "equipment", width: "wide", emphasis: "lead", heading: "主な設備" }, "型番まで分かっている設備。型番そのものが検索される");
     }
-    add({ kind: "equipmentTable", width: "wide", emphasis: named.length ? "quiet" : "normal", heading: "保有設備一覧" }, "全設備の一覧");
+    add({ kind: "equipmentTable", width: "wide", emphasis: named.length ? "quiet" : "normal", heading: "保有設備一覧", form: "spec" }, "全設備の一覧");
     add({ kind: "gallery", width: "full", emphasis: "normal", heading: "工場・設備" }, "設備は写真があると伝わる");
   }
 

@@ -12,6 +12,7 @@
 import type { Project } from "../../../lib/schema.ts";
 import raw from "../site-data/project.json";
 import { sanitizeProject } from "../../../lib/sanitize.ts";
+import type { StoredBrief } from "../../../lib/design/brief.ts";
 
 /**
  * **落とす処理は `lib/sanitize.ts` が単一の正**（D-213）。
@@ -19,6 +20,16 @@ import { sanitizeProject } from "../../../lib/sanitize.ts";
  * ページは落としたデータを見る、という食い違いが起きていた。
  */
 export const project = sanitizeProject(raw) as Project;
+
+/**
+ * 情報の見せ方の判断（Design Brief）。**読み出すだけ。ここでは作らない。**
+ *
+ * **ビルド中にAIを呼ばないための要**である。
+ * 判断は生成のときに済ませて `project.json` に保存してあり、
+ * ここから先はネットワークが無くても同じサイトが建つ。
+ * 無ければ `undefined` のままで、規則版が決める（実案件の既定）。
+ */
+export const designBrief = (project as any).designBrief as StoredBrief | undefined;
 
 export const companyName = project.basics?.name ?? "";
 export const tel = project.basics?.tel ?? "";

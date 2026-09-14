@@ -82,6 +82,14 @@ export interface Analysis {
   primaryStrength: PrimaryStrength;
   /** なぜそう判定したか。根拠を言えないものは採用しない */
   primaryWhy: string;
+  /**
+   * 2番目の強み。**1番と同じ規則で、根拠のあるものだけ。**
+   *
+   * 使い道は1つだけで、**AI版が「主役を入れ替えてよいか」を判断する材料**にする。
+   * 2番が無い（根拠が1つしかない）会社で主役を入れ替えるのは、必ず推測になる。
+   */
+  secondaryStrength: PrimaryStrength;
+  secondaryWhy: string;
 }
 
 /**
@@ -98,6 +106,18 @@ export type PrimaryStrength =
   | "craft"       // 職人性
   | "history"     // 歴史
   | "unknown";
+
+/**
+ * 語彙の実体。**ここが単一の正**（D-197）。
+ *
+ * `brief.ts` にも同じ並びを書き写していたため、**中身がずれていた**（`response`
+ * `coverage` `design` `heritage` という、`analyze()` が一度も返さない値が
+ * 検査表に入っていた）。書き写した表は、必ずいつかずれる。
+ */
+export const PRIMARY_STRENGTHS: PrimaryStrength[] = [
+  "precision", "difficulty", "speed", "range",
+  "engineering", "equipment", "craft", "history", "unknown",
+];
 
 const text = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 const len = (v: unknown): number => (Array.isArray(v) ? v.length : 0);
@@ -273,6 +293,10 @@ export function analyze(project: Project): Analysis {
   const primary = candidates[0];
   const primaryStrength: PrimaryStrength = primary?.id ?? "unknown";
   const primaryWhy = primary?.why ?? "根拠のある強みが聞き取れていないため、安全な構成にします";
+  /** 2番目。**無ければ unknown。無いものを2番に繰り上げない** */
+  const second = candidates[1];
+  const secondaryStrength: PrimaryStrength = second?.id ?? "unknown";
+  const secondaryWhy = second?.why ?? "2番目に挙げられる根拠はありません";
 
   /**
    * 最初の画面に「1つだけ」大きく出す数字。
@@ -304,6 +328,8 @@ export function analyze(project: Project): Analysis {
     strands: ranked,
     primaryStrength,
     primaryWhy,
+    secondaryStrength,
+    secondaryWhy,
     motifs,
     heroFigure,
     figures,

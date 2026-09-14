@@ -10,6 +10,8 @@
 
 // 見た目の型は `lib/theme.ts` が正。**ここに書き写さない**（D-197）
 import type { Theme } from "./theme.ts";
+// 同じ理由で、Design Brief の型も本体から取る
+import type { StoredBrief } from "./design/brief.ts";
 
 // ── 共通型 ────────────────────────────────────────────────
 
@@ -342,6 +344,16 @@ export interface Project {
    * 書き写した型は、必ず本体から遅れる。
    */
   theme?: Partial<Theme>;
+
+  /**
+   * 情報の見せ方の判断（Design Brief）。**あれば使い、無ければ規則版で決まる。**
+   *
+   * ここに保存しておくことで、**書き出しの最中にAIを呼ばなくて済む**。
+   * 工場のWi-Fiが切れていても、同じデータからは毎回同じサイトが建つ。
+   *
+   * **型は `lib/design/brief.ts` が単一の正。ここに書き写さない**（D-197）。
+   */
+  designBrief?: StoredBrief;
 
   /**
    * お預かりした写真。

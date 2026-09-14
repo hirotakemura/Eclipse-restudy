@@ -15,9 +15,14 @@ interface Props {
   /** 何を伝えるか・どう見せるか。**検証で数えるために出す**（D-212） */
   content?: string;
   presentation?: string;
+  /**
+   * この帯の見せ方を、最終的に誰が決めたか（rules / ai / ai-fallback）。
+   * **AIの判断が本当に画面へ届いたかを、HTMLそのもので確かめるために出す**（ご指示）。
+   */
+  decidedBy?: string;
   heading?: string;
 }
-const { width = "normal", emphasis = "normal", surface = "plain", layout = "stack", motif = "none", content, presentation, heading } = Astro.props;
+const { width = "normal", emphasis = "normal", surface = "plain", layout = "stack", motif = "none", content, presentation, decidedBy, heading } = Astro.props;
 ---
 <section
   class="section band"
@@ -28,6 +33,7 @@ const { width = "normal", emphasis = "normal", surface = "plain", layout = "stac
   data-motif={motif !== "none" ? motif : undefined}
   data-content={content}
   data-presentation={presentation}
+  data-decided-by={decidedBy}
 >
   <div class="inner">
     {heading && <h2>{heading}</h2>}
