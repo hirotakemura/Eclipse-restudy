@@ -204,6 +204,23 @@ const build = spawnSync("npm", ["run", "build"], {
 });
 if (build.status !== 0) process.exit(build.status ?? 1);
 
+/**
+ * お問い合わせの受け口を、書き出したフォルダの中に入れる（D-243）。
+ *
+ * **公開するフォルダだけで完結させる。** そうしておけば、
+ * 引き渡しのときも、移管のときも、**渡すのはこのフォルダ1つ**で済む。
+ *
+ * ※ Cloudflare Pages がこの `functions/` を拾うかどうかは、
+ *   **実際に配備して確かめるまで未確認**（Day 90 の作業）。
+ *   拾わない場合は、配備の設定側で場所を指定する。**サイトの表示には影響しない。**
+ */
+{
+  const fnSrc = path.join(templateDir, "functions");
+  if (fs.existsSync(fnSrc) && fs.existsSync(outDir)) {
+    fs.cpSync(fnSrc, path.join(outDir, "functions"), { recursive: true });
+  }
+}
+
 const files = fs.existsSync(outDir) ? fs.readdirSync(outDir, { recursive: true }) : [];
 const html = files.filter((f) => String(f).endsWith(".html"));
 console.log(`\n  ${html.length}ページを書き出しました`);

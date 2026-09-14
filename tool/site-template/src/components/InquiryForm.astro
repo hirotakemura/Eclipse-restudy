@@ -1,0 +1,73 @@
+---
+/**
+ * お問い合わせフォーム。
+ *
+ * **JavaScriptが無くても動きます**（D-243）。素の form POST です。
+ * 送信先は `/api/inquiry` で、
+ *   Cloudflare Pages では `functions/api/inquiry.ts`
+ *   移管先のレンタルサーバーでは `api/inquiry.php`（引き渡しパッケージに同梱）
+ * が受けます。**どちらでも、このHTMLは1文字も変わりません。**
+ *
+ * **電話番号とメールアドレスは、このページに必ず併記されています**（D-060・D-175）。
+ * フォームが止まっても、問い合わせがゼロになりません。
+ */
+interface Props { tel?: string; email?: string }
+const { tel = "", email = "" } = Astro.props;
+---
+<form class="inquiry" method="post" action="/api/inquiry">
+  {/* 画面に出ない欄。**機械が埋めたら受け付けない**（外部の画像認証を足さないための仕掛け） */}
+  <p class="hp" aria-hidden="true">
+    <label>この欄は入力しないでください<input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+  </p>
+  <input type="hidden" name="t" value="" />
+
+  <p class="field">
+    <label for="f-name">お名前 <span class="req">必須</span></label>
+    <input id="f-name" name="name" type="text" required autocomplete="name" />
+  </p>
+  <p class="field">
+    <label for="f-company">会社名</label>
+    <input id="f-company" name="company" type="text" autocomplete="organization" />
+  </p>
+  <div class="field-row">
+    <p class="field">
+      <label for="f-email">メールアドレス</label>
+      <input id="f-email" name="email" type="email" autocomplete="email" inputmode="email" />
+    </p>
+    <p class="field">
+      <label for="f-tel">お電話番号</label>
+      <input id="f-tel" name="tel" type="tel" autocomplete="tel" inputmode="tel" />
+    </p>
+  </div>
+  <p class="note">※ メールアドレスかお電話番号を、どちらかご記入ください。</p>
+
+  <p class="field">
+    <label for="f-subject">ご用件</label>
+    <input id="f-subject" name="subject" type="text" placeholder="例：薄物部品の加工可否について" />
+  </p>
+  <p class="field">
+    <label for="f-body">お問い合わせ内容 <span class="req">必須</span></label>
+    <textarea id="f-body" name="body" rows="8" required
+      placeholder="材質・数量・ご希望の時期など、分かる範囲で構いません。可否の確認だけでも承ります。"></textarea>
+  </p>
+
+  {/* **図面はフォームに添付させない**（D-179）。お客様の取引先の機密を、我々の保管先に通さない */}
+  <p class="note">
+    図面はこのフォームには添付できません。送信後の自動返信メールに、そのまま添付してご返信ください。
+  </p>
+
+  <p><button class="btn btn-lg" type="submit">この内容で送信する</button></p>
+
+  {/* **送れなかったときに行き止まりにしない**（D-177③）。
+      メールアドレスはこのページの上にもう出ているので、ここでは繰り返さない（D-175） */}
+  <p class="note fallback">
+    うまく送信できない場合は、お手数ですが直接ご連絡ください。
+    {tel && <> 電話 <strong>{tel}</strong></>}
+    {!tel && email && <> メール <a href={`mailto:${email}`}>{email}</a></>}
+  </p>
+</form>
+
+<script is:inline>
+  /* 開いた時刻を入れるだけ。**JSが動かなくても送信はできる**（その場合は時間の検査が効かないだけ） */
+  document.querySelectorAll('form.inquiry input[name="t"]').forEach((i) => { i.value = String(Date.now()); });
+</script>

@@ -783,3 +783,25 @@ html[data-hero="motif"] .hero {
 .band:is([data-surface="accent"],[data-surface="dark"]) .process-body { color: rgba(255,255,255,.9); }
 .band:is([data-surface="accent"],[data-surface="dark"]) .process > li { border-left-color: rgba(255,255,255,.4); }
 .band:is([data-surface="accent"],[data-surface="dark"]) .process > li::before { background: #fff; color: var(--accent-dark); }
+
+/* ── お問い合わせフォーム（D-243）───────────────
+   **JSが無くても動く素のフォーム。** 見た目もそれ以上のことをしない */
+.inquiry { max-width: 640px; margin: 0 0 8px; }
+.inquiry .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.inquiry .field { margin: 0 0 18px; }
+.inquiry label { display: block; font-weight: 600; margin-bottom: 6px; }
+.inquiry .req { font-size: 13px; font-weight: 600; color: #fff; background: var(--accent);
+                border-radius: 3px; padding: 2px 8px; margin-left: 8px; vertical-align: 2px; }
+.inquiry input, .inquiry textarea {
+  width: 100%; font: inherit; color: var(--ink); background: var(--bg);
+  border: var(--line-width) solid var(--table-line); border-radius: var(--radius);
+  padding: 12px 14px; min-height: var(--tap);
+}
+.inquiry textarea { min-height: 200px; line-height: 1.8; resize: vertical; }
+.inquiry input:focus-visible, .inquiry textarea:focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 1px;
+}
+.inquiry .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
+.inquiry .note { color: var(--ink-soft); font-size: 15px; margin: -8px 0 22px; }
+.inquiry .fallback { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); }
+@media (width<=620px) { .inquiry .field-row { grid-template-columns: 1fr; } }
