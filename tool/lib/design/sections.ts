@@ -24,7 +24,7 @@ import { MOTIFS } from "./system/index.ts";
 import { canPresent, hasMaterial } from "./system/index.ts";
 import { choosePresentation, PLAYBOOK, LABEL } from "./playbook.ts";
 import { materialsOf } from "./materials.ts";
-import type { BriefSource, BriefTrace, DesignBrief, Emphasis } from "./brief.ts";
+import type { BriefSource, BriefTrace, DesignBrief, Emphasis, StoredBrief } from "./brief.ts";
 
 /** セクションの幅。**全部同じ幅にしない**のが今回の主眼 */
 export type Width =
@@ -216,7 +216,7 @@ function decorate(
 function repress(
   sec: Omit<Section, "why">, project: Project, a: Analysis, hero: string,
   used: Map<ContentId, Set<PresentationId>>,
-  brief?: DesignBrief,
+  brief?: DesignBrief | StoredBrief,
 ): { sec: Omit<Section, "why">; note: string } {
   if (sec.kind === "hero" || sec.content === "draft") return { sec, note: "" };
   const m = materialsOf(project, sec.content, a.hasRealPhotos);
@@ -266,7 +266,7 @@ function repress(
    * 可否表・材料・重複を確認する（ご指示「AIの判断を4段検査より先に信頼しない」を
    * 2重にして守る）。落ちたら規則版に戻す。**止めない。**
    */
-  const want = brief?.blocks.find((b) => b.content === sec.content && !avoid.includes(b.presentation));
+  const want = usable(brief)?.blocks.find((b) => b.content === sec.content && !avoid.includes(b.presentation));
   const ok = Boolean(want && canPresent(want.content, want.presentation) && hasMaterial(want.presentation, m));
   /**
    * **規則版と同じ判断なら、AIが決めたことにしない。**
@@ -276,7 +276,7 @@ function repress(
    * 印を付けるのは、**実際に画面が変わったところだけ**にする。
    */
   const same = ok && want!.presentation === rules.presentation && want!.emphasis === rulesEmphasis;
-  const decidedBy: BriefSource = !brief || same ? "rules" : ok ? "ai" : want ? "ai-fallback" : "rules";
+  const decidedBy: BriefSource = !usable(brief) || same ? "rules" : ok ? "ai" : want ? "ai-fallback" : "rules";
 
   const presentation = ok ? want!.presentation : rules.presentation;
   const emphasis: Emphasis = ok ? want!.emphasis : rulesEmphasis;
@@ -292,6 +292,24 @@ function repress(
   if (presentation === sec.presentation && emphasis === sec.emphasis) return { sec: next, note: "" };
   return { sec: next, note: `／${why}「${presentation}」で見せる` };
 }
+
+/**
+ * **効かせてよい Brief かどうか。**
+ *
+ * 効かせるのは「AIの判断が4段検査を通って採用された」ものだけ。
+ * `rules` と `ai-fallback` の中身は**規則版そのもの**なので、
+ * 渡しても渡さなくても同じ結果でなければならない。
+ *
+ * ところがこれを素通しにしていたため、**APIが401で落ちて規則版に戻した案件で、
+ * 強み・設備ページの帯が変わり、しかも `ai` の印が付いた**（実測）。
+ * 原因は、Brief が「内容ごと」に1つの値を持つのに対し、
+ * **同じ内容でもページによって出し方が違う**こと（強みページの条件は控えめ、
+ * 対応可能範囲のページでは主役）。ここで止めるのが確実である。
+ */
+const usable = (brief: DesignBrief | StoredBrief | undefined): DesignBrief | undefined =>
+  !brief ? undefined
+  : (brief as StoredBrief).source === undefined || (brief as StoredBrief).source === "ai" ? brief
+  : undefined;
 
 /**
  * 形の決まっている帯のために、その形を先に押さえる。
@@ -354,7 +372,7 @@ export function composeTop(
      * 保存された Brief。**無ければ、いままでどおり規則版だけで決まる**（ご指示）。
      * 実案件の既定は規則版のまま。AI版は明示したときだけ作られる。
      */
-    brief?: DesignBrief;
+    brief?: DesignBrief | StoredBrief;
   } = {},
 ): Section[] {
   const { maxStrands = 4, hero = "headline", hasProse = false, direction, brief } = opts;
@@ -471,9 +489,17 @@ export function composePage(
   slug: "strengths" | "capability" | "equipment",
   project: Project,
   a: Analysis,
-  opts: { direction?: string; hasProse?: boolean; brief?: DesignBrief } = {},
+  /**
+   * **Brief は受け取らない**（ご指示の「AIが決めるのは、何を主役にするか」）。
+   *
+   * 主役の判断はトップページの話である。強み・対応可能範囲・設備の各ページには、
+   * そのページ自身の筋がある（強みページの条件の帯は、強みを読んだあとに
+   * 確かめてもらうための控えめな帯で、対応可能範囲のページでは主役）。
+   * **内容ごとに1つの値しか持たない Brief を下層にも当てると、その筋が壊れる。**
+   */
+  opts: { direction?: string; hasProse?: boolean } = {},
 ): Section[] {
-  const { direction, hasProse = false, brief } = opts;
+  const { direction, hasProse = false } = opts;
   const tone = getDirection(direction).tone;
   const p = project as any;
   const cap = p.capability ?? {};
@@ -486,7 +512,7 @@ export function composePage(
   const used = new Map<ContentId, Set<PresentationId>>();
   const add = (base: Base, why: string) => {
     const decorated = decorate(applyTone(base, tone), d, a, n++, prev);
-    const { sec, note } = repress(decorated, project, a, "headline", used, brief);
+    const { sec, note } = repress(decorated, project, a, "headline", used);
     prev = sec.surface;
     out.push({ ...sec, why: why + note });
   };

@@ -15,7 +15,7 @@ import Gallery from "../../components/Gallery.astro";
 import Equipment from "../../components/sections/Equipment.astro";
 import { analyze } from "../../../../lib/design/analysis.ts";
 import { composePage } from "../../../../lib/design/sections.ts";
-import { project, designBrief, companyName, photosOf, isGeneral } from "../../lib/site";
+import { project, companyName, photosOf, isGeneral } from "../../lib/site";
 import { theme } from "../../lib/theme";
 import { hasDraft } from "../../lib/draft";
 
@@ -31,7 +31,6 @@ const analysis = analyze(project as any);
 const sections = composePage("equipment", project as any, analysis, {
   direction: theme.direction,
   hasProse: hasDraft("equipment"),
-  brief: designBrief,
 });
 
 /**

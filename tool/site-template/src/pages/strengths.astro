@@ -14,7 +14,7 @@ import Points from "../components/sections/Points.astro";
 import Figures from "../components/sections/Figures.astro";
 import { analyze } from "../../../lib/design/analysis.ts";
 import { composePage } from "../../../lib/design/sections.ts";
-import { project, designBrief, companyName, isGeneral, reasonChosen, idealCustomer } from "../lib/site";
+import { project, companyName, isGeneral, reasonChosen, idealCustomer } from "../lib/site";
 import { theme } from "../lib/theme";
 import { hasDraft } from "../lib/draft";
 
@@ -23,7 +23,6 @@ const analysis = analyze(project as any);
 const sections = composePage("strengths", project as any, analysis, {
   direction: theme.direction,
   hasProse: hasDraft("strengths"),
-  brief: designBrief,
 });
 
 /** 塊として並べるもの。**最も強い1つは上で別に扱う**ので、ここには入れない */

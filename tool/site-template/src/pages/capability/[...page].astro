@@ -15,7 +15,7 @@ import Figures from "../../components/sections/Figures.astro";
 import Materials from "../../components/sections/Materials.astro";
 import { analyze } from "../../../../lib/design/analysis.ts";
 import { composePage } from "../../../../lib/design/sections.ts";
-import { project, designBrief, rows, companyName, isGeneral } from "../../lib/site";
+import { project, rows, companyName, isGeneral } from "../../lib/site";
 import { theme } from "../../lib/theme";
 import { hasDraft } from "../../lib/draft";
 
@@ -37,7 +37,6 @@ const analysis = analyze(project as any);
 const sections = composePage("capability", project as any, analysis, {
   direction: theme.direction,
   hasProse: hasDraft("capability"),
-  brief: designBrief,
 });
 
 /**

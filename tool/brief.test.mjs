@@ -37,16 +37,28 @@ const setup = (f) => {
 };
 const bands = (sections) =>
   sections.filter((s) => s.kind !== "hero").map((s) => `${s.content}:${s.presentation}`);
+/** **強さまで含めて**比べる。見落としの元になった（下の回帰試験） */
+const full = (sections) =>
+  sections.map((s) => `${s.kind}:${s.content}:${s.presentation}:${s.emphasis}:${s.decidedBy ?? "-"}`).join(" ／ ");
+/** 全ページ。トップだけ見ていると、下層で起きたずれに気づけない */
+const allPages = (project, a, ctx, brief) => ({
+  index: composeTop(project, a, { ...ctx, brief }),
+  strengths: composePage("strengths", project, a, { direction: ctx.direction }),
+  capability: composePage("capability", project, a, { direction: ctx.direction }),
+  equipment: composePage("equipment", project, a, { direction: ctx.direction }),
+});
 const quiet = () => {};
 
 console.log("\n━━━ 規則版の Brief は、いまの判断をそのまま写したものか ━━━");
 for (const f of FIXTURES) {
   const { project, a, ctx, rules } = setup(f);
-  const without = composeTop(project, a, ctx);
-  const with_ = composeTop(project, a, { ...ctx, brief: rules });
-  check(`${f}：規則版の Brief を渡しても出力が変わらない`,
-    JSON.stringify(bands(without)) === JSON.stringify(bands(with_)),
-    `${bands(without).join(",")}\n      → ${bands(with_).join(",")}`);
+  const without = allPages(project, a, ctx, undefined);
+  const with_ = allPages(project, a, ctx, rules);
+  for (const page of Object.keys(without)) {
+    check(`${f} / ${page}：規則版の Brief を渡しても、強さまで含めて1文字も変わらない`,
+      full(without[page]) === full(with_[page]),
+      `基準：${full(without[page])}\n      現在：${full(with_[page])}`);
+  }
   check(`${f}：強みは見立てのものをそのまま持つ（AIが推測で作らない）`,
     rules.primaryStrength === a.primaryStrength && rules.secondaryStrength === a.secondaryStrength);
   check(`${f}：印は保存するときに付ける（判断そのものには付けない）`, rules.sourceProjectHash === undefined);
@@ -164,6 +176,10 @@ console.log("\n━━━ AIの判断が、本当に画面へ届くか ━━━"
     JSON.stringify(t));
   check("変えていない帯は規則版のまま（AIが余計な変更をしない）",
     trace.filter((x) => x.source !== "rules").length === 1, JSON.stringify(trace.map((x) => `${x.content}:${x.source}`)));
+  check("採用された判断でも、下層ページは規則版のまま（ページごとの筋を壊さない）",
+    ["strengths", "capability", "equipment"].every((page) =>
+      full(composePage(page, project, a, { direction: ctx.direction }))
+      === full(allPages(project, a, ctx, brief)[page])));
   check("全部そのままなら、画面はAIを使う前と1文字も変わらない",
     JSON.stringify(bands(composeTop(project, a, { ...ctx, brief: rules }))) === JSON.stringify(bands(before)));
 
@@ -208,6 +224,25 @@ console.log("\n━━━ AIの判断が、本当に画面へ届くか ━━━"
     casesMaterials.hasQuote || (forcedBand?.presentation !== "quote" && forcedBand?.decidedBy === "ai-fallback"),
     `${forcedBand?.presentation} / ${forcedBand?.decidedBy}`);
   check("そのときも帯は消えない（D-204）", Boolean(forcedBand));
+}
+
+console.log("\n━━━ AIを採用しなかったときは、AI OFF と1文字も変わらない ━━━");
+for (const f of FIXTURES) {
+  const { project, a, ctx, rules } = setup(f);
+  const off = allPages(project, a, ctx, undefined);
+  /**
+   * **APIが落ちたとき（ai-fallback）の中身は規則版そのもの。**
+   * それを渡して出力が変われば、「AIを切れば同じHTML」が嘘になる。
+   * 実際に401で落ちた案件の強み・設備ページが変わり、`ai` の印まで付いた。
+   */
+  for (const source of ["rules", "ai-fallback"]) {
+    const brief = { ...rules, source, agreedWithRules: true, problems: [], generatedAt: "" };
+    const on = allPages(project, a, ctx, brief);
+    const bad = Object.keys(off).filter((page) => full(off[page]) !== full(on[page]));
+    check(`${f}：source=${source} の Brief を渡しても、全ページ同じ`,
+      bad.length === 0,
+      bad.map((page) => `${page}\n        基準：${full(off[page])}\n        現在：${full(on[page])}`).join("\n      "));
+  }
 }
 
 console.log("\n━━━ 情報が落ちないか（D-204）━━━");
