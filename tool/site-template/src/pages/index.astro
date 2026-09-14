@@ -15,6 +15,9 @@ import Present from "../components/Present.astro";
 import Figure from "../components/Figure.astro";
 import { analyze } from "../../../lib/design/analysis.ts";
 import { composeTop, resolveHero } from "../../../lib/design/sections.ts";
+import { composeVisual } from "../../../lib/design/visual.ts";
+/** **見出しの大きさは、中身の長さで決める**（D-277）。長文を巨大に組まない */
+import { fit } from "../../../lib/design/system/typography.ts";
 import { project, designBrief, companyName, cases, photoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen } from "../lib/site";
 import { heroId, theme } from "../lib/theme";
 import { hasDraft } from "../lib/draft";
@@ -38,12 +41,12 @@ const hero = resolveHero(heroId, analysis, theme.direction);
  * **保存された Brief があれば、それに従う**（AI版）。
  * 無ければ規則版が決める。**ここでAIを呼ぶことはない。**
  */
-const sections = composeTop(project as any, analysis, {
+const sections = composeVisual(composeTop(project as any, analysis, {
   hero,
   direction: theme.direction,
   hasProse: hasDraft("index"),
   brief: designBrief,
-});
+}), project as any, analysis, { direction: theme.direction });
 
 /**
  * 10秒で「自分の用は足りるか」を判断してもらうための札。
@@ -95,7 +98,7 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
               <p class="hero-kicker">{companyName}</p>
               <p class="hero-figure-label">{analysis.heroFigure.label}</p>
               <p class="hero-figure">{analysis.heroFigure.value}</p>
-              <h1 class="hero-sub">{basics.businessSummary}</h1>
+              <h1 class="hero-sub" data-role={fit("statement", basics.businessSummary ?? "").id}>{basics.businessSummary}</h1>
             </>
           ) : hero === "type" ? (
             <>
@@ -105,7 +108,7 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
           ) : hero === "motif" ? (
             <>
               <p class="hero-kicker">{companyName}</p>
-              <h1 class="hero-motif">{basics.businessSummary}</h1>
+              <h1 class="hero-motif" data-role={fit("heroTitle", basics.businessSummary ?? "").id}>{basics.businessSummary}</h1>
               {facts.length > 0 && <div class="facts">{facts.slice(0, 3).map((f) => <span>{f}</span>)}</div>}
             </>
           ) : (
@@ -127,7 +130,7 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
     );
 
     return (
-      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} layout={s.layout} motif={s.motif} content={s.content} presentation={s.presentation} decidedBy={s.decidedBy}
+      <Band width={s.width} emphasis={s.emphasis} surface={s.surface} motif={s.motif} content={s.content} presentation={s.presentation} decidedBy={s.decidedBy} density={s.visual?.density} peak={s.visual?.peak} role={s.visual?.role} layout={s.visual?.layout ?? s.layout}
             heading={s.kind === "prose" ? undefined : s.heading}>
         <Present content={s.content} presentation={s.presentation} decidedBy={s.decidedBy} analysis={analysis} slug={s.slug} />
       </Band>

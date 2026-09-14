@@ -25,6 +25,7 @@
  */
 
 import type { ContentId } from "./content.ts";
+import type { PresentationId } from "./presentation.ts";
 
 export type PeakId = "none" | "number" | "statement" | "process" | "spec" | "image";
 
@@ -34,6 +35,16 @@ export interface Peak {
   note: string;
   /** この山に使える内容。空なら問わない */
   contents: ContentId[];
+  /**
+   * **この山が実際に大きくするもの**（D-278）。
+   *
+   * 判定に使う値と、実際に描くものを揃える（D-251の教訓）。
+   * 最初はここが無く、**仕様表の帯に「値を大きく」の山を当てていた。**
+   * 「値を大きく」が大きくするのは `.figures dd` や `.bignumber-value` なので、
+   * 表の帯に当てても**何も起きない。余白だけが広がった帯**になる。
+   * 空なら表現を問わない。
+   */
+  presentations: PresentationId[];
   /** 実写の写真が要るか。**4つは要らない**（写真0枚でも山が作れる） */
   needsPhoto: boolean;
   /** この山に載せる文字の役割 */
@@ -41,32 +52,39 @@ export interface Peak {
 }
 
 export const PEAKS: Peak[] = [
-  { id: "none", label: "山を作らない", note: "既定。いまの見え方と同じ", contents: [], needsPhoto: false, role: "sectionTitle" },
+  { id: "none", label: "山を作らない", note: "既定。いまの見え方と同じ", contents: [], presentations: [], needsPhoto: false, role: "sectionTitle" },
   /**
    * **値ひとつを、画面いっぱいに。**
    * `±0.005mm` のように短く言い切れる値だけ。長い文字列は `fit()` が一段落とす。
    */
   { id: "number", label: "値を大きく", note: "短く言い切れる値ひとつを、画面いっぱいに。精度・納期で選ばれる会社に",
-    contents: ["conditions"], needsPhoto: false, role: "numeric" },
+    contents: ["conditions"], presentations: ["largeNumber", "comparison"], needsPhoto: false, role: "numeric" },
   /**
    * **写真が1枚も無い案件の、主力。**
    * 「他社から『ビビって割れる』と断られた案件を複数回受注している」のような一文を大きく置く。
    */
   { id: "statement", label: "一言を大きく", note: "会社を一言で言う文を大きく。**写真0枚でもここで山が作れる**",
-    contents: ["declined", "praise", "executive", "technique"], needsPhoto: false, role: "statement" },
+    contents: ["declined", "praise", "executive", "technique"], presentations: ["quote", "prose", "longform"], needsPhoto: false, role: "statement" },
   { id: "process", label: "工程を大きく", note: "課題→工程→結果を、カードではなく縦の流れとして見せる",
-    contents: ["cases", "technique"], needsPhoto: false, role: "display" },
+    contents: ["cases", "technique"], presentations: ["process"], needsPhoto: false, role: "display" },
   { id: "spec", label: "条件を壁に", note: "条件表を、表ではなく画面を占める構成物として見せる",
-    contents: ["conditions", "equipment", "materials"], needsPhoto: false, role: "sectionTitle" },
+    contents: ["conditions", "equipment", "materials"], presentations: ["spec", "cardGrid", "chips"], needsPhoto: false, role: "sectionTitle" },
   { id: "image", label: "写真を全幅", note: "写真を画面いっぱいに。**実写があるときだけ**",
-    contents: ["photos", "cases", "equipment"], needsPhoto: true, role: "display" },
+    contents: ["photos", "cases", "equipment"], presentations: ["fullWidth", "cardGrid"], needsPhoto: true, role: "display" },
 ];
 
 export const getPeak = (id: string | undefined): Peak =>
   PEAKS.find((p) => p.id === id) ?? PEAKS[0]!;
 
-/** その内容に、この山を当ててよいか。**写真の有無も見る** */
-export const canPeak = (peak: Peak, content: ContentId, hasRealPhotos: boolean): boolean =>
+/**
+ * その帯に、この山を当ててよいか。
+ * **内容だけでなく、実際に描かれる表現も見る**（D-278）。見ないと、
+ * 「値を大きく」の山を仕様表の帯に当てて、**余白だけ広い帯**ができる。
+ */
+export const canPeak = (
+  peak: Peak, content: ContentId, hasRealPhotos: boolean, presentation?: PresentationId,
+): boolean =>
   peak.id !== "none"
   && (!peak.needsPhoto || hasRealPhotos)
-  && (peak.contents.length === 0 || peak.contents.includes(content));
+  && (peak.contents.length === 0 || peak.contents.includes(content))
+  && (peak.presentations.length === 0 || !presentation || peak.presentations.includes(presentation));

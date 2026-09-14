@@ -138,20 +138,23 @@ console.log("\n━━━ 問い合わせ導線の型 ━━━");
     CTAS.every((c) => ["accent", "bg", "bgSoft", "ink"].includes(c.on)));
 }
 
-console.log("\n━━━ Phase 2 では、まだ画面に接続していないか ━━━");
+console.log("\n━━━ 語彙が、画面に接続されているか ━━━");
 {
   /**
-   * **語彙を作った段階で画面が動いていたら、それは Phase 2 ではない。**
-   * 接続は Phase 4（`composeVisual()`）で行う。ここで確かめておくと、
-   * 「いつのまにか繋がっていた」が起きない。
+   * **Phase 2 では、ここは「まだ接続していないこと」を確かめる試験だった。**
+   * 「いつのまにか繋がっていた」を防ぐためで、Phase 4 でこの3件が落ちるのが接続の合図だった。
+   * 落ちたので、**逆向き（接続されていること）に入れ替えた。**
+   * 空いたままにすると、今度は**外れたことに気づけない。**
    */
   const css = fs.readFileSync("site-template/src/styles/site.css", "utf8");
   const band = fs.readFileSync("site-template/src/components/Band.astro", "utf8");
-  const sections = fs.readFileSync("lib/design/sections.ts", "utf8");
-  for (const [name, src] of [["site.css", css], ["Band.astro", band], ["sections.ts", sections]]) {
-    check(`${name} は、まだ新しい語彙を使っていない`,
-      !/data-density|data-peak|data-cta|data-type-role|typography\.ts|density\.ts|peak\.ts|cta\.ts/.test(src));
-  }
+  check("site.css が、余白の語彙を受けている", /\.band\[data-density=/.test(css));
+  check("site.css が、山の語彙を受けている", /\.band\[data-peak=/.test(css));
+  check("site.css が、文字の役割を受けている", /\.band\[data-role\]/.test(css));
+  check("Band.astro が、3つとも属性に出している",
+    /data-density=/.test(band) && /data-peak=/.test(band) && /data-role=/.test(band));
+  /** **山が無い帯には、印を付けない**（HTMLを無駄に太らせない） */
+  check("山でない帯には data-peak を出さない", /peak !== "none" \? peak : undefined/.test(band));
 }
 
 
@@ -292,6 +295,93 @@ console.log("\n━━━ 商品ごとに、見出しの言葉が違うか（D-27
   }
   check("表に無い見出しは、汎用でもそのまま通る", headingFor("これからの5年", true) === "これからの5年");
   check("見出しが無い帯で落ちない", headingFor(undefined, true) === undefined);
+}
+
+
+/**
+ * ── Phase 4 ───────────────────────────────────────────
+ *
+ * **ページ全体を見て決める層が、実際に効いているか。**
+ *
+ * 実測（docs/30）の出発点：
+ *   組み方 1種（stack のみ）／余白 全帯同一／山なし
+ */
+console.log("\n━━━ ページ全体のリズムと山（D-277）━━━");
+{
+  const { composeVisual, peakCount } = await import("./lib/design/visual.ts");
+  const { composeTop, composePage } = await import("./lib/design/sections.ts");
+  const { analyze } = await import("./lib/design/analysis.ts");
+  const { sanitizeProject } = await import("./lib/sanitize.ts");
+  const { resolveTheme } = await import("./lib/theme.ts");
+
+  const load = (dir, f) => sanitizeProject(JSON.parse(fs.readFileSync(path.join("fixtures", dir, f), "utf8")));
+  const CASES = [
+    ["a-precision", load("design-diversity", "a-precision.json"), "manufacturing"],
+    ["b-difficulty", load("design-diversity", "b-difficulty.json"), "manufacturing"],
+    ["c-speed", load("design-diversity", "c-speed.json"), "manufacturing"],
+    ["中原設備（汎用）", load("mock-nakahara", "project.completed.json"), "general"],
+  ];
+
+  for (const [name, p, plan] of CASES) {
+    const a = analyze(p);
+    const r = resolveTheme(p.theme, plan);
+    const top = composeVisual(composeTop(p, a, { hero: r.hero.id, direction: r.direction, hasProse: false }), p, a, { direction: r.direction });
+    const body = top.filter((s) => s.kind !== "hero");
+
+    check(`${name}：山は1ページに1つまで`, peakCount(top) <= 1, `${peakCount(top)}個`);
+    check(`${name}：余白が2種類以上ある（前は全帯同一）`,
+      new Set(body.map((s) => s.visual.density)).size >= 2,
+      body.map((s) => s.visual.density).join(","));
+    check(`${name}：同じ余白が3つ続かない`,
+      !body.some((s, i) => i >= 2 && s.visual.density === body[i - 1].visual.density && s.visual.density === body[i - 2].visual.density));
+    check(`${name}：組み方が2種類以上ある（前は1種）`,
+      new Set(body.map((s) => s.visual.layout)).size >= 2,
+      body.map((s) => s.visual.layout).join(","));
+    check(`${name}：帯を1つも減らしていない（D-204）`, top.length === composeTop(p, a, { hero: r.hero.id, direction: r.direction, hasProse: false }).length);
+    /** **山の種類が、実際に描かれるものと合っているか**（D-278） */
+    const peak = body.find((s) => s.visual.peak !== "none");
+    if (peak) {
+      const { getPeak } = await import("./lib/design/system/index.ts");
+      const p2 = getPeak(peak.visual.peak);
+      check(`${name}：山「${p2.id}」が、その帯の表現「${peak.presentation}」に合っている`,
+        p2.presentations.length === 0 || p2.presentations.includes(peak.presentation));
+      check(`${name}：表の山は、幅を使い切る（左が空かない）`,
+        p2.id !== "spec" || peak.visual.layout === "stack", peak.visual.layout);
+    }
+  }
+
+  /** **写真が0枚でも山が作れること**（ご指示§10） */
+  const [, gen] = CASES[3];
+  const a = analyze(gen);
+  const r = resolveTheme(gen.theme, "general");
+  const noPhoto = composeVisual(composeTop({ ...gen, photos: [] }, analyze({ ...gen, photos: [] }), { hero: r.hero.id, direction: "editorial", hasProse: false }), { ...gen, photos: [] }, analyze({ ...gen, photos: [] }), { direction: "editorial" });
+  check("写真0枚でも、山が作れている", peakCount(noPhoto) === 1,
+    noPhoto.filter((s) => s.visual.peak !== "none").map((s) => `${s.content}:${s.visual.peak}`).join(","));
+
+  /** 下層ページでも効いていること */
+  for (const slug of ["strengths", "capability", "equipment"]) {
+    const p = CASES[0][1];
+    const aa = analyze(p);
+    const secs = composeVisual(composePage(slug, p, aa, { direction: "technical" }), p, aa, { direction: "technical" });
+    check(`下層 ${slug}：余白が2種類以上`, new Set(secs.map((s) => s.visual.density)).size >= 2,
+      secs.map((s) => s.visual.density).join(","));
+  }
+}
+
+console.log("\n━━━ 文字の値が、語彙から画面へ届いているか ━━━");
+{
+  const { themeVars } = await import("./lib/theme.ts");
+  const { TYPE_ROLES, clampOf } = await import("./lib/design/system/index.ts");
+  const vars = themeVars({ palette: "ai", font: "gothic", mood: "futsu" });
+  for (const r of TYPE_ROLES) {
+    check(`--t-${r.id} が出ている`, vars.includes(`--t-${r.id}:${clampOf(r)}`));
+  }
+  /** **CSSに数字を書き写していないこと。** 書き写すと語彙と画面がずれる（D-197） */
+  const css = fs.readFileSync("site-template/src/styles/site.css", "utf8");
+  const tail = css.slice(css.indexOf("ページ全体のリズムと山"));
+  check("Phase 4 のCSSに、文字の実寸を書き写していない",
+    !/font-size:\s*clamp\(\d/.test(tail.replace(/clamp\(19px, 1\.6vw, 24px\)/g, "")),
+    (tail.match(/font-size:\s*clamp\([^)]*\)/g) ?? []).join(" "));
 }
 
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);

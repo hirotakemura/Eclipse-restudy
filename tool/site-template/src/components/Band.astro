@@ -21,8 +21,15 @@ interface Props {
    */
   decidedBy?: string;
   heading?: string;
+  /**
+   * ページ全体を見て決めたもの（Phase 4・`lib/design/visual.ts`）。
+   * **帯を1つずつ見ても決められないもの**だけがここに来る。
+   */
+  density?: string;
+  peak?: string;
+  role?: string;
 }
-const { width = "normal", emphasis = "normal", surface = "plain", layout = "stack", motif = "none", content, presentation, decidedBy, heading } = Astro.props;
+const { width = "normal", emphasis = "normal", surface = "plain", layout = "stack", motif = "none", content, presentation, decidedBy, heading, density = "normal", peak = "none", role } = Astro.props;
 ---
 <section
   class="section band"
@@ -34,6 +41,9 @@ const { width = "normal", emphasis = "normal", surface = "plain", layout = "stac
   data-content={content}
   data-presentation={presentation}
   data-decided-by={decidedBy}
+  data-density={density}
+  data-peak={peak !== "none" ? peak : undefined}
+  data-role={role}
 >
   <div class="inner">
     {heading && <h2>{heading}</h2>}

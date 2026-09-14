@@ -9,6 +9,7 @@
  */
 
 import { HEROES as HERO_LIST } from "./design/system/hero.ts";
+import { TYPE_ROLES, clampOf } from "./design/system/typography.ts";
 import { DIRECTIONS, migrateDirection } from "./design/direction.ts";
 
 export interface Palette {
@@ -402,5 +403,16 @@ export function themeVars(theme: Partial<Theme> | undefined): string {
     `--font-size:${t.size}`, `--measure:${t.measure}`,
     `--radius:${m.radius}`, `--leading:${m.leading}`, `--tracking:${m.tracking}`,
     `--line-width:${m.lineWidth}`, `--section:${m.section}`,
+    /**
+     * **文字の段を、語彙から作る**（Phase 4・D-277）。
+     *
+     * CSSに数字を書き写すと、**語彙と画面が必ずいつかずれる**（D-197で学んだ）。
+     * `TYPE_ROLES` を単一の正にして、ここで `--t-<役割>` として流し込む。
+     * 語彙を直せば画面が変わり、画面を直したければ語彙を直す、の一方通行にする。
+     */
+    ...TYPE_ROLES.map((r) => `--t-${r.id}:${clampOf(r)}`),
+    ...TYPE_ROLES.map((r) => `--tw-${r.id}:${r.weight}`),
+    ...TYPE_ROLES.map((r) => `--tl-${r.id}:${r.leading}`),
+    ...TYPE_ROLES.map((r) => `--tt-${r.id}:${r.tracking}`),
   ].join(";");
 }

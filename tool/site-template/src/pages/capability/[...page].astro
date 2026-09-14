@@ -19,6 +19,7 @@ import Band from "../../components/Band.astro";
 import Present from "../../components/Present.astro";
 import { analyze } from "../../../../lib/design/analysis.ts";
 import { composePage } from "../../../../lib/design/sections.ts";
+import { composeVisual } from "../../../../lib/design/visual.ts";
 import { project, rows, companyName, isGeneral } from "../../lib/site";
 import { theme } from "../../lib/theme";
 import { hasDraft } from "../../lib/draft";
@@ -38,10 +39,10 @@ const spec = rows([
 ]);
 
 const analysis = analyze(project as any);
-const sections = composePage("capability", project as any, analysis, {
+const sections = composeVisual(composePage("capability", project as any, analysis, {
   direction: theme.direction,
   hasProse: hasDraft("capability"),
-});
+}), project as any, analysis, { direction: theme.direction });
 
 /**
  * 製造業向けの案件でだけ作るページ。
@@ -58,9 +59,8 @@ export function getStaticPaths() {
   </div></div>
 
   {sections.map((sec) => (
-    <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout}
-          motif={sec.motif} content={sec.content} presentation={sec.presentation}
-          decidedBy={sec.decidedBy} heading={sec.kind === "prose" ? undefined : sec.heading}>
+    <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} motif={sec.motif} content={sec.content} presentation={sec.presentation}
+          decidedBy={sec.decidedBy} density={sec.visual?.density} peak={sec.visual?.peak} role={sec.visual?.role} layout={sec.visual?.layout ?? sec.layout} heading={sec.kind === "prose" ? undefined : sec.heading}>
       <Present content={sec.content} presentation={sec.presentation} analysis={analysis} slug="capability" />
       {/* 表そのものではなく、**この帯に添える一文**。見せ方の分岐ではない */}
       {sec.kind === "specTable" && <p>記載のない条件についても、まずはご相談ください。可否だけでもお答えします。</p>}

@@ -699,7 +699,20 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
   font-size: clamp(34px, 6vw, 68px); margin: 0 0 22px; color: var(--accent-dark);
   max-width: none;
 }
-.hero-sub { font-size: 21px; line-height: 1.7; font-weight: 400; color: var(--ink); max-width: var(--measure); }
+/**
+ * **`.hero-sub` は `<h1>` である。**
+ * `.hero h1` の `clamp()` が先に当たっていたため、**事業の概要（4文の長文）が
+ * 55px の見出しとして出ていた**（実測）。書いた本人が気づいていなかった。
+ * 見出しの大きさは、**中身の長さで決める**（`maxChars`・D-277）。
+ */
+.hero-sub {
+  font-size: 21px !important; line-height: 1.7; font-weight: 400;
+  color: var(--ink); max-width: var(--measure);
+}
+/** 短い一言で言い切れている会社は、そのまま大きく出してよい */
+.hero-sub[data-role="statement"] { font-size: var(--t-statement) !important; line-height: var(--tl-statement); font-weight: var(--tw-statement); }
+.hero-motif[data-role="heroTitle"] { font-size: var(--t-heroTitle); }
+.hero-motif[data-role="lead"] { font-size: var(--t-lead); font-weight: 400; line-height: 1.8; }
 
 /* 余白と文字だけ。材料が少なくても成立し、静かで格が出る */
 html[data-hero="type"] .hero { padding: 96px 0 78px; }
@@ -815,3 +828,101 @@ html[data-hero="motif"] .hero {
 .offer p { max-width: none; }
 .offer .price { margin-top: 12px; }
 @media (max-width: 680px) { .offer-list { grid-template-columns: 1fr; gap: 26px; } }
+
+/* ══════════════════════════════════════════════════════════
+   ページ全体のリズムと山（Phase 4・D-277）
+
+   **ここが「情報を並べたサイト」と「デザインされたサイト」の分かれ目である。**
+
+   実測（docs/30）では、書き出した画面の
+     ・組み方は1ページに1種類（stack だけ）
+     ・帯の上余白は全帯で同一（PC 88px／スマホ 40px）
+     ・最も大きい要素は、どのページでも最初の画面
+   だった。**語彙は揃っていたが、ページ全体を見て決める層が無かった。**
+
+   値は `lib/design/visual.ts` が決め、ここは受け取ったとおりに描くだけ。
+   文字の大きさは `--t-<役割>`（`lib/theme.ts` が語彙から作る）を使う。
+   **CSSに数字を書き写さない。** 書き写すと語彙と画面がずれる（D-197）。
+   ══════════════════════════════════════════════════════════ */
+
+/* ── 余白（読む速度の指示）───────────────────── */
+.band[data-density="tight"] { padding: calc(var(--section) * 0.6) 0; }
+.band[data-density="normal"] { padding: var(--section) 0; }
+.band[data-density="loose"] { padding: calc(var(--section) * 1.5) 0; }
+.band[data-density="vast"] { padding: calc(var(--section) * 2.4) 0; }
+
+/* ── 見出しの文字（語彙の段をそのまま使う）───── */
+.band[data-role] > .inner > h2 {
+  font-size: var(--t-sectionTitle);
+  font-weight: var(--tw-sectionTitle);
+  line-height: var(--tl-sectionTitle);
+  letter-spacing: var(--tt-sectionTitle);
+}
+.band[data-role="display"] > .inner > h2 {
+  font-size: var(--t-display); font-weight: var(--tw-display);
+  line-height: var(--tl-display); letter-spacing: var(--tt-display);
+}
+.band[data-role="statement"] > .inner > h2 {
+  font-size: var(--t-statement); font-weight: var(--tw-statement);
+  line-height: var(--tl-statement); letter-spacing: var(--tt-statement);
+}
+.band[data-role="numeric"] > .inner > h2 {
+  font-size: var(--t-sectionTitle); /* 見出しは据え置き。**大きくするのは値のほう** */
+}
+.band[data-role="label"] > .inner > h2 {
+  font-size: var(--t-label); font-weight: var(--tw-label);
+  letter-spacing: var(--tt-label); color: var(--ink-soft);
+}
+/**
+ * **横に置く見出しは、大きくしない**（D-239）。
+ * 大きくすると列に収まらず、「対応できる条／件」のように語の途中で折れる。
+ * 山が `split` に当たることは `visual.ts` の側で避けているが、**片方だけに頼らない。**
+ */
+.band[data-layout="split"] > .inner > h2 { font-size: clamp(19px, 1.6vw, 24px) !important; }
+
+/* ── 山（このページで最も記憶に残る画面）──────
+   **中身のほうを大きくする。** 見出しだけ大きくしても、山にはならない。 */
+.band[data-peak] > .inner > h2 { margin-bottom: 30px; }
+
+/* 値をひとつ、画面いっぱいに */
+.band[data-peak="number"] :is(.figures dd, .bignumber-value, .compare-value) {
+  font-size: var(--t-numeric); line-height: var(--tl-numeric); letter-spacing: var(--tt-numeric);
+}
+.band[data-peak="number"] .figures > div { padding: 34px 32px; }
+.band[data-peak="number"] :is(.figures dt, .bignumber-label, .compare-label) {
+  font-size: var(--t-label); letter-spacing: var(--tt-label);
+}
+
+/* 一言を大きく。**写真が0枚の案件では、これが山になる** */
+.band[data-peak="statement"] :is(.declined p, .longform-open, .band-body > p:first-child) {
+  font-size: var(--t-statement); font-weight: var(--tw-statement);
+  line-height: var(--tl-statement); max-width: 22em;
+}
+.band[data-peak="statement"] .declined { border-left-width: 6px; padding-left: 32px; }
+
+/* 工程を大きく */
+.band[data-peak="process"] .process-title { font-size: var(--t-quote); }
+.band[data-peak="process"] .process > li { padding-left: 58px; padding-bottom: 34px; }
+.band[data-peak="process"] .process > li::before { width: 36px; height: 36px; left: -19px; font-size: 16px; }
+
+/* 条件を壁に。**表そのものを画面の構成物として見せる** */
+.band[data-peak="spec"] table { font-size: 17px; }
+.band[data-peak="spec"] :is(th, td) { padding: 18px 20px; }
+
+/* 写真を全幅に */
+.band[data-peak="image"] .gallery { gap: 4px; }
+.band[data-peak="image"] .photo img { border-radius: 0; }
+
+@media (max-width: 720px) {
+  /**
+   * **小さい画面では、振れ幅を標準へ寄せる**（D-271）。
+   * `vast` をそのまま当てると画面の4分の1が空になり、
+   * `tight` をそのまま当てると帯どうしがくっついて見える。
+   */
+  .band[data-density="tight"] { padding: calc(var(--section) * 0.7) 0; }
+  .band[data-density="loose"] { padding: calc(var(--section) * 1.15) 0; }
+  .band[data-density="vast"] { padding: calc(var(--section) * 1.4) 0; }
+  .band[data-peak="number"] .figures > div { padding: 22px 0; }
+  .band[data-peak="process"] .process > li { padding-left: 46px; }
+  .band[data-peak="process"] .process > li::before { width: 28px; height: 28px; left: -15px; font-size: 14px; }
+}
