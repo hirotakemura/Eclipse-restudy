@@ -563,21 +563,6 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
   content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 2px;
   background: linear-gradient(var(--accent), transparent);
 }
-
-/* ── 動き ───────────────────────────────── */
-/*
-  **素のHTMLは最初から見えている**（ご指示③）。
-  隠すのは「動きを許している環境」の中だけ。JSは使わない。
-  印刷・JS無効・クロールで本文が消えないこと。
-*/
-@media (prefers-reduced-motion: no-preference) {
-  html[data-motion="subtle"] .band,
-  html[data-motion="standard"] .band {
-    animation: kobo-rise .5s ease-out both;
-    animation-timeline: view();
-    animation-range: entry 0% entry 40%;
-  }
-
 /**
  * **地紋の線も、白抜きの地の上では白に倒す**（D-230）。
  *
@@ -595,6 +580,21 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
 .band:is([data-surface="accent"],[data-surface="dark"])[data-motif="section"] > .inner > h2 {
   border-bottom-color: rgba(255,255,255,.45);
 }
+
+/* ── 動き ───────────────────────────────── */
+/*
+  **素のHTMLは最初から見えている**（ご指示③）。
+  隠すのは「動きを許している環境」の中だけ。JSは使わない。
+  印刷・JS無効・クロールで本文が消えないこと。
+*/
+@media (prefers-reduced-motion: no-preference) {
+  html[data-motion="subtle"] .band,
+  html[data-motion="standard"] .band {
+    animation: kobo-rise .5s ease-out both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 40%;
+  }
+
   html[data-motion="standard"] .figures dd { animation: kobo-rise .6s ease-out both; animation-timeline: view(); }
 }
 @keyframes kobo-rise {
