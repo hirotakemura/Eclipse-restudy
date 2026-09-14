@@ -10,7 +10,8 @@
  * 生成の質は機械では測れないが、「必要な情報が入っているか」は測れる。
  */
 import fs from "node:fs";
-import { decidePages } from "./lib/generate/pages.ts";
+import { decidePages, hasCaseMaterial } from "./lib/generate/pages.ts";
+import { writerView } from "./lib/generate/writer-view.ts";
 import { pagePrompt, SYSTEM_RULES, projectContext } from "./lib/generate/prompts.ts";
 import { analyze } from "./lib/design/analysis.ts";
 import { composeTop, composePage } from "./lib/design/sections.ts";
@@ -75,8 +76,69 @@ check("共通ルールに、社内の判断材料の節がある", SYSTEM_RULES.
 for (const key of ["wantMoreOf", "wantLessOf", "mostProfitableWork", "lostDealReasons", "outlookConcern"]) {
   check(`${key} を書くなと明示している`, SYSTEM_RULES.includes(key));
 }
-check("案件データそのものは、これまでどおり全部渡している",
-  projectContext(project).includes("wantLessOf"), "出典が減っては困る");
+check("判断材料そのものは渡している（書かせないだけ）",
+  projectContext(writerView(project)).includes("wantLessOf"), "見立てが立たなくなる");
+
+/**
+ * **渡さなければ、書きようがない**（D-253）。
+ *
+ * 指示文の禁止は守られなかった。D-170で公開テンプレートから消したはずの
+ * 「人手が足りず受注を絞っている」が、**言い換えられて3ページに出た**（実測）。
+ * 公開判定は同じ文字列しか見ないので、言い換えは素通りする。**前で落とす。**
+ */
+console.log("\n━━━ 社内向けの控えを、そもそも渡していないか（D-253）━━━");
+const tempted = {
+  ...project,
+  recruitment: { ...(project.recruitment ?? {}), retentionNotes: "若手が続かない。人手が足りず受注を絞っている" },
+  capability: {
+    ...(project.capability ?? {}),
+    equipment: [{ maker: "オークマ", model: "MB-46VA", count: 1, note: "銘板を現地で確認すること" }],
+  },
+  cases: (project.cases ?? []).map((c) => ({ ...c, confidentialityNotes: "社名は不可。業界までは可" })),
+  unconfirmedNotes: { "capability.tolerance": "ミクロン単位までは可能です" },
+};
+const sent = projectContext(writerView(tempted));
+check("若手の定着状況（社内メモ）を渡していない", !sent.includes("受注を絞っている"));
+check("設備の備考（社内メモ）を渡していない", !sent.includes("銘板を現地で確認"));
+check("秘密保持のメモを渡していない", !sent.includes("社名は不可"));
+check("答えてもらえなかったときの発言を渡していない", !sent.includes("ミクロン単位までは可能"));
+check("欄の名前ごと消えている", !sent.includes("retentionNotes") && !sent.includes("confidentialityNotes"));
+check("公開してよい欄は残っている", sent.includes("MB-46VA") && sent.includes(project.basics.name));
+check("何が未確認かは伝えている（項目名だけ）", sent.includes("unconfirmed"));
+check("共通ルールも、発言が渡る前提の書き方をしていない",
+  !SYSTEM_RULES.includes("実際に言った言葉が記録されています"));
+check("渡していないことを、データの前書きで断っている",
+  sent.includes("ここには入っていません"));
+
+console.log("\n━━━ テンプレートが出すものの一覧が、共通ルールにあるか（D-255）━━━");
+check("共通ルールに、テンプレートが出すものの節がある",
+  SYSTEM_RULES.includes("テンプレートが出すものを、文章で書かない"));
+for (const word of ["設備の名称と型番", "募集要項", "電話番号・メールアドレス"]) {
+  check(`${word} を書くなと明示している`, SYSTEM_RULES.includes(word));
+}
+
+/**
+ * **無い材料は、渡しても出てこない**（D-254）。
+ * 出てくるのは `{{要確認}}` で埋まった原稿で、費用だけかかり、人間がそれを読まされる。
+ */
+console.log("\n━━━ 材料の足りない事例ページを作っていないか（D-254）━━━");
+check("どう解決したかが無い事例は、ページにしない",
+  !hasCaseMaterial({ title: "薄物", challenge: "他社が断った", solution: "", partDescription: "アルミ" }));
+check("相談も部品も無い事例は、ページにしない",
+  !hasCaseMaterial({ solution: "治具を自作した" }));
+check("両方そろっていれば、ページにする",
+  hasCaseMaterial({ challenge: "反りで断られた", solution: "加工順序を組み直した" }));
+const thin = {
+  ...project,
+  cases: [
+    { title: "書ける事例", challenge: "反りで断られた", solution: "治具を自作した", result: "納品" },
+    { title: "書けない事例", challenge: "歪むと断られた", solution: "{{要確認}} 工場長に確認", result: "{{要確認}}" },
+  ],
+};
+const thinSlugs = decidePages(writerView(thin)).map((p) => p.slug);
+check("{{要確認}}だけの事例は、生成の対象から外れる",
+  thinSlugs.includes("case-1") && !thinSlugs.includes("case-2"), thinSlugs.join(" "));
+check("番号は詰めない（事例1件目はcase-1のまま）", thinSlugs.includes("case-1"));
 
 console.log("\n━━━ 安全装置が外れていないか ━━━");
 check("出典のない数値・型番を書くなという規則が残っている", SYSTEM_RULES.includes("絶対に書かない"));

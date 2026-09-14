@@ -24,6 +24,31 @@ export interface PageSpec {
   caseIndex?: number;
 }
 
+
+/**
+ * その事例で、原稿を書けるだけの材料があるか（D-254）。
+ *
+ * **無い材料は、AIに渡しても出てこない。** 出てくるのは `{{要確認}}` で埋まった原稿である。
+ * 実測（松原精機）では、4件の事例のうち2件が「どう解決したか」を聞けておらず、
+ * 生成された `case-2.md` `case-3.md` は**ほぼ全行が `{{要確認}}`** だった。
+ * それでも1ページぶんの費用はかかり、人間はそれを読まされる。
+ *
+ * **事例ページの中心は「どう解決したか」**（工程の工夫）である。
+ * ここが無い事例は、読み手の「自分の案件と似た仕事をやったことがあるか」に答えられない。
+ * 相談の内容も無ければ、なおさら書きようがない。
+ *
+ * この判定は `sanitizeProject` を通した後のデータに対して行う。
+ * 「`{{要確認}}` だけが入っている欄」は、その時点で空欄になっている。
+ *
+ * **ページを作らないだけで、事例そのものは消えない。**
+ * 事例の一覧と個別ページはテンプレートが聞き取ったデータから出す。
+ * 散文が無いページになるだけで、載っている事実は変わらない。
+ */
+export function hasCaseMaterial(c: { challenge?: string; solution?: string; partDescription?: string }): boolean {
+  const has = (v?: string) => typeof v === "string" && v.trim().length > 0;
+  return has(c.solution) && (has(c.challenge) || has(c.partDescription));
+}
+
 export function decidePages(project: Project): PageSpec[] {
   const goals = new Set(project.inquiry?.goals ?? []);
   if ((project as any).formSet === "general") return generalPages(project, goals);
@@ -92,6 +117,7 @@ export function decidePages(project: Project): PageSpec[] {
   });
 
   (project.cases ?? []).forEach((c, i) => {
+    if (!hasCaseMaterial(c)) return;
     pages.push({
       slug: `case-${i + 1}`,
       title: `加工事例：${c.title || `事例${i + 1}`}`,

@@ -15,6 +15,7 @@ import { analyze } from "../design/analysis.ts";
 import { composeTop, composePage, type Section } from "../design/sections.ts";
 import { resolveTheme } from "../theme.ts";
 import { SYSTEM_RULES, projectContext, pagePrompt, retryPrompt } from "./prompts.ts";
+import { writerView } from "./writer-view.ts";
 
 export interface PageResult {
   page: PageSpec;
@@ -43,8 +44,19 @@ export async function generateSite(
 ): Promise<PageResult[]> {
   const { model = DEFAULT_MODEL, maxRetries = 2, onProgress = () => {} } = opts;
   const client = new Anthropic();
-  const pages = decidePages(project);
-  const context = projectContext(project);
+
+  /**
+   * **原稿を書く側は、この `source` しか見ない**（D-253）。
+   *
+   * 社内向けの欄と、答えてもらえなかったときの発言は、ここで落ちている。
+   * 検証（`verifyDraft`）も同じ `source` を出典とする。
+   * 元データを出典にすると、**渡していない欄から書かれた文章が「出典あり」で通ってしまう。**
+   * 渡したものだけが出典である、を機械で守る。
+   */
+  const source = writerView(project);
+
+  const pages = decidePages(source);
+  const context = projectContext(source);
   const results: PageResult[] = [];
 
   /**
@@ -54,15 +66,17 @@ export async function generateSite(
    * その結果、すぐ下に材質の札が出ているのに原稿でも材質を並べる、が起きていた。
    * 書き出し（build-site.mjs）と同じ関数を使うので、**画面と原稿がずれない。**
    */
-  const analysis = analyze(project);
+  const analysis = analyze(source);
   const resolved = resolveTheme(project.theme, (project as any).formSet === "general" ? "general" : "manufacturing");
+  /** 画面の構成は、AI版の判断（あれば）込みで決まる。**writerView は designBrief を落とすので、元から取る** */
+  const brief = (project as any).designBrief;
   const direction = resolved.direction;
   const layoutOf = (slug: string): { sections: Section[]; analysis: typeof analysis; direction?: string } | undefined => {
     let sections: Section[] = [];
     if (slug === "index") {
-      sections = composeTop(project, analysis, { hero: resolved.hero.id, direction, hasProse: true });
+      sections = composeTop(source, analysis, { hero: resolved.hero.id, direction, hasProse: true, brief });
     } else if (slug === "strengths" || slug === "capability" || slug === "equipment") {
-      sections = composePage(slug, project, analysis, { direction, hasProse: true });
+      sections = composePage(slug, source, analysis, { direction, hasProse: true });
     }
     return sections.length ? { sections, analysis, direction } : undefined;
   };
@@ -77,7 +91,7 @@ export async function generateSite(
         role: "user",
         content: [
           { type: "text", text: context, cache_control: { type: "ephemeral" } },
-          { type: "text", text: pagePrompt(page, project, layoutOf(page.slug)) },
+          { type: "text", text: pagePrompt(page, source, layoutOf(page.slug)) },
         ],
       },
     ];
@@ -109,7 +123,7 @@ export async function generateSite(
         .join("\n")
         .trim();
 
-      findings = verifyDraft(markdown, project);
+      findings = verifyDraft(markdown, source);
       const errors = findings.filter((f) => f.severity === "error");
       if (errors.length === 0 || retries >= maxRetries) break;
 

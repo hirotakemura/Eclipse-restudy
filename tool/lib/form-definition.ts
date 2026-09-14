@@ -171,3 +171,43 @@ export function internalValues(project: any, formSet?: FormSetId): string[] {
   }
   return out;
 }
+
+/**
+ * **原稿を書く側に渡してはいけない欄を落とす**（D-253）。
+ *
+ * `internalValues()` は「出ていないか」を後から確かめるためのもので、
+ * **渡さないための仕掛けではなかった。**
+ * テンプレートは社内向けの欄を隠していたが、原稿生成には案件データを丸ごと渡しており、
+ * 「人手が足りず受注を絞らざるを得ない」（D-170で消したはずの欄）が
+ * **採用ページと代表挨拶に、言い換えられて出た**（実測）。
+ * 公開判定は**同じ文字列**しか見ないので、言い換えられると素通りする。
+ *
+ * **渡さなければ、書きようがない。** 後ろで捕まえるより確実である。
+ */
+export function stripInternal<T>(project: T, formSet?: FormSetId): T {
+  const copy: any = JSON.parse(JSON.stringify(project));
+  const at = (obj: any, path: string) =>
+    path.split(".").slice(0, -1).reduce((o, k) => (o == null ? o : o[k]), obj);
+  const last = (path: string) => path.split(".").at(-1)!;
+
+  for (const block of getFormSet(formSet).blocks) {
+    for (const field of block.fields) {
+      if (field.internal) {
+        const parent = at(copy, field.path);
+        if (parent && typeof parent === "object") delete parent[last(field.path)];
+        continue;
+      }
+      // list の中の社内メモ欄（設備の「備考」・事例の「秘密保持のメモ」など）
+      const inner = (field.itemFields ?? []).filter((f) => f.internal);
+      if (!inner.length) continue;
+      const rows = field.path.split(".").reduce((o: any, k) => (o == null ? o : o[k]), copy);
+      if (!Array.isArray(rows)) continue;
+      for (const row of rows) for (const f of inner) if (row && typeof row === "object") delete row[f.path];
+    }
+  }
+  /** 我々の手控え。**そもそも原稿の材料ではない** */
+  delete copy.unconfirmedNotes;
+  delete copy.unconfirmedPlan;
+  delete copy.designBrief;
+  return copy as T;
+}
