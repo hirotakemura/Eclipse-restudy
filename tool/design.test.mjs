@@ -209,5 +209,30 @@ console.log("\n━━━ 動きの原則 ━━━");
     /kobo-grow/.test(inside) && /@keyframes kobo-grow/.test(css));
 }
 
+
+/**
+ * **「どうやって受けているか」は、事例のすぐ後ろ**（D-264）。
+ *
+ * 事例は「こう相談され、こう解決した」と言い、技術の帯は**その方法に名前をつける。**
+ * 間に材質の札や設備のカードが挟まると、話の筋が切れる。
+ * 帯の並びを「見立ての点数順」にしていたのが原因で、点数順は**読み手の疑問の順ではない。**
+ */
+console.log("\n━━━ 事例の直後に「どうやって受けているか」が来るか（D-264）━━━");
+{
+  const fs = await import("node:fs");
+  for (const f of ["a-precision", "b-difficulty", "c-speed"]) {
+    const p = JSON.parse(fs.readFileSync(`fixtures/design-diversity/${f}.json`, "utf8"));
+    const list = kinds(p, { hero: "spec", direction: "technical" });
+    const iCase = list.indexOf("cases");
+    const iTech = list.indexOf("technique");
+    if (iCase < 0 || iTech < 0) { check(`${f}：事例と技術の帯が両方ある（前提）`, false, list.join(" ")); continue; }
+    check(`${f}：事例の直後が「どうやって受けているか」`, iTech === iCase + 1, list.join(" "));
+  }
+  /** **技術の帯が無い会社では、何も起きない** */
+  const noTech = make({ capability: { materials: ["アルミ", "鉄"] }, cases: [{ title: "例", challenge: "難", solution: "解", result: "良" }] });
+  const list = kinds(noTech, { hero: "spec", direction: "technical" });
+  check("技術の帯が無ければ、並びは変わらない（落ちない）", !list.includes("technique"), list.join(" "));
+}
+
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);
 process.exit(ng ? 1 : 0);

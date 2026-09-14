@@ -1,13 +1,13 @@
 {
   "a-precision": {
     "index": {
-      "hash": "dcd79afbde17",
+      "hash": "f5e99c5977b4",
       "bands": [
         "conditions:spec:lead",
         "cases:process:normal",
+        "technique:prose:normal",
         "materials:chips:normal",
-        "equipment:cardGrid:normal",
-        "technique:prose:normal"
+        "equipment:cardGrid:normal"
       ]
     },
     "strengths/index": {
@@ -37,12 +37,12 @@
   },
   "b-difficulty": {
     "index": {
-      "hash": "36f21fccf7bb",
+      "hash": "56a6cd4b0a85",
       "bands": [
         "declined:quote:lead",
         "cases:process:normal",
-        "materials:chips:normal",
         "technique:process:normal",
+        "materials:chips:normal",
         "executive:prose:quiet"
       ]
     },
@@ -73,13 +73,13 @@
   },
   "c-speed": {
     "index": {
-      "hash": "51be07a4be8b",
+      "hash": "fbef2f72aa49",
       "bands": [
         "conditions:comparison:lead",
         "cases:process:normal",
+        "technique:process:normal",
         "equipment:cardGrid:normal",
-        "materials:chips:normal",
-        "technique:process:normal"
+        "materials:chips:normal"
       ]
     },
     "strengths/index": {

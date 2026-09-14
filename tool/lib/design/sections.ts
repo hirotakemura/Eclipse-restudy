@@ -536,7 +536,26 @@ export function composeTop(
     put({ kind: "cases", width: "wide", emphasis: "normal", heading: "加工事例" }, "最も問い合わせに繋がる");
   }
 
-  for (const s of picked.slice(1)) put(BY_STRAND[s.id]!, s.why);
+  /**
+   * **「どうやって受けているか」は、事例のすぐ後ろに置く**（D-264）。
+   *
+   * 事例は「こう相談され、こう解決した」と言う。
+   * 「どうやって受けているか」は、**その解決の方法に名前をつけて説明する帯**である。
+   *   事例「専用治具を内製し、荒取り後に一度寝かせて応力を逃がしてから仕上げた」
+   *   　→　技術「治具の内製」「加工順序の設計」
+   * **この2つの間に材質の札や設備のカードが挟まると、話の筋が切れる。**
+   *
+   * 規則版は帯を「見立ての点数順」に並べていた。点数順は**我々が測った強さの順**であって、
+   * **読み手の疑問の順ではない。** 読み手は「本当にできるのか」の次に「なぜできるのか」を見る。
+   *
+   * これは会社によらない**ページの筋**なので、規則で持つ（D-250・D-252の考え方）。
+   * 実測：3社（精度・難加工・短納期）でAIが返した並びが、3社とも同じこの動きだった。
+   * 会社ごとに違う判断ではない以上、毎回AIに訊いて払う理由がない。
+   */
+  const rest = picked.slice(1);
+  const tech = rest.findIndex((s) => s.id === "technique");
+  if (tech > 0) rest.unshift(...rest.splice(tech, 1));
+  for (const s of rest) put(BY_STRAND[s.id]!, s.why);
 
   return dedupe(out);
 }
