@@ -45,6 +45,13 @@ check("送れなかった画面にメールアドレスが出る", ngPage.includ
 check("送れなかった画面に理由が出る", ngPage.includes("問題が起きました"));
 check("送れた画面には連絡先を出さない（くどくしない・D-175）",
   !page("ok", [], contact).includes("093-000-0000"));
+{
+  const v = parseInquiry(okForm).values;
+  const kept = page("ng", ["送信の途中で問題が起きました。"], contact, v);
+  check("送れなかったとき、書いた内容が画面に残る（D-246）", kept.includes(okForm.body));
+  check("そのままメールで送れる", kept.includes("mailto:info@example.co.jp?subject="));
+  check("送れたときは、内容を貼り直さない", !page("ok", [], contact, v).includes(okForm.body));
+}
 check("入力値をそのまま画面に流し込まない",
   !page("ng", ['<script>alert(1)</script>'], contact).includes("<script>alert"));
 
@@ -64,6 +71,8 @@ console.log("\n━━━ 移管しても同じに動く（D-243）━━━");
   check("PHP版も、送れなかったら連絡先を出す", /SITE_TEL/.test(php) && /mailto:/.test(php));
   check("PHP版も、画面に出ていない欄で止める", php.includes('v("website")'));
   check("PHP版も、開いて3秒未満で止める", php.includes("3000"));
+  check("PHP版も、送れなかったら書いた内容を残す（D-246）",
+    php.includes("お書きいただいた内容") && php.includes("このままメールで送る"));
   check("書き換える設定が4行にまとまっている", /ここだけ書き換える/.test(php));
   const ht = fs.readFileSync("handover/.htaccess", "utf8");
   check("HTMLを変えずに済むよう、書き換え規則が同梱されている", ht.includes("api/inquiry.php"));

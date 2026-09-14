@@ -90,6 +90,12 @@ const esc = (s: string) =>
  */
 export function page(
   kind: "ok" | "ng", messages: string[], contact: { tel: string; email: string; site: string },
+  /**
+   * 書いていただいた内容。**送れなかったときに、これを画面に残す**（D-246）。
+   * 残さないと、長い相談文を書いた人が**もう一度打ち直す**ことになる。
+   * 実際には打ち直さず、そのまま去る。**失注そのもの。**
+   */
+  entered?: Record<Field, string>,
 ): string {
   const title = kind === "ok" ? "送信しました" : "送信できませんでした";
   const lead = kind === "ok"
@@ -98,6 +104,20 @@ export function page(
   const fallback = kind === "ng"
     ? `<p class="big">${contact.tel ? `電話　${esc(contact.tel)}<br>` : ""}${
         contact.email ? `メール　<a href="mailto:${esc(contact.email)}">${esc(contact.email)}</a>` : ""}</p>`
+    : "";
+
+  /**
+   * **書いた内容を返す。** そのままメールで送れるようにもしておく。
+   * `mailto:` は本文が長いと落ちる端末があるので、**下の枠が本命**（選んで写せる）。
+   */
+  const text = entered ? notifyBody(entered) : "";
+  const keep = kind === "ng" && text
+    ? `<h2>お書きいただいた内容</h2>
+ <p>下の内容は消えていません。${contact.email ? "そのままメールでお送りいただけます。" : "お手数ですが、お手元に写してください。"}</p>
+ ${contact.email ? `<p><a class="btn" href="mailto:${esc(contact.email)}?subject=${
+        encodeURIComponent(`お問い合わせ｜${entered!.company || entered!.name}`)}&body=${
+        encodeURIComponent(text)}">このままメールで送る</a></p>` : ""}
+ <textarea rows="10" readonly onclick="this.select()">${esc(text)}</textarea>`
     : "";
   return `<!doctype html><html lang="ja"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
@@ -108,6 +128,9 @@ export function page(
  main{max-width:680px;margin:0 auto}h1{font-size:26px;margin:0 0 18px}
  .big{font-size:21px;font-weight:700;line-height:2}
  ul{padding-left:1.3em}a{color:#10456f}
+ h2{font-size:19px;margin:40px 0 10px}
+ textarea{width:100%;font:inherit;line-height:1.8;padding:12px 14px;border:1px solid #929599;border-radius:8px;background:#fff;color:#17202a}
+ .btn{display:inline-block;background:#10456f;color:#fff;text-decoration:none;font-weight:600;padding:13px 24px;border-radius:4px;margin:0 0 14px}
  .back{margin-top:36px;display:inline-block}
 </style>
 <main>
@@ -115,6 +138,7 @@ export function page(
  <p>${lead}</p>
  ${messages.length ? `<ul>${messages.map((m) => `<li>${esc(m)}</li>`).join("")}</ul>` : ""}
  ${fallback}
+ ${keep}
  <a class="back" href="/contact/">お問い合わせページに戻る</a>
 </main>`;
 }
@@ -139,8 +163,8 @@ export const onRequestPost = async (ctx: any): Promise<Response> => {
     email: String(env.INQUIRY_TO ?? "").split(",")[0]?.trim() ?? "",
     site: env.SITE_NAME ?? "",
   };
-  const html = (kind: "ok" | "ng", msgs: string[], status: number) =>
-    new Response(page(kind, msgs, contact), { status, headers: { "content-type": "text/html; charset=utf-8" } });
+  const html = (kind: "ok" | "ng", msgs: string[], status: number, entered?: Record<Field, string>) =>
+    new Response(page(kind, msgs, contact, entered), { status, headers: { "content-type": "text/html; charset=utf-8" } });
 
   let form: Record<string, unknown> = {};
   try {
@@ -151,7 +175,7 @@ export const onRequestPost = async (ctx: any): Promise<Response> => {
   }
 
   const { values, problems } = parseInquiry(form);
-  if (problems.length) return html("ng", problems, 400);
+  if (problems.length) return html("ng", problems, 400, values);
 
   try {
     await send(env.RESEND_API_KEY, {
@@ -164,7 +188,7 @@ export const onRequestPost = async (ctx: any): Promise<Response> => {
   } catch (err) {
     // **届かなかったことを、送った側に必ず伝える**（D-177③）
     console.error("inquiry: notify failed", err);
-    return html("ng", ["送信の途中で問題が起きました。"], 502);
+    return html("ng", ["送信の途中で問題が起きました。"], 502, values);
   }
   // 自動返信が落ちても、本体は届いている。**受付は成功として返す**
   if (values.email) {

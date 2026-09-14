@@ -53,7 +53,12 @@ function notify_body($FIELDS) {
  * 返す画面。**送れなかったときは、必ず電話番号とメールアドレスを出す。**
  * 黙って飲み込むのが最悪です（届いたと思われたまま失注します）。
  */
-function page($ok, $messages, $SITE_NAME, $SITE_TEL, $TO) {
+/**
+ * @param $entered 書いていただいた内容（送れなかったときに画面へ残す・D-246）
+ *                 残さないと、長い相談文を書いた人がもう一度打ち直すことになる。
+ *                 実際には打ち直さず、そのまま去る。**失注そのもの。**
+ */
+function page($ok, $messages, $SITE_NAME, $SITE_TEL, $TO, $entered = "") {
   $title = $ok ? "送信しました" : "送信できませんでした";
   $lead  = $ok ? "お問い合わせをお受けしました。確認のうえ、担当者よりご連絡いたします。"
                : "申し訳ありません。フォームからお送りできませんでした。<strong>お手数ですが、下記へ直接ご連絡ください。</strong>";
@@ -63,6 +68,17 @@ function page($ok, $messages, $SITE_NAME, $SITE_TEL, $TO) {
   $fb = $ok ? "" : '<p class="big">電話　' . htmlspecialchars($SITE_TEL, ENT_QUOTES, "UTF-8")
               . '<br>メール　<a href="mailto:' . htmlspecialchars($to1, ENT_QUOTES, "UTF-8") . '">'
               . htmlspecialchars($to1, ENT_QUOTES, "UTF-8") . '</a></p>';
+
+  // **書いた内容を返す。** そのままメールでも送れるようにしておく（TS版と同じ）
+  $keep = "";
+  if (!$ok && $entered !== "") {
+    $mail = "mailto:" . rawurlencode($to1) . "?subject=" . rawurlencode("お問い合わせ") . "&body=" . rawurlencode($entered);
+    $keep = '<h2>お書きいただいた内容</h2>'
+          . '<p>下の内容は消えていません。そのままメールでお送りいただけます。</p>'
+          . '<p><a class="btn" href="' . htmlspecialchars($mail, ENT_QUOTES, "UTF-8") . '">このままメールで送る</a></p>'
+          . '<textarea rows="10" readonly onclick="this.select()">'
+          . htmlspecialchars($entered, ENT_QUOTES, "UTF-8") . '</textarea>';
+  }
   http_response_code($ok ? 200 : 400);
   header("Content-Type: text/html; charset=utf-8");
   echo '<!doctype html><html lang="ja"><meta charset="utf-8">'
@@ -72,9 +88,12 @@ function page($ok, $messages, $SITE_NAME, $SITE_TEL, $TO) {
      . 'line-height:1.85;color:#17202a;margin:0;padding:64px 20px;background:#fff}'
      . 'main{max-width:680px;margin:0 auto}h1{font-size:26px;margin:0 0 18px}'
      . '.big{font-size:21px;font-weight:700;line-height:2}ul{padding-left:1.3em}a{color:#10456f}'
+     . 'h2{font-size:19px;margin:40px 0 10px}'
+     . 'textarea{width:100%;font:inherit;line-height:1.8;padding:12px 14px;border:1px solid #929599;border-radius:8px;background:#fff;color:#17202a}'
+     . '.btn{display:inline-block;background:#10456f;color:#fff;text-decoration:none;font-weight:600;padding:13px 24px;border-radius:4px;margin:0 0 14px}'
      . '.back{margin-top:36px;display:inline-block}</style>'
      . "<main><h1>{$title}</h1><p>{$lead}</p>"
-     . ($list ? "<ul>{$list}</ul>" : "") . $fb
+     . ($list ? "<ul>{$list}</ul>" : "") . $fb . $keep
      . '<a class="back" href="/contact/">お問い合わせページに戻る</a></main>';
   exit;
 }
@@ -82,7 +101,7 @@ function page($ok, $messages, $SITE_NAME, $SITE_TEL, $TO) {
 if ($_SERVER["REQUEST_METHOD"] !== "POST") page(false, ["このページは直接開けません。"], $SITE_NAME, $SITE_TEL, $TO);
 
 $problems = check($FIELDS);
-if ($problems) page(false, $problems, $SITE_NAME, $SITE_TEL, $TO);
+if ($problems) page(false, $problems, $SITE_NAME, $SITE_TEL, $TO, notify_body($FIELDS));
 
 $subject = "【お問い合わせ】" . (v("company") !== "" ? v("company") : v("name")) . " 様";
 $headers = "From: {$FROM}\r\n";
@@ -90,7 +109,7 @@ if (v("email") !== "") $headers .= "Reply-To: " . v("email") . "\r\n";
 $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
 
 $sent = @mb_send_mail($TO, $subject, notify_body($FIELDS), $headers);
-if (!$sent) page(false, ["送信の途中で問題が起きました。"], $SITE_NAME, $SITE_TEL, $TO);
+if (!$sent) page(false, ["送信の途中で問題が起きました。"], $SITE_NAME, $SITE_TEL, $TO, notify_body($FIELDS));
 
 // 自動返信（落ちても受付は成功。図面はこの返信に添付してもらう）
 if (v("email") !== "") {
