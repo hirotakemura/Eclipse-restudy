@@ -32,7 +32,12 @@
   --tracking: .01em;
   --line-width: 1px;
   --section: 52px;
-  --max: 1040px;
+  /**
+   * 本文の帯の幅（D-239）。
+   * 1040px から 1200px へ広げた。**文章の1行は `--measure` が別に縛っている**ので、
+   * ここを広げても読みにくくならない。効くのは表・カード・写真のほう。
+   */
+  --max: 1200px;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -98,8 +103,13 @@ main { display: block; }
 .inner { max-width: var(--max); margin: 0 auto; padding: 0 20px; }
 .section { padding: var(--section) 0; }
 .section + .section { border-top: 1px solid var(--line); }
-h1 { font-size: 31px; line-height: 1.45; margin: 0 0 18px; letter-spacing: var(--tracking); font-family: var(--font-head); }
-h2 { font-size: 24px; line-height: 1.5; margin: 0 0 16px; font-family: var(--font-head); letter-spacing: var(--tracking); }
+/**
+ * 見出し（D-239）。**画面の幅に合わせて伸びる**ようにした。
+ * 上限まで伸ばすと h1 40px／h2 30px で、直す前（31px／24px）より一段大きい。
+ * 下限は直す前のスマホの値に合わせてあるので、**小さい画面では何も変わらない。**
+ */
+h1 { font-size: clamp(25px, 2.6vw, 40px); line-height: 1.35; margin: 0 0 22px; letter-spacing: var(--tracking); font-family: var(--font-head); }
+h2 { font-size: clamp(21px, 1.9vw, 30px); line-height: 1.45; margin: 0 0 20px; font-family: var(--font-head); letter-spacing: var(--tracking); }
 h3 { font-size: 19px; margin: 30px 0 8px; font-family: var(--font-head); }
 p { margin: 0 0 16px; }
 .lead { font-size: 19px; color: var(--ink-soft); margin-bottom: 28px; max-width: var(--measure); }
@@ -119,7 +129,7 @@ p { margin: 0 0 16px; }
 
 /* ── トップの見出し ─────────────────────── */
 .hero { padding: 56px 0 46px; }
-.hero h1 { font-size: 36px; }
+.hero h1 { font-size: clamp(27px, 3.8vw, 56px); line-height: 1.28; }
 .hero .facts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
 .hero .facts span {
   background: var(--accent-soft); color: var(--accent-dark);
@@ -242,9 +252,7 @@ thead th { width: auto; }
   .tel { text-align: left; }
   .tel-num { font-size: 19px; }
   .inner { padding: 0 16px; }
-  .hero h1 { font-size: 27px; }
-  h1 { font-size: 25px; }
-  h2 { font-size: 21px; }
+  /* 見出しの大きさは clamp() が画面幅から決める（D-239）。ここでは指定しない */
   .section { padding: 40px 0; }
   /* 表は横スクロールさせず、縦積みにする。指で横に動かす表は読まれない */
   th { width: auto; white-space: normal; }
@@ -366,12 +374,18 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
    1040px 固定で、配色を変えても同じ顔に見える原因になっていた（docs/21）。
    幅は「何を見せるか」で決める。散文は狭く、表と写真は広く、数字は画面いっぱいに。
    なお `.band` は `.section` も兼ねるので、章の区切り・見出しの飾りはそのまま効く。 */
+/**
+ * 帯の幅（D-239）。
+ * **狭い帯は動かさない。** 760px は「1行が長くなりすぎない」ための幅で、
+ * 読みやすさの下限そのものだから（読み手は60代前後・docs/06）。
+ * 広げるのは、表・カード・写真が入る帯だけ。
+ */
 .band[data-width="narrow"] > .inner { max-width: 760px; }
-.band[data-width="wide"] > .inner { max-width: 1280px; }
-.band[data-width="full"] > .inner { max-width: 1440px; }
+.band[data-width="wide"] > .inner { max-width: 1440px; }
+.band[data-width="full"] > .inner { max-width: 1680px; }
 
 /* 強さ。**重要情報と補助情報を同じ大きさで出さない** */
-.band[data-emphasis="lead"] > .inner > h2 { font-size: 28px; }
+.band[data-emphasis="lead"] > .inner > h2 { font-size: clamp(24px, 2.4vw, 38px); }
 .band[data-emphasis="quiet"] { padding: calc(var(--section) * 0.6) 0; }
 .band[data-emphasis="quiet"] > .inner > h2 { font-size: 20px; color: var(--ink-soft); }
 
@@ -518,10 +532,20 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
 .band[data-surface="soft"] + .band[data-surface="soft"] { border-top: 1px solid var(--line); }
 
 /* ── 組み方 ─────────────────────────────── */
+/**
+ * 見出しを左、中身を右に置く組み方。
+ * **見出しの列は細くする**（D-239）。太いと、見出し1行の下がまるごと空白になる。
+ */
 .band[data-layout="split"] > .inner {
-  display: grid; grid-template-columns: minmax(200px, 1fr) 2.2fr; gap: 32px 40px; align-items: start;
+  display: grid; grid-template-columns: minmax(200px, 1fr) 2.6fr; gap: 28px 44px; align-items: start;
 }
-.band[data-layout="split"] > .inner > h2 { grid-column: 1; margin: 0; }
+/**
+ * **横に置く見出しは、大きくしない**（D-239）。
+ * 大きさで強さを出す場所ではなく、位置で出している。
+ * 大きくすると列に収まらず、「対応できる条／件」のように**語の途中で折れた**。
+ * 日本語は語の切れ目が無いので、ブラウザはどこでも折る。収まる大きさにしておく。
+ */
+.band[data-layout="split"] > .inner > h2 { grid-column: 1; margin: 0; font-size: clamp(19px, 1.6vw, 24px); }
 .band[data-layout="split"] > .inner > .band-body { grid-column: 2; }
 
 /* 非対称。**片側に寄せて、反対側に余白を取る** */
@@ -596,13 +620,67 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
   }
 
   html[data-motion="standard"] .figures dd { animation: kobo-rise .6s ease-out both; animation-timeline: view(); }
+
+  /**
+   * **並んだものは、少しずつ遅れて現れる**（D-240）。
+   *
+   * 帯ごと一斉に現れると、動いていることに気づかない。
+   * カード・札・工程のように**並んでいるもの**だけ、順にずらす。
+   * ずらすのは JS ではなく `animation-range`（スクロール位置）で、
+   * **見えている範囲のどこまで来たか**で決まる。時間では決めない。
+   */
+  html[data-motion="standard"] :is(.cards, .machines, .points, .chips, .process, .gallery) > * {
+    animation: kobo-rise .5s ease-out both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
+  }
+  html[data-motion="standard"] :is(.cards, .machines, .points, .chips, .process, .gallery) > *:nth-child(2) {
+    animation-range: entry 0% entry 46%;
+  }
+  html[data-motion="standard"] :is(.cards, .machines, .points, .chips, .process, .gallery) > *:nth-child(3) {
+    animation-range: entry 0% entry 57%;
+  }
+  html[data-motion="standard"] :is(.cards, .machines, .points, .chips, .process, .gallery) > *:nth-child(n+4) {
+    animation-range: entry 0% entry 68%;
+  }
+
+  /**
+   * **工程の線が伸びる**（D-240）。
+   *
+   * `lib/design/system/motion.ts` の「標準」は、前から
+   * 「数字が数え上がる・工程の線が伸びる」と**謳っていたのに、実装が無かった。**
+   * 書いてあることと動くものが違うのは、いちばん質が悪い。
+   *
+   * 数え上がるほうは**入れない。** 我々が大きく出す値は「±0.005mm」「標準7日」
+   * のような**文字列**で、数として数え上げられない。数えられる形に言い直すのは
+   * **こちらが値を作ること**になる（D-181）。謳い文句のほうを直した。
+   */
+  html[data-motion="standard"] .band[data-motif="process"] > .inner > .band-body::before {
+    animation: kobo-grow .6s ease-out both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 50%;
+    transform-origin: top;
+  }
+
+  /**
+   * 指を乗せたときだけ、わずかに浮く。
+   * **動きを減らす設定の人には、色の変化だけが残る**（下の hover は外にある）。
+   */
+  .case-card, .machine { transition: transform .18s ease-out, background .18s ease-out; }
+  .case-card:hover, .machine:hover { transform: translateY(-2px); }
+}
+@keyframes kobo-grow {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
 }
 @keyframes kobo-rise {
   from { opacity: .35; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
 }
 @media print {
-  .band { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .band,
+  .band *,
+  .band *::before { animation: none !important; opacity: 1 !important; transform: none !important; }
 }
 
 /* ── 最初の画面の型（D-202）────────────────────
