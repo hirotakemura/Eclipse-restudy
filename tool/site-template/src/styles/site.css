@@ -805,3 +805,13 @@ html[data-hero="motif"] .hero {
 .inquiry .note { color: var(--ink-soft); font-size: 15px; margin: -8px 0 22px; }
 .inquiry .fallback { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); }
 @media (width<=620px) { .inquiry .field-row { grid-template-columns: 1fr; } }
+
+/* ── 取り扱い・サービス・料金（汎用プランの中心・D-272）──────
+   以前は `pages/index.astro` に直接書かれており、構成システムの外にあった。
+   いまは帯として出るので、幅・面・強さ・組み方がそのまま効く。 */
+.offer-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px 36px; }
+.offer { border-top: 3px solid var(--accent); padding-top: 18px; }
+.offer h3 { margin: 0 0 8px; font-size: 20px; }
+.offer p { max-width: none; }
+.offer .price { margin-top: 12px; }
+@media (max-width: 680px) { .offer-list { grid-template-columns: 1fr; gap: 26px; } }

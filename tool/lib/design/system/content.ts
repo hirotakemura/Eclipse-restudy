@@ -9,6 +9,7 @@
  */
 
 export type ContentId =
+  | "offerings"   // 取り扱い・サービス・料金　※汎用プランの中心
   | "conditions"  // 対応条件（ロット・納期・精度）
   | "materials"   // 対応材質・加工法
   | "equipment"   // 設備
@@ -29,6 +30,16 @@ export interface Content {
 }
 
 export const CONTENTS: Content[] = [
+  /**
+   * **汎用プランの中心**（D-272）。
+   *
+   * 「何を・いくらで」は、汎用プランの商品価値そのものである。
+   * ところが実測では、これが `pages/index.astro` に直接書かれており、
+   * **可否表も材料条件も Brief も通っていなかった**（docs/30）。
+   * 幅も強さも固定で、`/services/` ページには帯（`.band`）が1つも無かった。
+   * **構成システムの外にあるものは、構成できない。** だから語彙に入れる。
+   */
+  { id: "offerings", label: "取り扱い・サービス", core: true },
   { id: "conditions", label: "対応条件", core: true },
   { id: "materials", label: "対応材質・加工法", core: true },
   { id: "equipment", label: "設備", core: true },

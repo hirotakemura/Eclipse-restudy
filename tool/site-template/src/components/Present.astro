@@ -20,12 +20,13 @@ import Equipment from "./sections/Equipment.astro";
 import Timeline from "./sections/Timeline.astro";
 import People from "./sections/People.astro";
 import Points from "./sections/Points.astro";
+import Offerings from "./sections/Offerings.astro";
 import Table from "./Table.astro";
 import Gallery from "./Gallery.astro";
 import CaseCard from "./CaseCard.astro";
 import Prose from "./Prose.astro";
 import { cardGrid } from "../lib/cards";
-import { project, cases, rows, photosOf, isGeneral, reasonChosen, idealCustomer } from "../lib/site";
+import { project, cases, rows, photosOf, isGeneral, reasonChosen, idealCustomer, offerings } from "../lib/site";
 import { splitParts } from "../lib/text";
 
 /**
@@ -97,6 +98,19 @@ const points = ((isGeneral
     ]) as [string, string][]).filter(([, v]) => v);
 ---
 {content === "draft" && <Prose slug={slug ?? "index"} />}
+
+{/* 取り扱い（汎用プランの中心・D-272）。**構成システムの中で出す** */}
+{content === "offerings" && presentation === "cardGrid" && <Offerings offerings={offerings} href={offerings.length > 3 ? "/services/" : undefined} />}
+{content === "offerings" && presentation === "spec" && (
+  <Table head={["サービス", "料金の目安"]} rows={offerings.map((o: any) => [o.name, o.price || "お問い合わせください"])} />
+)}
+{content === "offerings" && presentation === "list" && <ListView items={offerings.map((o: any) => o.name).filter(Boolean)} />}
+{content === "offerings" && presentation === "longform" && (
+  <Longform text={offerings.map((o: any) => [o.name, o.detail].filter(Boolean).join("\n")).join("\n\n")} />
+)}
+{content === "offerings" && presentation === "prose" && (
+  <p>{offerings.map((o: any) => o.name).filter(Boolean).join("・")}</p>
+)}
 
 {content === "conditions" && presentation === "largeNumber" && <Figures figures={analysis.figures} />}
 {content === "conditions" && presentation === "spec" && <Table rows={specRows} />}

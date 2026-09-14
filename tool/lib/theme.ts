@@ -275,6 +275,29 @@ function migrateLayout(raw: any): Partial<Theme> {
 }
 
 /**
+ * **型が選んだ最初の画面を、既定値で上書きしない**（D-275）。
+ *
+ * 実測で見つけた。汎用の6つの型は `heroes` の先頭に `type`（余白と文字だけ）や
+ * `photo` を置いているのに、**7つの型すべてで `headline` が出ていた。**
+ *
+ * 原因は `resolveTheme` が `DEFAULT_THEME`（`hero: "headline"`）を先に敷いて、
+ * **型を一度も見ないこと。** 型の好みが効くのは、お客様が型のボタンを押して
+ * 9軸がまとめて書き込まれたときだけで、**型だけ指定した案件では効かなかった。**
+ *
+ * 「型を選んでも同じページになる」の、いちばん小さな実例である。
+ * **お客様が明示的に選んだ `hero` は、いままでどおり最優先で尊重する。**
+ */
+function heroFromDirection(raw: any): Partial<Theme> {
+  if (!raw || typeof raw.hero === "string") return {};       // 選ばれていれば触らない
+  if (typeof raw.direction !== "string") return {};          // 型が無ければ触らない
+  const d = DIRECTIONS.find((x) => x.id === raw.direction);
+  if (!d) return {};
+  // **写真ゼロでも成立するものを選ぶ。** 写真が要る型は、材料が揃ってから
+  const hero = d.heroes.find((h) => HERO_LIST.find((x) => x.id === h)?.worksWithoutPhotos) ?? d.heroes[0];
+  return hero ? { hero } : {};
+}
+
+/**
  * 型（プリセット）。
  *
  * **4軸を1つずつ選ぶのは、90分の取材では重い。**
@@ -347,7 +370,7 @@ export function resolveTheme(
   theme: Partial<Theme> | undefined,
   plan: "manufacturing" | "general" = "manufacturing",
 ) {
-  const t = { ...DEFAULT_THEME, ...migrateLayout(theme), ...(theme ?? {}) };
+  const t = { ...DEFAULT_THEME, ...migrateLayout(theme), ...heroFromDirection(theme), ...(theme ?? {}) };
   // 知らないIDが入っていても落とさない。既定に戻す
   const pick = <T extends { id: string }>(list: T[], id: string, fallback: T): T =>
     list.find((x) => x.id === id) ?? fallback;

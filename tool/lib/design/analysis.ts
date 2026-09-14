@@ -24,6 +24,8 @@ import type { MotifId } from "./system/index.ts";
 
 /** 何で見せる会社か */
 export type ShowBy =
+  | "offerings" // 取り扱い・サービス・料金　※汎用プランの中心（D-272）
+  | "voice" // お客様の言葉
   | "declined" // 他社が断った仕事を受けている
   | "technique" // 工程・治具などの技術
   | "numbers" // 条件の数字（ロット・納期）
@@ -97,6 +99,7 @@ export interface Analysis {
  * 根拠が弱ければ `unknown` とし、規則版の安全な構成へ落とす（D-205）。
  */
 export type PrimaryStrength =
+  // ── 製造業 ──
   | "precision"   // 精度・公差
   | "difficulty"  // 難加工
   | "speed"       // 短納期・対応力
@@ -104,6 +107,16 @@ export type PrimaryStrength =
   | "engineering" // 設計対応
   | "equipment"   // 設備
   | "craft"       // 職人性
+  // ── 汎用（D-273）──
+  // **製造業の語彙を流用しない**（ご指示§24）。判断の軸そのものが違う。
+  // 製造業は「技術・設備・加工・数値」、汎用は「ブランド・サービス・人・世界観」。
+  | "offering"    // 何を売っているかが明確
+  | "price"       // 料金を出している
+  | "reason"      // 選ばれている理由を言語化できている
+  | "voice"       // お客様の言葉がある
+  | "record"      // 実績がある
+  | "person"      // 人・代表で選ばれる
+  // ── 両方 ──
   | "history"     // 歴史
   | "unknown";
 
@@ -116,11 +129,14 @@ export type PrimaryStrength =
  */
 export const PRIMARY_STRENGTHS: PrimaryStrength[] = [
   "precision", "difficulty", "speed", "range",
-  "engineering", "equipment", "craft", "history", "unknown",
+  "engineering", "equipment", "craft",
+  "offering", "price", "reason", "voice", "record", "person",
+  "history", "unknown",
 ];
 
 const text = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 const len = (v: unknown): number => (Array.isArray(v) ? v.length : 0);
+const arr = (v: unknown): any[] => (Array.isArray(v) ? v : []);
 
 /** 上位 n 件を、順位が同じなら定義順で返す */
 const rank = (strands: Strand[]): Strand[] =>
@@ -141,7 +157,31 @@ export function analyze(project: Project): Analysis {
   const hasRealPhotos = real.length > 0;
   const photoOf = (c: string) => real.some((x) => x.category === c);
 
+  const isGeneral = p.formSet === "general";
+  const offerings = arr(p.general?.offerings);
+
   const strands: Strand[] = [
+    /**
+     * 取り扱い（D-272）。**汎用プランの中心。**
+     *
+     * 製造業の案件では `general.offerings` が無いので0点になり、そのまま落ちる。
+     * **製造業の見立てを1点も動かさない**のが、この改修の条件である。
+     */
+    {
+      id: "offerings",
+      score: offerings.length >= 3 ? 6 : offerings.length ? 4 : 0,
+      why: "取り扱いと料金を聞き取れている",
+    },
+    /**
+     * お客様の言葉。**汎用では、これが技術情報の代わりになる。**
+     * 製造業でも材料はあるが、いままで帯として出す道が無かった（`points` は
+     * `BY_STRAND` に載っていなかった）。**製造業の点を動かさないため、汎用だけで立てる。**
+     */
+    {
+      id: "voice",
+      score: isGeneral && text(st.praiseFromClients) ? 5 : 0,
+      why: "お客様の言葉を聞き取れている",
+    },
     {
       id: "declined",
       score: (text(st.wonAfterOthersDeclined) ? 3 : 0) + (text(st.workOthersAvoid) ? 1 : 0) + (text(st.hardestJob) ? 1 : 0),
@@ -270,6 +310,36 @@ export function analyze(project: Project): Analysis {
     if (score > 0) candidates.push({ id, score, why });
   };
 
+  /**
+   * **汎用プランは、判断の軸が違う**（D-273・ご指示§24）。
+   *
+   * 製造業の軸（精度・難加工・短納期・対応範囲・設計・設備）は、
+   * 美容室にも士業にも当てはまらない。実測では、汎用の案件は
+   * **見立てがほぼ全部0点になり、`unknown` に落ちていた**（docs/30）。
+   * `unknown` の手順書は「安全な既定に任せる」（D-205）なので、
+   * **汎用は構造的に既定しか出ない状態**だった。
+   *
+   * ここで分ける。**製造業の判定は1行も通らない**（`else` の中でそのまま）。
+   */
+  if (isGeneral) {
+    const g = p.general ?? {};
+    const priced = offerings.filter((o: any) => text(o?.price));
+    add("offering", offerings.length >= 3 ? 5 : offerings.length ? 3 : 0,
+      "取り扱っているものを聞き取れている");
+    add("price", priced.length >= 3 ? 4 : priced.length >= 2 ? 3 : 0,
+      "料金の目安を出せる");
+    add("reason", text(g.reasonChosen) ? 5 : 0,
+      "選ばれている理由を言語化できている");
+    add("voice", text(st.praiseFromClients) ? 4 : 0,
+      "お客様の言葉を聞き取れている");
+    add("record", len(p.cases) >= 3 ? 4 : len(p.cases) >= 1 ? 3 : 0,
+      "実績を聞き取れている");
+    add("person",
+      (text(p.executive?.vision) ? 2 : 0) + (photos.some((x: any) => x?.category === "代表者") ? 2 : 0),
+      "代表の言葉と写真がある");
+    add("history", text(basics.founded) && len(basics.history) >= 3 ? 3 : 0,
+      "創業年と沿革3件以上を聞き取れている");
+  } else {
   add("precision", text(cap.tolerance) ? 5 : 0, "対応精度を聞き取れている");
   add("difficulty",
     (text(st.wonAfterOthersDeclined) ? 5 : 0) + (text(st.workOthersAvoid) ? 1 : 0),
@@ -292,11 +362,14 @@ export function analyze(project: Project): Analysis {
     "工程の工夫と、お客様の言葉の両方がある");
   add("history", text(basics.founded) && len(basics.history) >= 3 ? 3 : 0,
     "創業年と沿革3件以上を聞き取れている");
+  }
 
   // 同点のときは、見立ての点数で決める（既存の設計をそのまま使う）
   const strandFor: Record<string, ShowBy> = {
     precision: "numbers", difficulty: "declined", speed: "numbers", range: "materials",
     engineering: "technique", equipment: "equipment", craft: "technique", history: "history",
+    offering: "offerings", price: "offerings", reason: "declined",
+    voice: "voice", record: "technique", person: "people",
   };
   candidates.sort((a, b) =>
     b.score - a.score

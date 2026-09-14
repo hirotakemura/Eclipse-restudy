@@ -1,0 +1,24 @@
+---
+/**
+ * 取り扱い・サービス・料金（汎用プランの中心・D-272）。
+ *
+ * **料金を勝手に作らない。** 聞き取れていないものは、その行を出さない。
+ * 「応相談」と書いてあれば、そのまま「応相談」と出す。丸めない（D-181）。
+ */
+interface Props {
+  offerings: any[];
+  /** 一覧ページへの導線。トップの帯から出すときだけ */
+  href?: string;
+}
+const { offerings, href } = Astro.props;
+---
+<div class="offer-list">
+  {offerings.map((o: any) => (
+    <div class="offer">
+      <h3>{o.name}</h3>
+      {o.detail && <p>{o.detail}</p>}
+      {o.price && <p class="price"><span>料金の目安</span>{o.price}</p>}
+    </div>
+  ))}
+</div>
+{href && <p><a href={href}>サービス・料金をすべて見る</a></p>}

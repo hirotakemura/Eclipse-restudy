@@ -141,7 +141,84 @@ export const GENERAL_DIRECTIONS: Direction[] = [
   },
 ];
 
-export const DIRECTIONS: Direction[] = [...MANUFACTURING_DIRECTIONS, ...GENERAL_DIRECTIONS];
+/**
+ * 汎用プランの6方向（D-274・ご指示§4）。
+ *
+ * **「汎用＝簡易版」にしない。**
+ * 実測では、汎用の型3つは `motifs` が全部 `none`、`layouts` は `stack` か `split` だけで、
+ * **製造業の「精密加工」が持つ語彙の半分も使っていなかった**（docs/30）。
+ * 「製造業だけ高級で、汎用は簡易」という状態が、すでにコードに現れていた。
+ *
+ * **業種別テンプレートにはしない**（ご指示§5）。
+ * 「美容室の型」「士業の型」を作り始めると、業種の数だけ増えて終わりが無い。
+ * ここにあるのは**どういう雰囲気で見せるか**であって、業種ではない。
+ * 同じ型を選んでも、会社の材料・強み・写真が違えば出来上がりは変わる。
+ *
+ * **汎用は情報量が少ない。** だから「情報を増やして高級にする」のではなく、
+ * **少ない情報を強く、美しく見せる**（ご指示§4）。
+ * 余白・組み方・文字を大きく振るのは、そのための語彙である。
+ */
+export const GENERAL_DIRECTIONS_V2: Direction[] = [
+  {
+    id: "editorial", label: "読み物", note: "文章で読ませる。士業・コンサル・教室など、説明が要る商売に",
+    tone: "story", favor: ["declined", "technique"], defer: [],
+    surfaces: ["plain", "soft", "paper"], layouts: ["editorial", "offset", "stack"],
+    heroes: ["type", "headline"], motifs: ["none"],
+    axes: { palette: "sumi", font: "mixed", mood: "futsu", textSize: "normal", nav: "standard", sections: "space", headings: "underline", tables: "horizontal" },
+    motion: "subtle", plan: "general",
+  },
+  {
+    /** **少ない要素を、大きく、静かに。** 情報量の少なさを弱点にしない */
+    id: "luxury", label: "静か・上質", note: "要素を減らし、余白で見せる。写真が少なくても格が出る",
+    tone: "story", favor: ["offerings"], defer: ["history"],
+    surfaces: ["plain", "paper"], layouts: ["editorial", "offset"],
+    heroes: ["type"], motifs: ["none"],
+    axes: { palette: "sumi", font: "mincho", mood: "yawaraka", textSize: "large", nav: "standard", sections: "space", headings: "plain", tables: "horizontal" },
+    motion: "subtle", plan: "general",
+  },
+  {
+    id: "modern", label: "モダン", note: "格子と大きな文字。ミニマル。IT・デザイン・新しい業態に",
+    tone: "spec", favor: ["offerings", "technique"], defer: ["history"],
+    surfaces: ["plain", "soft", "dark"], layouts: ["split", "stack", "offset"],
+    heroes: ["type", "spec"], motifs: ["grid", "none"],
+    axes: { palette: "hagane", font: "gothic", mood: "katai", textSize: "normal", nav: "standard", sections: "line", headings: "plain", tables: "horizontal" },
+    motion: "standard", plan: "general",
+  },
+  {
+    id: "human", label: "人・温度", note: "人と写真が主役。店舗・整体・工務店など、会う前に人柄を見られる商売に",
+    tone: "visual", favor: ["people", "photos", "voice"], defer: [],
+    surfaces: ["soft", "plain", "paper"], layouts: ["stack", "split", "fullbleed"],
+    heroes: ["photo", "headline"], motifs: ["none"],
+    axes: { palette: "kohaku", font: "maru", mood: "yawaraka", textSize: "large", nav: "standard", sections: "alternate", headings: "plain", tables: "horizontal" },
+    motion: "subtle", plan: "general",
+  },
+  {
+    id: "dynamic", label: "力強い", note: "大きな文字と暗い面で締める。同業と並んだときに埋もれない",
+    tone: "visual", favor: ["declined", "offerings"], defer: ["history"],
+    surfaces: ["dark", "accent", "plain"], layouts: ["offset", "fullbleed", "split"],
+    heroes: ["type", "photo"], motifs: ["none"],
+    axes: { palette: "ai", font: "gothic", mood: "katai", textSize: "normal", nav: "standard", sections: "alternate", headings: "band", tables: "all" },
+    motion: "standard", plan: "general",
+  },
+  {
+    id: "classic", label: "落ち着き・信頼", note: "控えめな装飾と上品な余白。創業が古い会社・和の商売に",
+    tone: "story", favor: ["history", "people"], defer: [],
+    surfaces: ["paper", "plain", "soft"], layouts: ["editorial", "stack"],
+    heroes: ["headline", "type"], motifs: ["grain", "none"],
+    axes: { palette: "enji", font: "mincho", mood: "futsu", textSize: "large", nav: "standard", sections: "space", headings: "underline", tables: "horizontal" },
+    motion: "none", plan: "general",
+  },
+];
+
+export const DIRECTIONS: Direction[] = [
+  ...MANUFACTURING_DIRECTIONS,
+  ...GENERAL_DIRECTIONS,
+  /**
+   * **既存の3つ（生活サービス・店舗・標準）は消さない**（D-198）。
+   * 中原設備が現に使っている。消すと、その案件の見た目が黙って変わる。
+   */
+  ...GENERAL_DIRECTIONS_V2,
+];
 
 /**
  * 古い型のIDを読み替える。
@@ -168,7 +245,7 @@ export function migrateDirection(id: string | undefined, plan: "manufacturing" |
 }
 
 export const directionsFor = (plan: "manufacturing" | "general" | undefined): Direction[] =>
-  plan === "general" ? GENERAL_DIRECTIONS : MANUFACTURING_DIRECTIONS;
+  plan === "general" ? [...GENERAL_DIRECTIONS, ...GENERAL_DIRECTIONS_V2] : MANUFACTURING_DIRECTIONS;
 
 export const getDirection = (id: string | undefined): Direction =>
   DIRECTIONS.find((d) => d.id === id) ?? MANUFACTURING_DIRECTIONS[0]!;

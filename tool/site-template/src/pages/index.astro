@@ -134,17 +134,9 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
     );
   })}
 
-  {/* 汎用プランの取り扱い。**製造業には無い項目なので、構成の外に置く** */}
-  {isGeneral && offerings.length > 0 && (
-    <Band width="normal" emphasis="normal" heading="取り扱い">
-      {offerings.slice(0, 4).map((o: any) => (
-        <div class="offering">
-          <h3>{o.name}</h3>
-          {o.detail && <p>{o.detail}</p>}
-          {o.price && <p class="price"><span>料金の目安</span>{o.price}</p>}
-        </div>
-      ))}
-      <p><a href="/services/">サービス・料金をすべて見る</a></p>
-    </Band>
-  )}
+  {/*
+    **取り扱いは、ここに書かない**（D-272）。
+    以前はここに直接書いていたため、可否表も材料条件も Brief も通らず、
+    幅も強さも固定だった。いまは `composeTop()` が構成の中に置く。
+  */}
 </Base>

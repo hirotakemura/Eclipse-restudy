@@ -13,6 +13,9 @@
  * この段階では画面に接続していない（Phase 2）。**接続していないことも確かめる。**
  */
 import fs from "node:fs";
+import path from "node:path";
+import { COMPATIBLE as _C } from "./lib/design/system/index.ts";
+const COMPAT_OK = (c, ps) => ps.every((p) => (_C[c] ?? []).includes(p));
 import {
   TYPE_ROLES, getTypeRole, sizeAt, clampOf, fit,
   DENSITIES, getDensity, paddingOf,
@@ -149,6 +152,146 @@ console.log("\n━━━ Phase 2 では、まだ画面に接続していない�
     check(`${name} は、まだ新しい語彙を使っていない`,
       !/data-density|data-peak|data-cta|data-type-role|typography\.ts|density\.ts|peak\.ts|cta\.ts/.test(src));
   }
+}
+
+
+/**
+ * ── Phase 3 ───────────────────────────────────────────
+ *
+ * **汎用プランを「簡易版」にしない**（ご指示§2）。
+ *
+ * 実測（docs/30）では、汎用でいちばん重要な「何を・いくらで」が
+ * `pages/index.astro` に直接書かれており、**可否表も材料条件も Brief も通っていなかった。**
+ * `/services/` ページには帯が1つも無く、見立ての8本の筋は全部製造業の言葉だったので、
+ * **汎用の会社はほぼ全部0点 → `unknown` → 既定しか出ない**状態だった。
+ */
+console.log("\n━━━ 汎用の中心が、デザインシステムの中にあるか（D-272）━━━");
+{
+  const { CONTENTS, COMPATIBLE, getContent, usablePresentations } = await import("./lib/design/system/index.ts");
+  const { materialsOf } = await import("./lib/design/materials.ts");
+
+  check("取り扱いが、内容の語彙にある", CONTENTS.some((c) => c.id === "offerings"));
+  check("可否表に行がある", Array.isArray(COMPATIBLE.offerings) && COMPATIBLE.offerings.length >= 3,
+    JSON.stringify(COMPATIBLE.offerings));
+  check("表として出せる（料金は突き合わせて読むもの）", COMPATIBLE.offerings.includes("spec"));
+
+  const gen = JSON.parse(fs.readFileSync(path.join("fixtures", "mock-nakahara", "project.completed.json"), "utf8"));
+  const m = materialsOf(gen, "offerings", false);
+  check("汎用の案件で、取り扱いの材料が数えられている", m.count >= 1, JSON.stringify(m));
+  check("選べる表現が1つ以上ある", usablePresentations("offerings", m).length >= 1,
+    usablePresentations("offerings", m).join(","));
+
+  const mfg = JSON.parse(fs.readFileSync(path.join("fixtures", "design-diversity", "a-precision.json"), "utf8"));
+  check("製造業の案件では0件（帯が出ない）", materialsOf(mfg, "offerings", false).count === 0);
+
+  /** **構成システムの外に戻っていないこと。** ここが戻ると、また幅も強さも固定になる */
+  const indexAstro = fs.readFileSync("site-template/src/pages/index.astro", "utf8");
+  check("トップページに、取り扱いが直接書かれていない",
+    !/<Band[^>]*heading="取り扱い"/.test(indexAstro));
+}
+
+console.log("\n━━━ 製造業の見立てを、1点も動かしていないか ━━━");
+{
+  const { analyze } = await import("./lib/design/analysis.ts");
+  const { sanitizeProject } = await import("./lib/sanitize.ts");
+  /**
+   * **汎用を足すついでに製造業が動くのが、いちばん怖い。**
+   * 基準HTMLでも捕まるが、こちらは**点数そのもの**を留める。
+   */
+  const EXPECT = {
+    "a-precision": "precision|numbers:6 technique:4 materials:4 equipment:4 declined:1 people:1 history:1",
+    "b-difficulty": "difficulty|declined:7 technique:6 numbers:4 materials:4 people:1 history:1",
+    "c-speed": "speed|technique:6 equipment:6 numbers:4 materials:4 declined:3 people:1 history:1",
+  };
+  for (const [f, want] of Object.entries(EXPECT)) {
+    const p = sanitizeProject(JSON.parse(fs.readFileSync(path.join("fixtures", "design-diversity", `${f}.json`), "utf8")));
+    const a = analyze(p);
+    const got = `${a.primaryStrength}|${a.strands.map((s) => `${s.id}:${s.score}`).join(" ")}`;
+    check(`${f}：見立てが1点も変わっていない`, got === want, `\n      期待 ${want}\n      現在 ${got}`);
+  }
+  check("汎用だけの筋は、製造業では0点になる", (() => {
+    const p = sanitizeProject(JSON.parse(fs.readFileSync(path.join("fixtures", "design-diversity", "a-precision.json"), "utf8")));
+    return !analyze(p).strands.some((s) => s.id === "offerings" || s.id === "voice");
+  })());
+}
+
+console.log("\n━━━ 汎用には、汎用の判断軸があるか（D-273・ご指示§24）━━━");
+{
+  const { analyze, PRIMARY_STRENGTHS } = await import("./lib/design/analysis.ts");
+  const { sanitizeProject } = await import("./lib/sanitize.ts");
+  const { PLAYBOOK, LABEL } = await import("./lib/design/playbook.ts");
+  const MFG = ["precision", "difficulty", "speed", "range", "engineering", "equipment", "craft"];
+  const GEN = ["offering", "price", "reason", "voice", "record", "person"];
+
+  const gen = sanitizeProject(JSON.parse(fs.readFileSync(path.join("fixtures", "mock-nakahara", "project.completed.json"), "utf8")));
+  const a = analyze(gen);
+  check("汎用の会社が、製造業の語彙で判定されない", !MFG.includes(a.primaryStrength), a.primaryStrength);
+  check("汎用の語彙で判定されている", GEN.includes(a.primaryStrength) || a.primaryStrength === "history", a.primaryStrength);
+  check("`unknown` に落ちていない（改修前はここだった）", a.primaryStrength !== "unknown");
+  check("根拠が言える", typeof a.primaryWhy === "string" && a.primaryWhy.length > 0, a.primaryWhy);
+
+  for (const id of GEN) {
+    check(`${id}：手順書と名前がある`, Boolean(PLAYBOOK[id]) && Boolean(LABEL[id]));
+    check(`${id}：主役に置く内容が、内容の語彙にある`,
+      PLAYBOOK[id].leadPresentations.length === 0
+      || (COMPAT_OK(PLAYBOOK[id].lead, PLAYBOOK[id].leadPresentations)),
+      `${PLAYBOOK[id].lead} × ${PLAYBOOK[id].leadPresentations.join(",")}`);
+  }
+  check("語彙の一覧に、汎用のぶんが入っている", GEN.every((id) => PRIMARY_STRENGTHS.includes(id)));
+}
+
+console.log("\n━━━ 汎用の型が、簡易版になっていないか（D-274）━━━");
+{
+  const { directionsFor } = await import("./lib/design/direction.ts");
+  const { resolveTheme } = await import("./lib/theme.ts");
+  const g = directionsFor("general");
+  const m = directionsFor("manufacturing");
+
+  check("汎用の型が、製造業と同じ数以上ある", g.length >= m.length, `汎用 ${g.length} / 製造業 ${m.length}`);
+  check("既存の3つを消していない（中原設備が使っている・D-198）",
+    ["seikatsu", "shop", "gstandard"].every((id) => g.some((d) => d.id === id)));
+  check("製造業の型が、汎用の商談に混ざっていない",
+    !g.some((d) => m.some((x) => x.id === d.id)));
+
+  /** **語彙の使い方が、製造業より痩せていないこと。** これが「簡易版にしない」の中身 */
+  const V2 = ["editorial", "luxury", "modern", "human", "dynamic", "classic"];
+  const richest = Math.max(...m.map((d) => d.layouts.length));
+  check("新しい6つは、組み方の候補が2つ以上ある",
+    V2.every((id) => g.find((d) => d.id === id).layouts.length >= 2),
+    V2.map((id) => `${id}:${g.find((d) => d.id === id).layouts.length}`).join(" "));
+  check("読み物・余白の組み方を使う型がある",
+    V2.some((id) => g.find((d) => d.id === id).layouts.includes("editorial")));
+  check("暗い面を使う型がある", V2.some((id) => g.find((d) => d.id === id).surfaces.includes("dark")));
+  check("製造業でいちばん豊かな型と、同等の組み方の幅を持つ型がある",
+    V2.some((id) => g.find((d) => d.id === id).layouts.length >= richest), `製造業の最大 ${richest}`);
+
+  /** **型を選んだら、最初の画面も変わること**（D-275） */
+  const heroes = new Set(V2.map((id) => resolveTheme({ direction: id }, "general").hero.id));
+  check("型によって、最初の画面が変わる", heroes.size >= 2, [...heroes].join(","));
+  check("お客様が選んだ最初の画面は、型に上書きされない",
+    resolveTheme({ direction: "luxury", hero: "photo" }, "general").hero.id === "photo");
+  check("製造業の案件は、いままでどおり",
+    resolveTheme({ direction: "technical", hero: "figure" }, "manufacturing").hero.id === "figure");
+}
+
+
+console.log("\n━━━ 商品ごとに、見出しの言葉が違うか（D-276）━━━");
+{
+  const { headingFor } = await import("./lib/design/sections.ts");
+  /** **水まわりの設備工事の会社に「加工事例」と出さない。** 実際に出ていた */
+  check("汎用では「加工事例」が「実績」になる", headingFor("加工事例", true) === "実績");
+  check("汎用では「他社様で難しいと言われた案件」が「選ばれている理由」になる",
+    headingFor("他社様で難しいと言われた案件", true) === "選ばれている理由");
+  /**
+   * **製造業は1文字も変えない。**
+   * 最初は「帯の種類」を鍵にしたため、対応可能範囲のページだけ使っている
+   * 「対応できる材質・加工法」を潰し、基準HTMLが3ページ落ちた。
+   */
+  for (const h of ["加工事例", "他社様で難しいと言われた案件", "対応できる材質", "対応できる材質・加工法", "保有設備一覧", "仕様"]) {
+    check(`製造業では「${h}」がそのまま`, headingFor(h, false) === h);
+  }
+  check("表に無い見出しは、汎用でもそのまま通る", headingFor("これからの5年", true) === "これからの5年");
+  check("見出しが無い帯で落ちない", headingFor(undefined, true) === undefined);
 }
 
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);

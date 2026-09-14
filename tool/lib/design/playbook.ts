@@ -66,6 +66,41 @@ export const PLAYBOOK: Record<PrimaryStrength, Play> = {
     prefer: { executive: ["quote"], technique: ["longform"], praise: ["quote"] },
   },
   /**
+   * **ここから汎用プラン**（D-273・ご指示§24）。
+   *
+   * 製造業の6方向を流用しない。判断の軸そのものが違う。
+   * 製造業が「技術・設備・加工・数値をどう視覚化するか」なのに対し、
+   * 汎用は「**少ない情報を強く、美しく見せる**」（ご指示§4）。
+   * だから主役に置くものも、その見せ方も別に決める。
+   */
+  offering: {
+    lead: "offerings", leadPresentations: ["cardGrid", "spec"],
+    // **お客様の言葉は、札のほうが中身がある**（引用は1発言しか出ない・D-259）
+    prefer: { cases: ["process"], praise: ["cardGrid", "quote"], technique: ["prose"], declined: ["quote"] },
+  },
+  /** **料金を出せる会社は、それ自体が選ばれる理由になる。** 突き合わせて読める表にする */
+  price: {
+    lead: "offerings", leadPresentations: ["spec", "cardGrid"],
+    prefer: { cases: ["spec", "process"], declined: ["quote"], praise: ["cardGrid", "quote"] },
+  },
+  /** 汎用では `declined` は「選ばれている理由」を指す（`Present.astro` が出し分けている） */
+  reason: {
+    lead: "declined", leadPresentations: ["quote", "longform"],
+    prefer: { offerings: ["cardGrid"], praise: ["cardGrid", "quote"], cases: ["process"] },
+  },
+  voice: {
+    lead: "praise", leadPresentations: ["quote", "cardGrid"],
+    prefer: { cases: ["process"], offerings: ["cardGrid"], declined: ["quote"] },
+  },
+  record: {
+    lead: "cases", leadPresentations: ["process", "cardGrid"],
+    prefer: { offerings: ["cardGrid"], praise: ["cardGrid", "quote"], declined: ["quote"] },
+  },
+  person: {
+    lead: "executive", leadPresentations: ["quote", "longform"],
+    prefer: { praise: ["cardGrid", "quote"], offerings: ["cardGrid"], history: ["timeline"] },
+  },
+  /**
    * **根拠のある強みが無いとき。**
    * 特徴的な表現を割り当てず、安全な既定に任せる（D-205）。
    */
@@ -109,7 +144,13 @@ export function choosePresentation(
 }
 
 export const LABEL: Record<PrimaryStrength, string> = {
+  // 製造業
   precision: "精度", difficulty: "難加工", speed: "短納期・対応力", range: "対応範囲",
-  engineering: "設計対応", equipment: "設備", craft: "職人性", history: "歴史",
+  engineering: "設計対応", equipment: "設備", craft: "職人性",
+  // 汎用（D-273）
+  offering: "取り扱いの明確さ", price: "料金の分かりやすさ", reason: "選ばれている理由",
+  voice: "お客様の声", record: "実績", person: "人",
+  // 両方
+  history: "歴史",
   unknown: "（強みの根拠なし）",
 };

@@ -14,6 +14,12 @@ import { getPresentation, type PresentationId } from "./presentation.ts";
 
 /** 内容ごとに使ってよい表現。**先頭が既定** */
 export const COMPATIBLE: Record<ContentId, PresentationId[]> = {
+  /**
+   * 取り扱い（名前・内容・料金）。**表にするか、カードにするか、読み物にするか**（D-272）。
+   * 料金表は「突き合わせて読むもの」なので `spec` が効く。
+   * 1つひとつを読ませたい会社（士業・美容・飲食）は `cardGrid` か `longform`。
+   */
+  offerings: ["cardGrid", "spec", "list", "longform", "prose"],
   conditions: ["largeNumber", "spec", "comparison", "list"],
   materials: ["chips", "list", "spec"],
   equipment: ["cardGrid", "spec", "largeNumber", "list"],

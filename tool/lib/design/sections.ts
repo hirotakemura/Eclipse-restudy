@@ -42,6 +42,7 @@ export type { Emphasis };
 export interface Section {
   kind:
     | "hero"
+    | "offerings" // 取り扱い・サービス・料金（汎用プランの中心・D-272）
     | "figures" // 判断に使う数字を大きく
     | "declined" // 他社様が断った案件（引用として大きく）
     | "technique" // 工程の工夫
@@ -140,7 +141,50 @@ function applyTone(section: Base, tone: Tone): Base {
 /** 見せ方ごとの、既定の出し方 */
 type Base = Omit<Section, "why" | "surface" | "layout" | "media" | "motif" | "content" | "presentation">;
 
+/**
+ * **帯の見出しを、商品ごとに出し分ける**（D-276）。
+ *
+ * 画面を見て発見した。水まわりの設備工事の会社のページに
+ * **「加工事例」「他社様で難しいと言われた案件」**と出ていた。
+ * `Present.astro` は中身のほうを出し分けていた（汎用では「実績をすべて見る」）のに、
+ * **見出しだけ製造業の言葉のまま**だった。**片方だけ直した典型である。**
+ *
+ * 汎用では、`declined` の中身は「選ばれている理由」（`general.reasonChosen`）であり、
+ * 他社が断った案件ではない。**見出しが中身と食い違っていた。**
+ * お客様にそのまま出る言葉なので、**ここを間違えると納品できない。**
+ *
+ * 【言い換えの表にした理由】
+ * 最初は「帯の種類 → 商品ごとの見出し」の表にしたが、**製造業が壊れた。**
+ * 対応可能範囲のページだけ「対応できる材質・**加工法**」という別の見出しを使っており、
+ * 種類で引くと**その区別ごと潰してしまう**（基準HTMLが3ページ落ちて気づいた）。
+ *
+ * **製造業の見出しを鍵にして、汎用の言い方を引く。**
+ * 表に無い見出しはそのまま通るので、**製造業は定義上1文字も変わらない。**
+ */
+const GENERAL_WORDS: Record<string, string> = {
+  "加工事例": "実績",
+  "他社様で難しいと言われた案件": "選ばれている理由",
+  "どうやって受けているか": "どうやって応えているか",
+  "主な設備": "設備・道具",
+  "保有設備一覧": "設備の一覧",
+  "対応できる材質": "対応できるもの",
+  "対応できる材質・加工法": "対応できるもの",
+};
+
+/**
+ * その商品での見出し。
+ * **製造業は、渡された見出しをそのまま返す**（言い換えは汎用のときだけ）。
+ */
+export const headingFor = (heading: string | undefined, isGeneral: boolean): string | undefined =>
+  isGeneral && heading ? (GENERAL_WORDS[heading] ?? heading) : heading;
+
 const BY_STRAND: Record<ShowBy, Base | null> = {
+  /**
+   * 取り扱い（D-272）。**汎用プランの中心なので、既定で主役に置く。**
+   * 製造業の案件では材料が0件なので、`analyze()` が0点にして落とす。
+   */
+  offerings: { kind: "offerings", width: "wide", emphasis: "lead", heading: "取り扱い" },
+  voice: { kind: "points", width: "wide", emphasis: "normal", heading: "お客様の声" },
   declined: { kind: "declined", width: "narrow", emphasis: "lead", heading: "他社様で難しいと言われた案件" },
   technique: { kind: "technique", width: "narrow", emphasis: "normal", heading: "どうやって受けているか" },
   /**
@@ -462,8 +506,11 @@ export function composeTop(
   /** このページで、その内容をどの形ですでに出したか（同じ形を2度出さない） */
   const used = new Map<ContentId, Set<PresentationId>>();
   let invertedDone = false;
+  /** **汎用では見出しの言葉が違う**（D-276）。水まわりの会社に「加工事例」と出さない */
+  const isGeneral = (project as any).formSet === "general";
   const put = (base: Base, why: string) => {
-    const decorated = decorate(applyTone(weaken(base, project, a), tone), d, a, n++, prev, invertedDone);
+    const named = { ...base, heading: headingFor(base.heading, isGeneral) };
+    const decorated = decorate(applyTone(weaken(named, project, a), tone), d, a, n++, prev, invertedDone);
     if (INVERTED.includes(decorated.surface)) invertedDone = true;
     const { sec, note } = repress(decorated, project, a, hero, used, brief);
     prev = sec.surface;
@@ -618,8 +665,11 @@ export function composePage(
   let n = 0;
   const used = new Map<ContentId, Set<PresentationId>>();
   let invertedDone = false;
+  /** **下層ページの見出しも、商品ごとに出し分ける**（D-276）。トップだけ直しても片手落ち */
+  const isGeneral = (project as any).formSet === "general";
   const add = (base: Base, why: string) => {
-    const decorated = decorate(applyTone(weaken(base, project, a), tone), d, a, n++, prev, invertedDone);
+    const named = { ...base, heading: headingFor(base.heading, isGeneral) };
+    const decorated = decorate(applyTone(weaken(named, project, a), tone), d, a, n++, prev, invertedDone);
     if (INVERTED.includes(decorated.surface)) invertedDone = true;
     const { sec, note } = repress(decorated, project, a, "headline", used);
     prev = sec.surface;
@@ -687,6 +737,7 @@ export function composePage(
  */
 const SHOWS: Record<Section["kind"], string> = {
   hero: "会社名・事業の概要・（型によっては）対応材質や納期の一覧・外観写真",
+  offerings: "取り扱い・サービスの名前と内容と料金を、聞き取ったまま",
   figures: "対応ロット・最短納期・対応精度・対応材質を、大きな文字で",
   declined: "他社様が断った案件の記録（聞き取った文章そのまま）",
   technique: "工程の工夫（聞き取った文章そのまま）",
@@ -745,6 +796,7 @@ export function resolveHero(
  */
 const KIND_AS: Record<Section["kind"], { content: ContentId; presentation: PresentationId }> = {
   hero: { content: "draft", presentation: "prose" },
+  offerings: { content: "offerings", presentation: "cardGrid" },
   figures: { content: "conditions", presentation: "largeNumber" },
   declined: { content: "declined", presentation: "quote" },
   technique: { content: "technique", presentation: "prose" },

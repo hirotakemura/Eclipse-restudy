@@ -34,6 +34,28 @@ export function materialsOf(project: Project, content: ContentId, hasRealPhotos:
   };
 
   switch (content) {
+    /**
+     * 取り扱い（汎用プラン・D-272）。**名前・内容・料金の3つを数える。**
+     *
+     * 料金が入っているかで、選べる表現が変わる。
+     * 料金が揃っていれば `spec`（突き合わせて読む表）が効き、
+     * 揃っていなければカードか読み物にする。**無い料金を表に組まない。**
+     */
+    case "offerings": {
+      const os = arr(p.general?.offerings);
+      const priced = os.filter((o: any) => text(o?.price));
+      const detail = os.map((o: any) => text(o?.detail)).join("");
+      return {
+        ...base,
+        count: os.length,
+        // 表は**全件**を並べるので、行数は別に数える（設備の一覧と同じ扱い）
+        rows: os.length,
+        length: detail.length,
+        // 「30,000円〜」のように短く言い切れる料金が、**2件以上そろっているか**
+        hasShortValue: priced.filter((o: any) => isShortValue(text(o.price))).length >= 2,
+        hasStrongValue: priced.filter((o: any) => isShortValue(text(o.price)) && /\d/.test(text(o.price))).length >= 2,
+      };
+    }
     case "conditions": {
       const vals = [text(cap.tolerance), text(cap.shortestLeadTime), text(cap.lotSize), (cap.materials ?? []).join("・"), (cap.certifications ?? []).join("・")].filter(Boolean);
       /**
