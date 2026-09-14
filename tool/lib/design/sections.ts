@@ -274,7 +274,17 @@ function repress(
    * 形の決まっている帯は、ここで終わり。**強みでも Brief でも動かさない。**
    * ただし材料が無ければ（型番の分かる設備が3件未満など）、下の通常の道に落ちる。
    */
-  if (sec.form && canPresent(sec.content, sec.form) && hasMaterial(sec.form, m)) {
+  /**
+   * 形の決まっている帯は、**中身が1行でもその形で出す。**
+   *
+   * 「3行以上」は、**薄い表を作らないため**の条件である（薄い年表は無いより悪い）。
+   * ところが「保有設備一覧」「仕様」は**表そのものが中身**なので、この条件を当てると
+   * **2行しかない会社で一覧が総台数の数字に化けた**（実測・a-precision）。
+   * 見出しが「保有設備一覧」なのに数字が1つ出るだけ、という画面になる。
+   * ここでは行数が1以上あるかだけを見る。
+   */
+  const rowsOf = (x: typeof m) => x.rows ?? x.count;
+  if (sec.form && canPresent(sec.content, sec.form) && rowsOf(m) >= 1) {
     (used.get(sec.content) ?? used.set(sec.content, new Set()).get(sec.content)!).add(sec.form);
     const fixed = {
       ...sec, presentation: sec.form, decidedBy: "rules" as BriefSource,
@@ -582,7 +592,14 @@ export function composePage(
   if (slug === "equipment") {
     reserve(used, "equipment", "spec", project, a);
     const named = (cap.equipment ?? []).filter((e: any) => e?.model && e?.maker);
-    if (named.length) {
+    /**
+     * **型番の分かっている設備が2台以上あるときだけ、「主な設備」として抜き出す。**
+     *
+     * 1台しか分からない案件でこの帯を出すと、札の格子は材料不足で作れず、
+     * **「主な設備」という見出しの下に総台数の数字が1つ出るだけ**になった（実測）。
+     * 下の一覧表が全台を出しているので、抜き出しをやめても情報は減らない（D-204）。
+     */
+    if (named.length >= 2) {
       add({ kind: "equipment", width: "wide", emphasis: "lead", heading: "主な設備" }, "型番まで分かっている設備。型番そのものが検索される");
     }
     add({ kind: "equipmentTable", width: "wide", emphasis: named.length ? "quiet" : "normal", heading: "保有設備一覧", form: "spec" }, "全設備の一覧");

@@ -61,7 +61,9 @@ export function ruleBrief(project: Project, a: Analysis, ctx: BriefContext): Des
      * 材料が無いものは Brief から外し、**規則版にそのまま任せる**（帯は消さない・D-204）。
      */
     const m = materialsOf(project, s.content, a.hasRealPhotos);
-    if (!hasMaterial(s.presentation, m)) continue;
+    // 形の決まっている帯（仕様・保有設備一覧）は、材料の下限を別に見る（sections.ts と同じ扱い）
+    const fixed = s.form === s.presentation && (m.rows ?? m.count) >= 1;
+    if (!fixed && !hasMaterial(s.presentation, m)) continue;
     seen.add(s.content);
     blocks.push({ content: s.content, presentation: s.presentation, emphasis: s.emphasis });
   }

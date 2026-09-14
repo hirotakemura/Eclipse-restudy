@@ -4,39 +4,28 @@
  *
  * 骨格はこのファイルが決めない。`lib/design/sections.ts` が案件データと型から決める（D-188）。
  * 直す前は「見出し→本文」を5回繰り返すだけで、どれが重いのか分からなかった。
+ *
+ * **見せ方も、このファイルが決めない**（D-233）。
+ * 直す前はここで `sec.kind` を見て部品を直書きしていたため、
+ * design engine が選んだ `presentation` が**このページには一切届いていなかった。**
+ * それでいて `data-presentation` 属性だけは出していたので、
+ * **属性は「largeNumber」なのに画面は表**、という食い違いが起きていた（D-228・D-229）。
+ * 描き分けは `Present.astro` が単一の正。ここは帯を置くだけにする。
  */
 import Base from "../layouts/Base.astro";
 import Band from "../components/Band.astro";
-import Prose from "../components/Prose.astro";
-import Declined from "../components/sections/Declined.astro";
-import Technique from "../components/sections/Technique.astro";
-import Points from "../components/sections/Points.astro";
-import Figures from "../components/sections/Figures.astro";
+import Present from "../components/Present.astro";
 import { analyze } from "../../../lib/design/analysis.ts";
 import { composePage } from "../../../lib/design/sections.ts";
-import { project, companyName, isGeneral, reasonChosen, idealCustomer } from "../lib/site";
+import { project, companyName, isGeneral } from "../lib/site";
 import { theme } from "../lib/theme";
 import { hasDraft } from "../lib/draft";
 
-const s = (project as any).strengths ?? {};
 const analysis = analyze(project as any);
 const sections = composePage("strengths", project as any, analysis, {
   direction: theme.direction,
   hasProse: hasDraft("strengths"),
 });
-
-/** 塊として並べるもの。**最も強い1つは上で別に扱う**ので、ここには入れない */
-const points = (isGeneral
-  ? [
-      ["お客様からよくいただく言葉", s.praiseFromClients],
-      ["どういうお客様が多いか", idealCustomer],
-    ]
-  : [
-      ["お客様からよくいただく言葉", s.praiseFromClients],
-      ["同業が敬遠しがちな仕事", s.workOthersAvoid],
-      ["技術的に最も難しかった仕事", s.hardestJob],
-    ]
-).filter(([, v]) => v) as [string, string][];
 
 const title = isGeneral ? "選ばれている理由" : "強み・技術";
 const lead = isGeneral
@@ -49,33 +38,11 @@ const lead = isGeneral
     <p>{lead}</p>
   </div></div>
 
-  {sections.map((sec) => {
-    if (sec.kind === "prose") return <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy}><Prose slug="strengths" /></Band>;
-
-    if (sec.kind === "declined") return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy} heading={sec.heading}>
-        <Declined text={isGeneral ? reasonChosen : s.wonAfterOthersDeclined} />
-      </Band>
-    );
-
-    if (sec.kind === "technique") return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy} heading={sec.heading}>
-        <Technique text={s.followUpFindings} />
-      </Band>
-    );
-
-    if (sec.kind === "points" && points.length > 0) return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy} heading={sec.heading}>
-        <Points points={points} />
-      </Band>
-    );
-
-    if (sec.kind === "figures") return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy} heading={sec.heading}>
-        <Figures figures={analysis.figures} />
-      </Band>
-    );
-
-    return null;
-  })}
+  {sections.map((sec) => (
+    <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout}
+          motif={sec.motif} content={sec.content} presentation={sec.presentation}
+          decidedBy={sec.decidedBy} heading={sec.kind === "prose" ? undefined : sec.heading}>
+      <Present content={sec.content} presentation={sec.presentation} analysis={analysis} slug="strengths" />
+    </Band>
+  ))}
 </Base>

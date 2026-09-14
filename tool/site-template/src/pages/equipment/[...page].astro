@@ -7,12 +7,17 @@
  *
  * 骨格はこのファイルが決めない（D-188）。
  * **型番まで分かっている設備は前に出し、一覧表はその後ろに置く。**
+ *
+
+ * **見せ方はこのファイルが決めない**（D-233）。
+ * 直す前は `sec.kind` を見て部品を直書きしていたため、design engine が選んだ
+ * `presentation` が**このページには届いていなかった。**それでいて属性だけは
+ * 出していたので、**属性と画面が食い違っていた**（D-228・D-229）。
+ * 描き分けは `Present.astro` が単一の正。ここは帯を置くだけにする。
  */
 import Base from "../../layouts/Base.astro";
 import Band from "../../components/Band.astro";
-import Prose from "../../components/Prose.astro";
-import Gallery from "../../components/Gallery.astro";
-import Equipment from "../../components/sections/Equipment.astro";
+import Present from "../../components/Present.astro";
 import { analyze } from "../../../../lib/design/analysis.ts";
 import { composePage } from "../../../../lib/design/sections.ts";
 import { project, companyName, photosOf, isGeneral } from "../../lib/site";
@@ -47,44 +52,12 @@ export function getStaticPaths() {
     {total > 0 && <p>保有設備 {total}台</p>}
   </div></div>
 
-  {sections.map((sec) => {
-    if (sec.kind === "prose") return <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy}><Prose slug="equipment" /></Band>;
-
-    if (sec.kind === "equipment") return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy} heading={sec.heading}>
-        <Equipment equipment={equipment} />
-      </Band>
-    );
-
-    if (sec.kind === "equipmentTable") return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy} heading={sec.heading}>
-        {equipment.length > 0 ? (
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th scope="col">設備</th><th scope="col">メーカー</th><th scope="col">台数</th></tr></thead>
-              <tbody>
-                {equipment.map((e: any) => (
-                  <tr>
-                    <th scope="row">{e.model || e.maker}</th>
-                    <td>{e.model ? e.maker : ""}</td>
-                    <td>{e.count ? `${e.count}台` : ""}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p>設備の詳細はお問い合わせください。</p>
-        )}
-      </Band>
-    );
-
-    if (sec.kind === "gallery") return (
-      <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout} motif={sec.motif} content={sec.content} presentation={sec.presentation} decidedBy={sec.decidedBy}>
-        <Gallery photos={photosOf("工場・設備")} heading={sec.heading} />
-      </Band>
-    );
-
-    return null;
-  })}
+  {sections.map((sec) => (
+    <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} layout={sec.layout}
+          motif={sec.motif} content={sec.content} presentation={sec.presentation}
+          decidedBy={sec.decidedBy} heading={sec.kind === "prose" ? undefined : sec.heading}>
+      <Present content={sec.content} presentation={sec.presentation} analysis={analysis} slug="equipment" />
+      {sec.kind === "equipmentTable" && equipment.length === 0 && <p>設備の詳細はお問い合わせください。</p>}
+    </Band>
+  ))}
 </Base>

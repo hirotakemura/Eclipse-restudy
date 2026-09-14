@@ -28,8 +28,16 @@ import { cardGrid } from "../lib/cards";
 import { project, cases, rows, photosOf, isGeneral, reasonChosen, idealCustomer } from "../lib/site";
 import { splitParts } from "../lib/text";
 
+/**
+ * @param slug いまどのページを描いているか。原稿の差し込み先の指定も兼ねる。
+ *             **自分自身へのリンクを出さないため**に要る（強みページに
+ *             「強み・技術をくわしく見る」が出ていては、ただの行き止まり）。
+ */
 interface Props { content: string; presentation: string; analysis: any; slug?: string }
 const { content, presentation, analysis, slug } = Astro.props;
+const page = slug ?? "index";
+/** 自分のページへは張らない */
+const linkTo = (to: string) => (page === to ? undefined : `/${to}/`);
 
 const cap = (project as any).capability ?? {};
 const st = (project as any).strengths ?? {};
@@ -55,11 +63,21 @@ const specRows = rows([
 const eqRows = rows((cap.equipment ?? []).map((e: any) => [e.model || e.maker, e.count ? `${e.count}台` : ""]));
 const shownCases = cases.slice(0, 6);
 const grid = cardGrid(shownCases.length);
-const points = ([
-  ["お客様からよくいただく言葉", st.praiseFromClients],
-  ["同業が敬遠しがちな仕事", st.workOthersAvoid],
-  ["技術的に最も難しかった仕事", st.hardestJob],
-] as [string, string][]).filter(([, v]) => v);
+/**
+ * 塊として並べるもの。
+ * **汎用ベーシック（198,000円）には「同業が敬遠しがちな仕事」が無い。**
+ * 中原設備などの既存案件を壊さないよう、商品ごとに中身を変える（ご指示①）。
+ */
+const points = ((isGeneral
+  ? [
+      ["お客様からよくいただく言葉", st.praiseFromClients],
+      ["どういうお客様が多いか", idealCustomer],
+    ]
+  : [
+      ["お客様からよくいただく言葉", st.praiseFromClients],
+      ["同業が敬遠しがちな仕事", st.workOthersAvoid],
+      ["技術的に最も難しかった仕事", st.hardestJob],
+    ]) as [string, string][]).filter(([, v]) => v);
 ---
 {content === "draft" && <Prose slug={slug ?? "index"} />}
 
@@ -73,14 +91,14 @@ const points = ([
 )}
 
 {content === "materials" && presentation === "chips" && (
-  <Materials materials={cap.materials ?? []} processes={cap.processes ?? []} href="/capability/" />
+  <Materials materials={cap.materials ?? []} processes={cap.processes ?? []} href={linkTo("capability")} />
 )}
 {content === "materials" && presentation === "list" && <ListView items={cap.materials ?? []} />}
 {content === "materials" && presentation === "spec" && (
   <Table rows={rows([["対応材質", cap.materials], ["加工法・工法", cap.processes]])} />
 )}
 
-{content === "equipment" && presentation === "cardGrid" && <Equipment equipment={cap.equipment ?? []} href="/equipment/" />}
+{content === "equipment" && presentation === "cardGrid" && <Equipment equipment={cap.equipment ?? []} href={linkTo("equipment")} />}
 {content === "equipment" && presentation === "spec" && <Table rows={eqRows} />}
 {content === "equipment" && presentation === "largeNumber" && (
   <BigNumber items={[{ label: "保有設備", value: `${equipTotal}台` }]} />
@@ -94,37 +112,37 @@ const points = ([
     <div class={`cards${grid.orphan ? " has-orphan" : ""}`} style={`--cols:${grid.cols}`}>
       {shownCases.map((c: any, i: number) => <CaseCard index={i} item={c} />)}
     </div>
-    {cases.length > 6 && <p style="margin-top:20px"><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>}
+    {cases.length > 6 && page !== "cases" && <p style="margin-top:20px"><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>}
   </>
 )}
 {content === "cases" && presentation === "process" && (
   <>
     <Process steps={caseSteps} />
-    <p><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>
+    {page !== "cases" && <p><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>}
   </>
 )}
 {content === "cases" && presentation === "quote" && (
   <>
     <Declined text={quoteOf(cases.map((c: any) => c.challenge).filter(Boolean).join(" "))} />
-    <p><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>
+    {page !== "cases" && <p><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>}
   </>
 )}
 {content === "cases" && presentation === "spec" && (
   <Table rows={rows(cases.map((c: any) => [c.title, [c.materials?.join("・"), c.quantity, c.leadTime].filter(Boolean).join("／")]))} />
 )}
 
-{content === "technique" && presentation === "prose" && <Technique text={st.followUpFindings} praise={st.praiseFromClients} href="/strengths/" />}
+{content === "technique" && presentation === "prose" && <Technique text={st.followUpFindings} praise={page === "strengths" ? undefined : st.praiseFromClients} href={linkTo("strengths")} />}
 {content === "technique" && presentation === "longform" && <Longform text={st.followUpFindings} quote={st.praiseFromClients} />}
 {content === "technique" && presentation === "process" && (
   <>
     <Process steps={techSteps} />
-    <p><a href="/strengths/">強み・技術をくわしく見る</a></p>
+    {page !== "strengths" && <p><a href="/strengths/">強み・技術をくわしく見る</a></p>}
   </>
 )}
 {content === "technique" && presentation === "list" && <ListView items={techSteps.map((s) => s.title || s.body.slice(0, 40))} />}
 
 {content === "declined" && presentation === "quote" && (
-  <Declined text={isGeneral ? reasonChosen : st.wonAfterOthersDeclined} href="/strengths/"
+  <Declined text={isGeneral ? reasonChosen : st.wonAfterOthersDeclined} href={linkTo("strengths")}
             linkLabel={isGeneral ? "くわしく見る" : "なぜ受けられるのか（強み・技術）"} />
 )}
 {content === "declined" && presentation === "prose" && <p>{isGeneral ? reasonChosen : st.wonAfterOthersDeclined}</p>}
@@ -144,7 +162,7 @@ const points = ([
 )}
 
 {content === "executive" && presentation === "prose" && (
-  <People vision={(project as any).executive?.vision} representative={basics.representative} href="/message/" />
+  <People vision={(project as any).executive?.vision} representative={basics.representative} href={linkTo("message")} />
 )}
 {content === "executive" && presentation === "quote" && <Declined text={quoteOf((project as any).executive?.messageToStaff ?? (project as any).executive?.vision)} />}
 {content === "executive" && presentation === "longform" && (
