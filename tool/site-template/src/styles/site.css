@@ -435,25 +435,48 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
 .band[data-surface="soft"] { background: var(--bg-soft); }
 
 /* アクセント地。**白抜きになるので、中の色を全部引き受ける** */
-.band[data-surface="accent"] { background: var(--accent); color: #fff; }
-.band[data-surface="accent"] h2,
-.band[data-surface="accent"] h3 { color: #fff; }
-.band[data-surface="accent"] a { color: #fff; }
+/**
+ * **白抜きの面は2つある**（D-230）。地の色だけが違い、上に乗るものの扱いは同じ。
+ *   accent … その会社のアクセント色。短く強い帯に
+ *   dark   … 本文の色（--ink）をそのまま地に。**新しい色は足していない。**
+ *            白文字で 15.9〜18.4:1 取れる（contrast.test.mjs で毎回確かめる）
+ *
+ * **`--accent` を、この面の上の文字に使ってはいけない**（1.1〜2.9:1・読めない）。
+ */
+.band:is([data-surface="accent"],[data-surface="dark"]) { color: #fff; }
+.band[data-surface="accent"] { background: var(--accent); }
+.band[data-surface="dark"] { background: var(--ink); }
+
+/**
+ * **暗い地・アクセント地の上では、薄い文字色を全部白系に倒す。**
+ *
+ * 個別に書いていたため、書き忘れが残っていた。
+ * 設備カードのメーカー名（`.maker`＝`--ink-soft`）と札の小見出し（`.point-sub`＝
+ * `--accent-dark`）は、**アクセント地の上でも読めない状態のままだった。**
+ * 面を1つ増やすついでに、まとめて倒す。
+ */
+.band:is([data-surface="accent"],[data-surface="dark"]) :is(
+  .maker, .count, .point-sub, .timeline dd, .timeline dt,
+  figcaption, .photo figcaption, .plain-list, .longform-quote, .hero-kicker
+) { color: rgba(255,255,255,.85); }
+.band:is([data-surface="accent"],[data-surface="dark"]) h2,
+.band:is([data-surface="accent"],[data-surface="dark"]) h3 { color: #fff; }
+.band:is([data-surface="accent"],[data-surface="dark"]) a { color: #fff; }
 /*
   万一アクセント地に札が乗っても、文字が消えないようにしておく。
   構成の側でも使わせないが（lib/design/sections.ts）、**片方だけに頼らない**
 */
-.band[data-surface="accent"] .case-card { background: rgba(255,255,255,.08); color: #fff; border-color: rgba(255,255,255,.4); }
-.band[data-surface="accent"] .case-card:hover { background: rgba(255,255,255,.16); }
-.band[data-surface="accent"] .case-industry,
-.band[data-surface="accent"] .case-challenge { color: rgba(255,255,255,.85); }
-.band[data-surface="accent"] .case-tags em { background: rgba(255,255,255,.18); color: #fff; }
-.band[data-surface="accent"] .point,
-.band[data-surface="accent"] .machine,
-.band[data-surface="accent"] .chips span { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.45); }
-.band[data-surface="accent"] .declined { border-left-color: #fff; }
-.band[data-surface="accent"] .figures > div { border-color: rgba(255,255,255,.4); }
-.band[data-surface="accent"] .figures dt { color: rgba(255,255,255,.85); }
+.band:is([data-surface="accent"],[data-surface="dark"]) .case-card { background: rgba(255,255,255,.08); color: #fff; border-color: rgba(255,255,255,.4); }
+.band:is([data-surface="accent"],[data-surface="dark"]) .case-card:hover { background: rgba(255,255,255,.16); }
+.band:is([data-surface="accent"],[data-surface="dark"]) .case-industry,
+.band:is([data-surface="accent"],[data-surface="dark"]) .case-challenge { color: rgba(255,255,255,.85); }
+.band:is([data-surface="accent"],[data-surface="dark"]) .case-tags em { background: rgba(255,255,255,.18); color: #fff; }
+.band:is([data-surface="accent"],[data-surface="dark"]) .point,
+.band:is([data-surface="accent"],[data-surface="dark"]) .machine,
+.band:is([data-surface="accent"],[data-surface="dark"]) .chips span { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.45); }
+.band:is([data-surface="accent"],[data-surface="dark"]) .declined { border-left-color: #fff; }
+.band:is([data-surface="accent"],[data-surface="dark"]) .figures > div { border-color: rgba(255,255,255,.4); }
+.band:is([data-surface="accent"],[data-surface="dark"]) .figures dt { color: rgba(255,255,255,.85); }
 
 /* 方眼。図面の下地。**線は薄く。本文の邪魔をしない** */
 .band[data-surface="grid"] {
@@ -544,6 +567,24 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
     animation-timeline: view();
     animation-range: entry 0% entry 40%;
   }
+
+/**
+ * **地紋の線も、白抜きの地の上では白に倒す**（D-230）。
+ *
+ * 地紋は `--accent` で描いている。暗い地の上では 1.1〜2.9:1 で、事実上見えない。
+ * コントラスト検査は `color:` と `background: var(...)` しか見ないので、
+ * **`linear-gradient()` の中の色はすり抜けた。** 検査に映らないものは、目で見るしかない。
+ */
+.band:is([data-surface="accent"],[data-surface="dark"])[data-motif="process"] > .inner > .band-body::before {
+  background: linear-gradient(rgba(255,255,255,.7), transparent);
+}
+.band:is([data-surface="accent"],[data-surface="dark"])[data-motif="dimension"] .figures dd::before,
+.band:is([data-surface="accent"],[data-surface="dark"])[data-motif="dimension"] .figures dd::after {
+  background: rgba(255,255,255,.7);
+}
+.band:is([data-surface="accent"],[data-surface="dark"])[data-motif="section"] > .inner > h2 {
+  border-bottom-color: rgba(255,255,255,.45);
+}
   html[data-motion="standard"] .figures dd { animation: kobo-rise .6s ease-out both; animation-timeline: view(); }
 }
 @keyframes kobo-rise {
@@ -642,10 +683,10 @@ html[data-hero="motif"] .hero {
 .plain-list { margin: 0 0 20px; padding-left: 1.3em; max-width: var(--measure); }
 .plain-list li { margin-bottom: 8px; }
 
-.band[data-surface="accent"] .bignumber-value,
-.band[data-surface="accent"] .compare-value { color: #fff; }
-.band[data-surface="accent"] .bignumber-label,
-.band[data-surface="accent"] .compare-label,
-.band[data-surface="accent"] .process-body { color: rgba(255,255,255,.9); }
-.band[data-surface="accent"] .process > li { border-left-color: rgba(255,255,255,.4); }
-.band[data-surface="accent"] .process > li::before { background: #fff; color: var(--accent-dark); }
+.band:is([data-surface="accent"],[data-surface="dark"]) .bignumber-value,
+.band:is([data-surface="accent"],[data-surface="dark"]) .compare-value { color: #fff; }
+.band:is([data-surface="accent"],[data-surface="dark"]) .bignumber-label,
+.band:is([data-surface="accent"],[data-surface="dark"]) .compare-label,
+.band:is([data-surface="accent"],[data-surface="dark"]) .process-body { color: rgba(255,255,255,.9); }
+.band:is([data-surface="accent"],[data-surface="dark"]) .process > li { border-left-color: rgba(255,255,255,.4); }
+.band:is([data-surface="accent"],[data-surface="dark"]) .process > li::before { background: #fff; color: var(--accent-dark); }

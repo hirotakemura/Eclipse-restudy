@@ -92,7 +92,8 @@ export const MANUFACTURING_DIRECTIONS: Direction[] = [
   {
     id: "industrial", label: "量産・設備", note: "設備と量産能力で選ばれる会社。数と体制を見せる",
     tone: "spec", favor: ["equipment", "numbers", "photos"], defer: ["people", "history"],
-    surfaces: ["soft", "accent", "plain"], layouts: ["fullbleed", "split", "stack"],
+    // **暗い面は量産・設備でいちばん効く**（D-230）。設備と数を、締まった地で見せる
+    surfaces: ["dark", "soft", "plain"], layouts: ["fullbleed", "split", "stack"],
     heroes: ["spec", "photo", "figure"], motifs: ["process", "grid", "none"],
     axes: { palette: "fukamidori", font: "gothic", mood: "futsu", textSize: "normal", nav: "standard", sections: "alternate", headings: "band", tables: "all" },
     motion: "subtle", plan: "manufacturing",
@@ -100,7 +101,7 @@ export const MANUFACTURING_DIRECTIONS: Direction[] = [
   {
     id: "product", label: "製品・開発", note: "自社製品・開発力で選ばれる会社。製品そのものを主役に",
     tone: "visual", favor: ["technique", "materials", "photos"], defer: ["equipment"],
-    surfaces: ["plain", "soft", "accent"], layouts: ["editorial", "offset", "fullbleed"],
+    surfaces: ["plain", "dark", "soft"], layouts: ["editorial", "offset", "fullbleed"],
     heroes: ["type", "photo", "headline"], motifs: ["section", "grain", "none"],
     axes: { palette: "ai", font: "mixed", mood: "yawaraka", textSize: "normal", nav: "standard", sections: "space", headings: "underline", tables: "horizontal" },
     motion: "standard", plan: "manufacturing",

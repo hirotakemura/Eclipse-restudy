@@ -63,11 +63,32 @@ for (const p of PALETTES) {
     // 章の目印。引用の縦線・札の縦線・設備カードの上辺・年表の点。
     // **文字ではないが、章の境目を示す情報**なので UI の 3:1 を課す
     ["章の目印（帯・線・点）", p.accent, p.bg, 3],
+
+    /*
+      暗い面（D-230）。**新しい色は足していない。** 地は本文の色（ink）をそのまま使う。
+      面を1つ増やすと、読めない組み合わせが増える余地も増える。必ずここで確かめる。
+    */
+    ["暗い地の白文字", WHITE, p.ink, 4.5],
+    ["暗い地の白文字（85%）", "#d9d9d9", p.ink, 4.5],
+    /*
+      **アクセント色を暗い地の上の文字に使わないこと**を、数字で固定する。
+      実測 1.1〜2.9:1 で、6配色すべて不合格。CSSでは白に倒してあるが、
+      「なぜ倒すのか」が数字で残っていないと、いつか誰かが戻す。
+    */
+    ["（使用禁止の確認）暗い地にアクセント色の文字", p.accent, p.ink, 0],
   ];
   const bad = [];
   for (const [label, fg, bg, min] of checks) {
     checked++;
     const r = ratio(fg, bg);
+    /**
+     * 下限 0 は「**使ってはいけないことの確認**」。
+     * 読めない値であることを確かめる（読めてしまったら、前提が変わったということ）。
+     */
+    if (min === 0) {
+      if (r >= 4.5) { bad.push(`${label} が ${r.toFixed(2)}:1 で読めてしまいます（前提が変わりました）`); failed++; }
+      continue;
+    }
     if (r < min) { bad.push(`${label} ${r.toFixed(2)}:1（${min}:1 必要）`); failed++; }
   }
   console.log(`  ${bad.length ? "✗" : "○"} ${p.label.padEnd(4)} ${p.id}`);
@@ -82,7 +103,8 @@ for (const p of PALETTES) {
 */
 const CSS = "site-template/src/styles/site.css";
 const KNOWN_TEXT = new Set(["--ink", "--ink-soft", "--accent", "--accent-dark"]);
-const KNOWN_BG = new Set(["--bg", "--bg-soft", "--accent", "--accent-dark", "--accent-soft", "--line"]);
+// `--ink` は暗い面の地として使う（D-230）
+const KNOWN_BG = new Set(["--bg", "--bg-soft", "--accent", "--accent-dark", "--accent-soft", "--line", "--ink"]);
 
 const css = fs.readFileSync(CSS, "utf8");
 const used = (prop) =>

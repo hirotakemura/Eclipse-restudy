@@ -160,17 +160,32 @@ const BY_STRAND: Record<ShowBy, Base | null> = {
  *
  * 面は同じものを続けない。**隣り合う帯が同じ地だと、境目が見えない。**
  */
+/** 白抜きの面。**地の色が違うだけで、上に乗るものの扱いは同じ**（D-230） */
+const INVERTED: SurfaceId[] = ["accent", "dark"];
+
 function decorate(
   base: Base,
   d: ReturnType<typeof getDirection>,
   a: Analysis,
   index: number,
   prevSurface: SurfaceId | null,
+  /** すでに白抜きの帯を出したか。**1ページに1回まで** */
+  invertedDone: boolean,
 ): Omit<Section, "why"> {
-  // 面：型の候補から順に選び、直前と同じにならないものを取る
-  const candidates = d.surfaces.filter((x) => x !== prevSurface);
-  const pool = candidates.length ? candidates : d.surfaces;
+  /**
+   * 面：型の候補から順に選び、直前と同じにならないものを取る。
+   *
+   * ただし**白抜きの帯（暗い地・アクセント地）だけは、順番で回さない。**
+   * 回すと「たまたま当たった帯」が締まることになり、
+   * **量産・設備では2本出て、製品・開発では1本も出ない**という実測になった。
+   * 白抜きは**その会社を一言で言う帯（lead）に、1ページ1回だけ**当てる。
+   */
+  const plainPool = d.surfaces.filter((x) => !INVERTED.includes(x));
+  const candidates = plainPool.filter((x) => x !== prevSurface);
+  const pool = candidates.length ? candidates : (plainPool.length ? plainPool : ["plain" as SurfaceId]);
   let surface: SurfaceId = pool[index % pool.length] ?? "plain";
+  const invert = d.surfaces.find((x) => INVERTED.includes(x));
+  if (invert && !invertedDone && base.emphasis === "lead") surface = invert;
   // 散文の帯は、読ませる場所なので白か薄地に留める
   if (base.kind === "prose" || base.kind === "technique") {
     surface = surface === "accent" ? "plain" : surface;
@@ -185,8 +200,20 @@ function decorate(
    * 短く強い内容（引用・数字）だけに使う。
    */
   const CARDS: Section["kind"][] = ["cases", "points", "equipment", "equipmentTable", "specTable", "gallery"];
-  if (surface === "accent" && CARDS.includes(base.kind)) {
-    surface = d.surfaces.find((x) => x !== "accent" && x !== prevSurface) ?? "plain";
+  /**
+   * **白抜きの帯は、1ページに1回まで**（D-230）。
+   *
+   * 二度使うと締める力が消えて、ただの「暗いサイト」になる。
+   * 面の選び方は「型の候補を順に回す」だけなので、放っておくと
+   * **量産・設備の型で暗い帯が2本出た**（実測）。自分で書いた上限を、機械で守らせる。
+   *
+   * 札を並べる帯には使わない、も同じ歯止め。事例カード（白い箱）を
+   * 白抜きの地に置くと**見出しが白×白で消える**（D-203）。
+   */
+  if (INVERTED.includes(surface) && (CARDS.includes(base.kind) || invertedDone)) {
+    surface = d.surfaces.find((x) => !INVERTED.includes(x) && x !== prevSurface)
+      ?? d.surfaces.find((x) => !INVERTED.includes(x))
+      ?? "plain";
   }
 
   // 組み方：狭い帯は積むしかない。広い帯でだけ型の好みを効かせる
@@ -402,8 +429,10 @@ export function composeTop(
   let n = 0;
   /** このページで、その内容をどの形ですでに出したか（同じ形を2度出さない） */
   const used = new Map<ContentId, Set<PresentationId>>();
+  let invertedDone = false;
   const put = (base: Base, why: string) => {
-    const decorated = decorate(applyTone(base, tone), d, a, n++, prev);
+    const decorated = decorate(applyTone(base, tone), d, a, n++, prev, invertedDone);
+    if (INVERTED.includes(decorated.surface)) invertedDone = true;
     const { sec, note } = repress(decorated, project, a, hero, used, brief);
     prev = sec.surface;
     out.push({ ...sec, why: why + note });
@@ -510,8 +539,10 @@ export function composePage(
   let prev: SurfaceId | null = null;
   let n = 0;
   const used = new Map<ContentId, Set<PresentationId>>();
+  let invertedDone = false;
   const add = (base: Base, why: string) => {
-    const decorated = decorate(applyTone(base, tone), d, a, n++, prev);
+    const decorated = decorate(applyTone(base, tone), d, a, n++, prev, invertedDone);
+    if (INVERTED.includes(decorated.surface)) invertedDone = true;
     const { sec, note } = repress(decorated, project, a, "headline", used);
     prev = sec.surface;
     out.push({ ...sec, why: why + note });
