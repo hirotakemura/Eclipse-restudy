@@ -43,12 +43,23 @@ const cap = (project as any).capability ?? {};
 const st = (project as any).strengths ?? {};
 const basics = (project as any).basics ?? {};
 
-/** 事例の「課題 → 対応 → 結果」を工程として並べる */
-const caseSteps = cases.flatMap((c: any) => [
-  c.challenge ? { title: "ご相談の内容", body: c.challenge } : null,
-  c.solution ? { title: "対応した内容", body: c.solution } : null,
-  c.result ? { title: "結果", body: c.result } : null,
-].filter(Boolean)).slice(0, 6) as { title: string; body: string }[];
+/**
+ * 事例を「ご相談 → 対応 → 結果」の工程として見せる。
+ *
+ * **1件だけを出す**（D-237）。
+ * 直す前は全事例の項目を順に並べていたため、
+ * **「①ご相談 ②対応 ③ご相談 ④結果 ⑤ご相談 ⑥ご相談」**という番号が付き、
+ * 別々の案件がひと続きの工程に見えていた。読んで意味が通らない。
+ * 工程は**順序に意味がある**表現なので、順序が本当にあるもの＝1件の中だけに使う。
+ */
+const caseForProcess = cases.find((c: any) => c.challenge && c.solution && c.result) ?? cases[0];
+const caseSteps = (caseForProcess
+  ? [
+      { title: "ご相談の内容", body: caseForProcess.challenge },
+      { title: "対応した内容", body: caseForProcess.solution },
+      { title: "結果", body: caseForProcess.result },
+    ]
+  : []).filter((x) => x.body) as { title: string; body: string }[];
 
 const techSteps = splitParts(st.followUpFindings).map((x) => ({ title: x.title ?? "", body: x.body }));
 const quoteOf = (v: string) => (/[「『][^」』]{4,}[」』]/.exec(v ?? "") ?? [])[0] ?? v;
@@ -60,7 +71,13 @@ const specRows = rows([
   ["最短納期", cap.shortestLeadTime], ["資格・認証", cap.certifications],
   ["稼働体制", cap.operatingHours],
 ]);
-const eqRows = rows((cap.equipment ?? []).map((e: any) => [e.model || e.maker, e.count ? `${e.count}台` : ""]));
+/**
+ * 設備一覧の表。**「設備・メーカー・台数」の3列**（D-237）。
+ * 型番もメーカーも分からないものは載せない（載せると空行が並ぶだけになる）。
+ */
+const eqRows: string[][] = (cap.equipment ?? [])
+  .filter((e: any) => e?.maker || e?.model)
+  .map((e: any) => [e.model || e.maker, e.model ? (e.maker ?? "") : "", e.count ? `${e.count}台` : ""]);
 const shownCases = cases.slice(0, 6);
 const grid = cardGrid(shownCases.length);
 /**
@@ -99,7 +116,7 @@ const points = ((isGeneral
 )}
 
 {content === "equipment" && presentation === "cardGrid" && <Equipment equipment={cap.equipment ?? []} href={linkTo("equipment")} />}
-{content === "equipment" && presentation === "spec" && <Table rows={eqRows} />}
+{content === "equipment" && presentation === "spec" && <Table head={["設備", "メーカー", "台数"]} rows={eqRows} />}
 {content === "equipment" && presentation === "largeNumber" && (
   <BigNumber items={[{ label: "保有設備", value: `${equipTotal}台` }]} />
 )}
@@ -117,6 +134,8 @@ const points = ((isGeneral
 )}
 {content === "cases" && presentation === "process" && (
   <>
+    {/* **どの案件の話かを先に言う。** 言わないと、工程だけが宙に浮く */}
+    {caseForProcess?.title && <h3 style="margin-top:0">{caseForProcess.title}</h3>}
     <Process steps={caseSteps} />
     {page !== "cases" && <p><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>}
   </>

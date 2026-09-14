@@ -312,6 +312,16 @@ html[data-headings="band"] .section h2 {
 html[data-headings="rule"] .case-body h2 { padding-left: 12px; }
 html[data-headings="band"] .case-body h2 { border-left: 0; }
 
+/**
+ * **見出しの飾りも、白抜きの地の上では白に倒す**（D-237）。
+ * 左の罫・下線は `--accent` で描いている。暗い地の上では 1.1〜2.9:1 で、
+ * **あるのか無いのか分からない線**になる。地紋と同じ見落とし（D-232）。
+ */
+.band:is([data-surface="accent"],[data-surface="dark"]) h2 {
+  border-left-color: rgba(255,255,255,.75);
+  border-bottom-color: rgba(255,255,255,.55);
+}
+
 /* ── 表の罫線 ───────────────────────────── */
 html[data-tables="horizontal"] th,
 html[data-tables="horizontal"] td { border: 0; border-bottom: var(--line-width) solid var(--table-line); }

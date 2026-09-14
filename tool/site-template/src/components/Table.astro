@@ -1,17 +1,25 @@
 ---
-/** 聞き取ったデータをそのまま出す表。空欄の行は作らない */
-interface Props { rows: [string, string][]; caption?: string }
-const { rows, caption } = Astro.props;
+/**
+ * 聞き取ったデータをそのまま出す表。空欄の行は作らない。
+ *
+ * 列は2列が既定（項目・値）。**`head` を渡すと3列以上も出せる。**
+ * 設備一覧は「設備・メーカー・台数」の3列で出しており、
+ * **2列の表に寄せたときにメーカー列が丸ごと落ちた**（実測・D-237）。
+ * 表の列は情報そのものなので、部品の都合で減らさない（D-204）。
+ */
+interface Props { rows: string[][]; caption?: string; head?: string[] }
+const { rows, caption, head } = Astro.props;
 ---
 {rows.length > 0 && (
   <div class="table-wrap">
     <table>
       {caption && <caption>{caption}</caption>}
+      {head && <thead><tr>{head.map((h) => <th scope="col">{h}</th>)}</tr></thead>}
       <tbody>
-        {rows.map(([label, value]) => (
+        {rows.map((cells) => (
           <tr>
-            <th scope="row">{label}</th>
-            <td>{value}</td>
+            <th scope="row">{cells[0]}</th>
+            {cells.slice(1).map((v) => <td>{v}</td>)}
           </tr>
         ))}
       </tbody>
