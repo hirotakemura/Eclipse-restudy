@@ -48,12 +48,28 @@ export interface Materials {
   length: number;
   /** 短く言い切れる値があるか（14文字以内・句読点なし） */
   hasShortValue: boolean;
+  /**
+   * **短く言い切れて、しかも数字を含む値**があるか（D-251）。
+   *
+   * 「案件により相談」は短く言い切れているが、**条件としては何も言っていない。**
+   * 「±0.005mm」「最短翌日」との差はここで、`hasShortValue` だけでは区別できない。
+   * 主役として大きく出してよいかの判断に使う。
+   */
+  hasStrongValue?: boolean;
   /** 対になる2つの値が取れるか */
   hasPair: boolean;
   /** 鍵括弧つきの発言があるか */
   hasQuote: boolean;
   /** 順序のある記述があるか */
   hasSteps: boolean;
+  /**
+   * **実際に何段の工程として描かれるか**（D-251）。
+   *
+   * 「順序がある」だけでは足りない。1つしかない項目を番号付きで並べても、
+   * **工程にはならない**（実測：`【温度管理】…` の1項目が「①温度管理」として出ていた）。
+   * 語彙表は前から「順序のある記述2つ以上」と謳っていたのに、**コードは1つでも通していた。**
+   */
+  steps?: number;
   /** 実写の写真があるか */
   hasRealPhotos: boolean;
 }
@@ -74,9 +90,17 @@ export function hasMaterial(p: PresentationId, m: Materials): boolean {
     // 表は**全件**で判断する。カードに出せる数ではない
     case "spec": return (m.rows ?? m.count) >= 3;
     case "timeline": return m.count >= 3;
-    case "largeNumber": return m.hasShortValue;
+    /**
+     * **「大きな数字」は、数字であること**（D-251）。
+     *
+     * 短く言い切れるだけでは足りない。「案件により相談」を画面いっぱいに出しても、
+     * **何も言っていない文字が大きくなるだけ**である（D-214で一度直したのと同じ間違い）。
+     * `hasStrongValue` を持たない内容（設備の台数など）は、これまでどおり。
+     */
+    case "largeNumber": return m.hasStrongValue ?? m.hasShortValue;
     case "comparison": return m.hasPair;
-    case "process": return m.hasSteps;
+    // **2段以上でなければ工程ではない**（語彙表の記載と揃える・D-251）
+    case "process": return m.hasSteps && (m.steps ?? 0) >= 2;
     case "quote": return m.hasQuote;
     case "fullWidth": return m.hasRealPhotos;
   }

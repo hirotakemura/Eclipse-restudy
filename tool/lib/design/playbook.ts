@@ -26,7 +26,16 @@ export interface Play {
 export const PLAYBOOK: Record<PrimaryStrength, Play> = {
   precision: {
     lead: "conditions", leadPresentations: ["largeNumber", "spec"],
-    prefer: { cases: ["spec", "cardGrid"], equipment: ["spec"] },
+    /**
+     * **`technique` の指定が無く、既定（散文）に落ちていた**（D-251）。
+     * 精度で選ばれる会社の「どうやって受けているか」は、**手順そのもの**である
+     * （治具・段取り・検査の順序）。散文で流すより工程で見せるほうが、
+     * 精度の裏づけとして読める。設備は型番が物証なので仕様表のまま。
+     */
+    prefer: {
+      cases: ["spec", "cardGrid"], equipment: ["spec"],
+      technique: ["process", "longform"],
+    },
   },
   difficulty: {
     lead: "cases", leadPresentations: ["process", "quote"],

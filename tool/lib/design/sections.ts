@@ -394,6 +394,23 @@ export function pickMotif(candidates: MotifId[], a: Analysis): MotifId {
 }
 
 /**
+ * 材料の薄い帯を、主役として出さない（D-251）。
+ *
+ * 「対応できる条件」の帯は、**会社によらず必ず `lead`** だった。
+ * ところが公差が空欄で、納期が「案件により相談」の会社では、
+ * **何も言っていない帯が、いちばん強い帯として画面の上に出る。**
+ * AI版が唯一まともに効いたのがここで（D-248のB社）、**規則で埋められる。**
+ *
+ * 条件が主役になるのは、**短く言い切れて、数字を含む値**があるときだけ。
+ */
+function weaken(base: Base, project: Project, a: Analysis): Base {
+  if (base.emphasis !== "lead") return base;
+  if (KIND_AS[base.kind].content !== "conditions") return base;
+  const m = materialsOf(project, "conditions", a.hasRealPhotos);
+  return m.hasStrongValue || m.hasPair ? base : { ...base, emphasis: "normal" };
+}
+
+/**
  * トップページの構成を決める。
  *
  * 並べ方の考え方：
@@ -446,7 +463,7 @@ export function composeTop(
   const used = new Map<ContentId, Set<PresentationId>>();
   let invertedDone = false;
   const put = (base: Base, why: string) => {
-    const decorated = decorate(applyTone(base, tone), d, a, n++, prev, invertedDone);
+    const decorated = decorate(applyTone(weaken(base, project, a), tone), d, a, n++, prev, invertedDone);
     if (INVERTED.includes(decorated.surface)) invertedDone = true;
     const { sec, note } = repress(decorated, project, a, hero, used, brief);
     prev = sec.surface;
@@ -556,7 +573,7 @@ export function composePage(
   const used = new Map<ContentId, Set<PresentationId>>();
   let invertedDone = false;
   const add = (base: Base, why: string) => {
-    const decorated = decorate(applyTone(base, tone), d, a, n++, prev, invertedDone);
+    const decorated = decorate(applyTone(weaken(base, project, a), tone), d, a, n++, prev, invertedDone);
     if (INVERTED.includes(decorated.surface)) invertedDone = true;
     const { sec, note } = repress(decorated, project, a, "headline", used);
     prev = sec.surface;

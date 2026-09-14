@@ -56,9 +56,9 @@
       ]
     },
     "capability/index": {
-      "hash": "7dd9fda884de",
+      "hash": "bc575b229e03",
       "bands": [
-        "conditions:largeNumber:lead",
+        "conditions:list:normal",
         "materials:chips:normal",
         "conditions:spec:normal"
       ]

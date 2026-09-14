@@ -36,14 +36,28 @@ export function materialsOf(project: Project, content: ContentId, hasRealPhotos:
   switch (content) {
     case "conditions": {
       const vals = [text(cap.tolerance), text(cap.shortestLeadTime), text(cap.lotSize), (cap.materials ?? []).join("・"), (cap.certifications ?? []).join("・")].filter(Boolean);
+      /**
+       * **判定する値と、実際に描く値を揃える**（D-251）。
+       *
+       * ここが揃っていなかったために、
+       * 資格の「ISO9001」で「数字のある条件がある」と判定し、
+       * **画面には「案件により相談」が大きく出る**、ということが起きた（実測）。
+       * 大きく出す候補は**公差・納期・ロットの3つ**で、資格も材質も数字ではない。
+       */
+      const numeric = [text(cap.tolerance), text(cap.shortestLeadTime), text(cap.lotSize)].filter(Boolean);
       return {
         ...base,
         count: vals.length,
         length: vals.join("").length,
         hasShortValue: vals.some(isShortValue),
-        // 対比は「標準◯／最短◯」のように**2つの値が1つの文に入っている**ときに成り立つ
-        hasPair: /標準.*最短|最短.*標準|通常.*急ぎ|急ぎ.*通常/.test(text(cap.shortestLeadTime))
-          || /から.*まで/.test(text(cap.lotSize)),
+        // **数字を含んで初めて条件になる**（D-251）。`analyze` の heroFigure と同じ規則
+        hasStrongValue: numeric.some((v) => isShortValue(v) && /\d/.test(v)),
+        /**
+         * 対比は「標準◯／最短◯」のように**2つの値が1つの文に入っている**ときに成り立つ。
+         * **描くのは納期だけ**（`Present.astro` の `Comparison`）なので、納期だけを見る。
+         * ロットの「1個から…まで」で立てると、**納期の欄に対比でない文が入る。**
+         */
+        hasPair: /標準.*最短|最短.*標準|通常.*急ぎ|急ぎ.*通常/.test(text(cap.shortestLeadTime)),
       };
     }
     case "materials": {
@@ -64,16 +78,25 @@ export function materialsOf(project: Project, content: ContentId, hasRealPhotos:
     case "cases": {
       const cs = arr(p.cases);
       const joined = cs.map((c: any) => [c?.challenge, c?.solution, c?.result].filter(Boolean).join("")).join("");
+      /**
+       * **工程として描かれるのは1件の中だけ**（D-237）。
+       * その1件が何段になるかを数える（課題・対応・結果で最大3段）。
+       */
+      const one = cs.find((c: any) => text(c?.challenge) && text(c?.solution) && text(c?.result)) ?? cs[0];
+      const steps = one ? [one.challenge, one.solution, one.result].filter((x: any) => text(x)).length : 0;
       return {
         ...base, count: cs.length, length: joined.length,
         hasQuote: hasQuoted(joined),
         // 課題→解決→結果が揃っている事例が1件でもあれば、工程として見せられる
         hasSteps: cs.some((c: any) => text(c?.challenge) && text(c?.solution) && text(c?.result)),
+        steps,
       };
     }
     case "technique": {
       const v = text(st.followUpFindings);
-      return { ...base, count: (v.match(/【[^】]+】/g) ?? []).length || (v ? 1 : 0), length: v.length, hasSteps: hasSteps(v), hasQuote: hasQuoted(v) };
+      /** 【見出し】で区切られた数が、そのまま工程の段数になる（`splitParts` と同じ数え方） */
+      const parts = (v.match(/【[^】]+】/g) ?? []).length || (v ? 1 : 0);
+      return { ...base, count: parts, steps: parts, length: v.length, hasSteps: hasSteps(v), hasQuote: hasQuoted(v) };
     }
     case "declined": {
       const v = [text(st.wonAfterOthersDeclined), text(st.workOthersAvoid), text(st.hardestJob)].filter(Boolean);
