@@ -124,6 +124,21 @@ const EMPHASIS = new Set<string>(EMPHASES);
 export function validateBrief(
   raw: unknown,
   materialsOf: (content: ContentId) => Materials,
+  /**
+   * **規則版がいま実際に描いている「内容:表現」の組**（`content:presentation`）。
+   *
+   * ここに入っている組を、材料の段で否定しない（D-262）。
+   *
+   * 実測で見つかった穴：B社は保有設備の行が1行しかなく、`hasMaterial("spec")` は
+   * 3行以上を要求するので落ちる。ところが**画面には保有設備一覧がちゃんと出ている。**
+   * 「表そのものが中身」の帯は行数の下限を別に見る、という扱いが
+   * `sections.ts` と `ruleBrief` にはあり、**検査には無かった。**
+   * その結果、**AIが規則版とまったく同じ判断を返しても検査で落ちる**会社ができ、
+   * AIは最初から勝てない試験を受けていた。
+   *
+   * **規則版が描けているものを、検査が「描けない」と言ってはいけない。**
+   */
+  drawnByRules?: Set<string>,
 ): BriefProblem[] {
   const problems: BriefProblem[] = [];
   const bad = (stage: BriefProblem["stage"], where: string, message: string) =>
@@ -188,6 +203,7 @@ export function validateBrief(
   // ── 4. 材料 ──────────────────────────────
   blocks.forEach((blk, i) => {
     const c = blk.content as ContentId, p = blk.presentation as PresentationId;
+    if (drawnByRules?.has(`${c}:${p}`)) return; // 規則版が現に描いている組（D-262）
     if (!hasMaterial(p, materialsOf(c))) {
       bad("material", `blocks[${i}]`, `「${p}」に必要な材料が「${c}」にありません`);
     }

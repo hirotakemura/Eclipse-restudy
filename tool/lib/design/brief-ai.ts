@@ -117,7 +117,9 @@ export function checkAIResponse(
   const brief = overlay(rules, ai);
   // ここから先は既存の4段検査（形 → 語彙 → 可否 → 材料）にそのまま通す
   const materials = (c: ContentId) => materialsOf(project, c, a.hasRealPhotos);
-  problems.push(...validateBrief(brief, materials));
+  /** **規則版が現に描いている組を、検査が否定しない**（D-262） */
+  const drawn = new Set(rules.blocks.map((b) => `${b.content}:${b.presentation}`));
+  problems.push(...validateBrief(brief, materials, drawn));
   if (problems.length) return { brief: null, problems };
 
   /**

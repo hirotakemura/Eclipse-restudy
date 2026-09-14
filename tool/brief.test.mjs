@@ -452,5 +452,85 @@ console.log("\n━━━ どれがトップに出るかを、AIに伝えてい�
     !userPrompt(project, a, rules).includes("【トップページに出ます】"));
 }
 
+
+/**
+ * **規則版が描けているものを、検査が「描けない」と言ってはいけない**（D-262）。
+ *
+ * 実測で、B社は保有設備の行が1行しかなく `hasMaterial("spec")` の3行以上を満たさない。
+ * ところが**画面には保有設備一覧がちゃんと出ている。**
+ * その結果、**AIが規則版とまったく同じ判断を返しても検査で落ちる**会社ができていた。
+ * AIは最初から勝てない試験を受けていた。
+ */
+console.log("\n━━━ AIが規則版と同じ答えを返したら、必ず通るか（D-262）━━━");
+for (const f of FIXTURES) {
+  const { project, a, ctx } = setup(f);
+  const rules = ruleBrief(project, a, ctx);
+  const echo = JSON.stringify({
+    primaryStrength: rules.primaryStrength,
+    secondaryStrength: rules.secondaryStrength,
+    blocks: rules.blocks.map((b) => ({ content: b.content, presentation: b.presentation, emphasis: b.emphasis })),
+  });
+  const { brief, problems } = checkAIResponse(echo, project, a, rules);
+  check(`${f}：規則版と同じ答えが、検査を通る`, brief !== null,
+    problems.map((p) => `${p.stage} ${p.message}`).join(" / "));
+}
+{
+  /** **緩めすぎていないか。** 規則版が描いていない組は、いままでどおり落ちる */
+  const { project, a, ctx } = setup("b-difficulty");
+  const rules = ruleBrief(project, a, ctx);
+  /** B社の設備は、型番の分かっているものが0件。カードの格子は2件以上が要る */
+  const bad = JSON.stringify({
+    primaryStrength: rules.primaryStrength, secondaryStrength: rules.secondaryStrength,
+    blocks: rules.blocks.map((b) => b.content === "equipment" ? { ...b, presentation: "cardGrid" } : { ...b }),
+  });
+  const r = checkAIResponse(bad, project, a, rules);
+  check("規則版が描いていない組は、材料が無ければ落ちたまま",
+    r.brief === null && r.problems.some((p) => p.stage === "material"),
+    JSON.stringify(r.problems));
+}
+
+/**
+ * **訊いておいて捨てない**（D-263）。
+ *
+ * `blocks` は前から順に「先に見せるもの」と定義してあり、AIへの指示にもそう書いてある。
+ * ところが `composeTop` はこれを一度も読んでいなかった。
+ * 実測で、AIが「技術の説明を2番目に上げる」と返したのに画面は1文字も動かなかった。
+ */
+console.log("\n━━━ Brief の並び順が、画面に効くか（D-263）━━━");
+{
+  const { project, a, ctx } = setup("a-precision");
+  const rules = ruleBrief(project, a, ctx);
+  const before = bands(composeTop(project, a, ctx));
+  const order = (list) => list.map((x) => x.split(":")[0]);
+
+  /** 規則版で最後に出ている帯を、Brief で先頭のほうへ動かす */
+  const last = order(before).at(-1);
+  const moved = {
+    ...rules,
+    blocks: [rules.blocks.find((b) => b.content === last), ...rules.blocks.filter((b) => b.content !== last)],
+  };
+  const after = bands(composeTop(project, a, { ...ctx, brief: { ...moved, source: "ai" } }));
+
+  check("動かす前は、その帯が最後に出ている（前提）", order(before).at(-1) === last, before.join(" "));
+  check("Brief で前に出した帯が、画面でも前に来る",
+    order(after).indexOf(last) < order(before).indexOf(last),
+    `${before.join(" ")}\n      → ${after.join(" ")}`);
+  check("帯は1つも増えても減ってもいない（D-204）",
+    after.length === before.length && new Set(order(after)).size === new Set(order(before)).size,
+    `${before.length} → ${after.length}`);
+  check("最初の画面（hero）は動かない",
+    composeTop(project, a, { ...ctx, brief: { ...moved, source: "ai" } })[0]?.kind === "hero");
+
+  /** **採用していない判断では、並び順も効かない**（D-256と同じ筋） */
+  const notAdopted = bands(composeTop(project, a, { ...ctx, brief: { ...moved, source: "ai-fallback" } }));
+  check("採用されていない Brief の並び順は、効かない",
+    JSON.stringify(notAdopted) === JSON.stringify(before), notAdopted.join(" "));
+
+  /** **規則版の Brief を渡しても、画面は変わらない**（これまでどおり） */
+  const same = bands(composeTop(project, a, { ...ctx, brief: { ...rules, source: "ai" } }));
+  check("規則版と同じ並びなら、画面は1文字も変わらない",
+    JSON.stringify(same) === JSON.stringify(before), same.join(" "));
+}
+
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);
 process.exit(ng ? 1 : 0);

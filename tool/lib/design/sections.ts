@@ -477,7 +477,7 @@ export function composeTop(
   });
 
   // 見立ての上位。材料の無いものは analyze() の時点で落ちている
-  const picked = applyDirection(a.strands, direction)
+  let picked = applyDirection(a.strands, direction)
     .filter((s) => BY_STRAND[s.id] && !coveredByHero.includes(BY_STRAND[s.id]!.kind))
     .slice(0, maxStrands);
 
@@ -491,6 +491,33 @@ export function composeTop(
   if (leadStrand > 0) {
     const [x] = picked.splice(leadStrand, 1);
     picked.unshift(x!);
+  }
+
+  /**
+   * **Brief の並び順を、実際に効かせる**（D-263）。
+   *
+   * `DesignBrief.blocks` は前から順に「先に見せるもの」と定義してあり、
+   * AIへの指示にも「どの情報を先に見せるか（blocks の並び順）」と書いてある。
+   * **ところが、composeTop はこれを一度も読んでいなかった。**
+   * 表現と強さだけを内容ごとに引いており、順番は捨てていた。
+   * 実測で、AIが「技術の説明を2番目に上げる」と返したのに画面は1文字も動かず、
+   * **こちらが訊いておいて捨てていた**ことが分かった。
+   *
+   * 効かせるのは**見立てから出てくる帯の並びだけ**である。
+   * 最初の画面・生成した散文・事例の位置は、ページの筋としてこちらが決める
+   * （事例は上に、散文は1位の直後）。Brief に無いものは後ろに、元の順のまま残す。
+   */
+  const order = usable(brief)?.blocks.map((b) => b.content);
+  if (order) {
+    const rank = (s: typeof picked[number]) => {
+      const c = BY_STRAND[s.id] && KIND_AS[BY_STRAND[s.id]!.kind].content;
+      const i = c ? order.indexOf(c) : -1;
+      return i < 0 ? order.length : i;
+    };
+    picked = picked
+      .map((s, i) => ({ s, i }))
+      .sort((x, y) => rank(x.s) - rank(y.s) || x.i - y.i)
+      .map((x) => x.s);
   }
 
   const first = picked[0];
