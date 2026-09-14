@@ -167,5 +167,47 @@ check("設備一覧では型番の分かる設備が表より先に来る",
 check("型番の分かる設備が無ければ、その帯を作らない",
   !page("equipment", make({ capability: { equipment: [{ model: "旋盤", count: 2 }] } })).includes("equipment"));
 
+/**
+ * 動きの実装原則（`lib/design/system/motion.ts`・例外なし）を、
+ * **スタイルシートそのもので確かめる。**
+ *
+ * ここを検査していなかったため、
+ * 「白抜きの地の地紋を直したつもりが、`prefers-reduced-motion` の中に入っていた」
+ * という取りこぼしが起きた（D-238）。**書いた場所は、読まないと分からない。**
+ */
+console.log("\n━━━ 動きの原則 ━━━");
+{
+  const fs = await import("node:fs");
+  const css = fs.readFileSync("site-template/src/styles/site.css", "utf8");
+
+  /** `@media (prefers-reduced-motion: no-preference) { … }` の中身を取り出す */
+  const start = css.indexOf("@media (prefers-reduced-motion: no-preference)");
+  let depth = 0, i = css.indexOf("{", start), from = i + 1, end = -1;
+  for (; i < css.length; i++) {
+    if (css[i] === "{") depth++;
+    else if (css[i] === "}" && --depth === 0) { end = i; break; }
+  }
+  const inside = css.slice(from, end);
+  const outside = css.slice(0, start) + css.slice(end + 1);
+
+  check("動きは prefers-reduced-motion の中だけに書いてある",
+    !/animation-timeline/.test(outside),
+    "外側に animation-timeline があります");
+  /**
+   * **素のHTMLは最初から見えている**（motion.ts の原則2）。
+   * 最初に書いた検査は、自分で付けた除外処理のせいで**何も検査していなかった。**
+   * わざと `opacity: 0` を入れて、落ちることを確かめてある。
+   */
+  check("本文を opacity:0 で隠していない",
+    !/opacity:\s*0(?![.\d%])/.test(inside),
+    "動きの中に opacity:0 があります");
+  check("動きの中に「見た目の修正」を紛れ込ませていない（D-238）",
+    !/data-surface="dark"/.test(inside),
+    "暗い面の指定が動きのブロックに入っています");
+  check("印刷では動きを止めている", /@media print[\s\S]{0,200}animation: none/.test(css));
+  check("謳っている動きは実装してある（工程の線が伸びる）",
+    /kobo-grow/.test(inside) && /@keyframes kobo-grow/.test(css));
+}
+
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);
 process.exit(ng ? 1 : 0);

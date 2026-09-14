@@ -1,0 +1,7 @@
+# サイトのHTMLは /api/inquiry へ送信します。
+# レンタルサーバーでは拡張子が要るので、ここで /api/inquiry.php に回します。
+# **このファイルをサイトの一番上（index.html と同じ階層）に置いてください。**
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^api/inquiry$ /api/inquiry.php [L]
+</IfModule>

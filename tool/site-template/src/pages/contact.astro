@@ -7,6 +7,7 @@
  * 相談時に用意していただけると早い情報も先に案内しておく。
  */
 import Base from "../layouts/Base.astro";
+import InquiryForm from "../components/InquiryForm.astro";
 import { project, companyName, tel, telHref, email, isGeneral, serviceArea } from "../lib/site";
 ---
 <Base title="お問い合わせ" description={`${companyName}へのお問い合わせ。お電話・メールで承ります`}>
@@ -51,5 +52,10 @@ import { project, companyName, tel, telHref, email, isGeneral, serviceArea } fro
         <p>図面がまだ固まっていない段階のご相談も承ります。</p>
       </>
     )}
+
+    {/* **書くことが分かってから、フォームに入る。** 先にフォームを出すと、
+        何を書けばよいか分からないまま空欄を見ることになる */}
+    <h2>フォームでのお問い合わせ</h2>
+    <InquiryForm tel={tel} />
   </div></section>
 </Base>

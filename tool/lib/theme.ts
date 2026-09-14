@@ -141,9 +141,19 @@ export interface Mood {
 }
 
 export const MOODS: Mood[] = [
-  { id: "katai", label: "かたい", note: "角ばる・線が太い。図面や仕様書に近い印象", radius: "0px", leading: "1.75", tracking: "0.01em", lineWidth: "2px", section: "44px" },
-  { id: "futsu", label: "標準", note: "既定。かたすぎず、やわらかすぎず", radius: "8px", leading: "1.85", tracking: "0.01em", lineWidth: "1px", section: "52px" },
-  { id: "yawaraka", label: "やわらかい", note: "角丸・線が薄い・行間広め。個人のお客様向けに", radius: "16px", leading: "2.0", tracking: "0.02em", lineWidth: "1px", section: "64px" },
+  /**
+   * 帯の縦余白（`--section`）を一段上げた（D-239）。44/52/64 → 60/72/88。
+   * **章が変わったことが、線ではなく余白で分かる**ようにするため。
+   *
+   * 一度 72/88/108 まで上げたが、**画面を見て戻した。**
+   * 我々の帯は中身が薄い（札4つ、数字3つ）ので、余白だけが増えて間延びした。
+   * 工業系の参考サイトが100px前後を取れるのは、**帯の中身が大きいから**である。
+   * 余白は中身に見合う分だけ取る。
+   * スマホでは別に詰めている（site.css の `@media (width<=720px)`）。
+   */
+  { id: "katai", label: "かたい", note: "角ばる・線が太い。図面や仕様書に近い印象", radius: "0px", leading: "1.75", tracking: "0.01em", lineWidth: "2px", section: "60px" },
+  { id: "futsu", label: "標準", note: "既定。かたすぎず、やわらかすぎず", radius: "8px", leading: "1.85", tracking: "0.01em", lineWidth: "1px", section: "72px" },
+  { id: "yawaraka", label: "やわらかい", note: "角丸・線が薄い・行間広め。個人のお客様向けに", radius: "16px", leading: "2.0", tracking: "0.02em", lineWidth: "1px", section: "88px" },
 ];
 
 export interface Choice {

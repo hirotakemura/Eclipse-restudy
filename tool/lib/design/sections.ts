@@ -143,7 +143,12 @@ type Base = Omit<Section, "why" | "surface" | "layout" | "media" | "motif" | "co
 const BY_STRAND: Record<ShowBy, Base | null> = {
   declined: { kind: "declined", width: "narrow", emphasis: "lead", heading: "他社様で難しいと言われた案件" },
   technique: { kind: "technique", width: "narrow", emphasis: "normal", heading: "どうやって受けているか" },
-  numbers: { kind: "figures", width: "full", emphasis: "lead" },
+  /**
+   * 条件の帯。**見出しを付ける**（D-242）。
+   * 大きな数字で出すときは項目名が値の上に出るので見出しが無くても読めたが、
+   * 強みによって**仕様表に変わると、見出しのない表が1つ浮く**ようになった。
+   */
+  numbers: { kind: "figures", width: "full", emphasis: "lead", heading: "対応できる条件" },
   materials: { kind: "materials", width: "wide", emphasis: "normal", heading: "対応できる材質" },
   equipment: { kind: "equipment", width: "wide", emphasis: "normal", heading: "主な設備" },
   photos: { kind: "gallery", width: "full", emphasis: "normal", heading: "工場・設備" },

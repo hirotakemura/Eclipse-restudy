@@ -26,7 +26,13 @@ export interface Motion {
 export const MOTIONS: Motion[] = [
   { id: "none", label: "動かさない", note: "印刷物に近い見せ方。動きを嫌うお客様に" },
   { id: "subtle", label: "控えめ", note: "既定。スクロールで静かに現れる程度" },
-  { id: "standard", label: "標準", note: "数字が数え上がる・工程の線が伸びる。**意味のある動きだけ**" },
+  /**
+   * **「数字が数え上がる」は取り下げた**（D-240）。
+   * 我々が大きく出す値は「±0.005mm」「標準7日。急ぎの場合は最短3日」のような
+   * **文字列**で、数として数え上げられない。数えられる形に言い直すのは
+   * こちらが値を作ることになる（D-181）。**謳っていて実装が無い状態を残さない。**
+   */
+  { id: "standard", label: "標準", note: "並んだものが少しずつ遅れて現れる・工程の線が伸びる。**意味のある動きだけ**" },
 ];
 
 export const getMotion = (id: string | undefined): Motion =>
