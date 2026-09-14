@@ -214,9 +214,11 @@ export function projectHash(project: unknown): string {
  * Brief の印を取る、唯一の入口。
  *
  * **Brief 自身は数えない。** 数えると、保存するたびに印が変わって永久に一致しない。
+ * **提案（`designBriefProposal`）も数えない**（D-256）。数えると、
+ * 提案を保存した瞬間に印が変わり、**「案件データが変わりました」と嘘をつく**ことになる。
  * **生の案件データを見る。** 未確認で落とす前の状態が変われば、見せ方の前提も変わる。
  */
 export function projectHashOf(project: unknown): string {
-  const { designBrief, ...bare } = (project ?? {}) as Record<string, unknown>;
+  const { designBrief, designBriefProposal, ...bare } = (project ?? {}) as Record<string, unknown>;
   return projectHash(bare);
 }

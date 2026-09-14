@@ -14,7 +14,7 @@
 | `tool/lib/design/brief-rules.ts` | **規則版の Brief。** いま暗黙に決まっているものを、Briefという一枚の形にして見えるようにするだけ |
 | `tool/lib/design/brief-prompt.ts` | AIに渡すものの組み立て |
 | `tool/lib/design/brief-ai.ts` | **AIを呼ぶ唯一の場所。** 検査とフォールバック |
-| `tool/brief.mjs` | `npm run brief -- <ID> [--ai] [--keep]` |
+| `tool/brief.mjs` | `npm run brief -- <ID> [--ai] [--adopt] [--keep]` |
 | `tool/brief.test.mjs` | 試験55件 |
 
 ### 変えたもの
@@ -253,8 +253,10 @@ AIが「事例は引用で、技術は箇条書きで」と判断
 ## 使い方
 
 ```bash
-npm run brief -- <案件ID>              # 規則版で判断を作る
-npm run brief -- <案件ID> --ai         # AIに優先順位を判断させる
+npm run brief -- <案件ID>              # 規則版で判断を作って採用する（既定）
+npm run brief -- <案件ID> --ai         # AI版を**提案として**作る。採用はしない（D-256）
+npm run brief -- <案件ID> --adopt      # 画面を見たうえで、提案を採用する
+npm run brief -- <案件ID> --ai --adopt # AI版を作って、その場で採用する（検証用）
 npm run brief -- <案件ID> --keep       # 案件データが変わっていなければ作り直さない
 
 npm run generate -- <案件ID>            # 原稿生成（既定は規則版）

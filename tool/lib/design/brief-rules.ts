@@ -115,3 +115,36 @@ export function sameDecision(x: DesignBrief, y: DesignBrief): boolean {
       ...b.blocks.map((v) => `${v.content}:${v.presentation}:${v.emphasis}`)].join("|");
   return key(x) === key(y);
 }
+
+/**
+ * 規則版と提案を、並べて見せる（D-256）。
+ *
+ * **人が見て決めるための材料**である。4段検査は妥当性を見ていない（D-249）ので、
+ * 止める仕組みは人の目しかない。**その目が使えるように、差だけを出す。**
+ * 同じところは出さない。全部並べると、変わった行が埋もれる。
+ */
+export function describeDiff(rules: DesignBrief, ai: DesignBrief): string[] {
+  const lines: string[] = [];
+  if (rules.primaryStrength !== ai.primaryStrength) {
+    lines.push(`  最大の強み　　${rules.primaryStrength} → ${ai.primaryStrength}`);
+  }
+  if (rules.secondaryStrength !== ai.secondaryStrength) {
+    lines.push(`  2番目の強み　${rules.secondaryStrength} → ${ai.secondaryStrength}`);
+  }
+
+  const order = (b: DesignBrief) => b.blocks.map((x) => x.content).join(" → ");
+  if (order(rules) !== order(ai)) {
+    lines.push(`  出す順番　　　${order(rules)}`);
+    lines.push(`  　　　　　　→ ${order(ai)}`);
+  }
+
+  for (const r of rules.blocks) {
+    const y = ai.blocks.find((z) => z.content === r.content);
+    if (!y) continue; // 消えている場合は4段検査が先に落とす（D-204）
+    if (y.presentation === r.presentation && y.emphasis === r.emphasis) continue;
+    const quieted = r.emphasis !== "quiet" && y.emphasis === "quiet";
+    lines.push(`  ${r.content.padEnd(11)} ${r.presentation}/${r.emphasis} → ${y.presentation}/${y.emphasis}`
+      + (quieted ? "　← **目立たなくなります**" : ""));
+  }
+  return lines;
+}

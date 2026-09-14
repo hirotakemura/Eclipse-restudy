@@ -104,7 +104,8 @@ for (const [file, label] of COMPANIES) {
     const r = resolveTheme(p.theme, "manufacturing");
     rules = ruleBrief(clean, a, { hero: r.hero.id, direction: r.direction, hasProse: false });
     brief = await writeBrief(JSON.parse(fs.readFileSync(projectFile, "utf8")), projectFile, {
-      useAI: true, onProgress: (m) => console.log(`  ${label}${m}`),
+      /** **検証はAI版の画面を見るためのもの**なので、ここでは採用する（D-256の例外） */
+      useAI: true, adopt: true, onProgress: (m) => console.log(`  ${label}${m}`),
     });
   }
 
@@ -141,21 +142,35 @@ for (const r of results) {
   console.log("");
 }
 
-console.log("━━━ 情報の見せ方の重なり（1.00 = まったく同じ）━━━\n");
-let tot = 0, n = 0, same = 0;
-for (let i = 0; i < results.length; i++) {
-  for (let j = i + 1; j < results.length; j++) {
-    const A = new Set(results[i].bands.map(pairOf)), B = new Set(results[j].bands.map(pairOf));
-    const inter = [...A].filter((x) => B.has(x)).length;
-    const uni = new Set([...A, ...B]).size;
-    const s = uni ? inter / uni : 1;
-    tot += s; n++; if (s === 1) same++;
-    console.log(`  ${s.toFixed(2)}  ${results[i].label} × ${results[j].label}${s === 1 ? "　★まったく同じ" : ""}`);
+/**
+ * 会社ごとの差。**小さいほど良い**（1.00 = まったく同じ見せ方）。
+ *
+ * @param sets 会社ごとの「content:presentation」の集合
+ */
+function diversity(sets) {
+  const pairs = [];
+  for (let i = 0; i < sets.length; i++) {
+    for (let j = i + 1; j < sets.length; j++) {
+      const A = sets[i], B = sets[j];
+      const inter = [...A].filter((x) => B.has(x)).length;
+      const uni = new Set([...A, ...B]).size;
+      pairs.push({ i, j, score: uni ? inter / uni : 1 });
+    }
   }
+  const avg = pairs.reduce((t, p) => t + p.score, 0) / (pairs.length || 1);
+  return { pairs, avg, same: pairs.filter((p) => p.score === 1).length };
+}
+
+const nowSets = results.map((r) => new Set(r.bands.map(pairOf)));
+const div = diversity(nowSets);
+
+console.log("━━━ 情報の見せ方の重なり（1.00 = まったく同じ）━━━\n");
+for (const p of div.pairs) {
+  console.log(`  ${p.score.toFixed(2)}  ${results[p.i].label} × ${results[p.j].label}${p.score === 1 ? "　★まったく同じ" : ""}`);
 }
 console.log("\n━━━ まとめ ━━━");
-console.log(`  組み合わせ ${n}通り　平均 ${(tot / n).toFixed(2)}`);
-console.log(`  **まったく同じ見せ方になった組み合わせ： ${same}/${n}通り**`);
+console.log(`  組み合わせ ${div.pairs.length}通り　平均 ${div.avg.toFixed(2)}`);
+console.log(`  **まったく同じ見せ方になった組み合わせ： ${div.same}/${div.pairs.length}通り**`);
 
 // ── 基準との照合 ──────────────────────────────────
 const snapshot = Object.fromEntries(results.map((r) => [r.id, Object.fromEntries(
@@ -218,6 +233,30 @@ if (!USE_AI) {
 // ── AI ON：基準との差分 ───────────────────────────
 if (USE_AI) {
   const SOURCE = { rules: "規則版", ai: "AI版", "ai-fallback": "AI版→規則版に戻した" };
+
+  /**
+   * **会社ごとの差が、AIで縮んでいないか**（D-257）。
+   *
+   * 前回（D-248）はこれを手で計算していた。**手で計算する数字は、次回そろわない。**
+   * 実測では A×B が 0.25 → 0.43 に縮んでおり、
+   * 「AIの判断が妥当か」とは別に、**会社ごとの差が消えるほうの害**が出ていた。
+   * 基準（AI OFF）の帯から同じ式で出して、並べる。
+   */
+  const baseSets = results.map((r) =>
+    new Set((base[r.id]?.["index"]?.bands ?? []).map((b) => b.split(":").slice(0, 2).join(":"))));
+  const baseDiv = diversity(baseSets);
+  console.log("\n━━━ 会社ごとの差（小さいほど良い）━━━\n");
+  console.log(`  ${"".padEnd(34)} 規則版 → AI版`);
+  for (const p of div.pairs) {
+    const was = baseDiv.pairs.find((q) => q.i === p.i && q.j === p.j)?.score ?? NaN;
+    const d = p.score - was;
+    const mark = d > 0.001 ? "　← **縮みました**" : d < -0.001 ? "　（広がりました）" : "";
+    console.log(`  ${(results[p.i].label + " × " + results[p.j].label).padEnd(32)} ${was.toFixed(2)} → ${p.score.toFixed(2)}${mark}`);
+  }
+  const dAvg = div.avg - baseDiv.avg;
+  console.log(`  ${"平均".padEnd(34)} ${baseDiv.avg.toFixed(2)} → ${div.avg.toFixed(2)}`
+    + (dAvg > 0.001 ? "　← **AI版のほうが、会社ごとの差が小さい**" : dAvg < -0.001 ? "　← AI版のほうが差が大きい" : "　（同じ）"));
+
   console.log("\n━━━ AI OFF → AI ON で、最終HTMLの何が変わったか ━━━\n");
   let changedPages = 0, changedBands = 0;
   for (const r of results) {

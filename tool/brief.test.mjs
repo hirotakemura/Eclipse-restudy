@@ -13,11 +13,12 @@ import { analyze } from "./lib/design/analysis.ts";
 import { sanitizeProject } from "./lib/sanitize.ts";
 import { resolveTheme } from "./lib/theme.ts";
 import { composeTop, composePage, traceOf } from "./lib/design/sections.ts";
-import { ruleBrief, sameDecision } from "./lib/design/brief-rules.ts";
+import { ruleBrief, sameDecision, describeDiff } from "./lib/design/brief-rules.ts";
 import { decideBrief, checkAIResponse } from "./lib/design/brief-ai.ts";
 import { userPrompt, SYSTEM } from "./lib/design/brief-prompt.ts";
 import { usablePresentations } from "./lib/design/system/index.ts";
 import { materialsOf } from "./lib/design/materials.ts";
+import { projectHashOf } from "./lib/design/brief.ts";
 
 let ok = 0, ng = 0;
 const check = (name, cond, detail = "") => {
@@ -274,6 +275,87 @@ for (const f of FIXTURES) {
     check(`${f} / ${slug}：同じ内容が同じ形で重なっていない`,
       new Set(pairs).size === pairs.length, pairs.join(", "));
   }
+}
+
+
+/**
+ * **提案と採用を分ける**（D-256）。
+ *
+ * 4段検査は妥当性を見ていない（D-249）。実測でも、精度が強みの会社で
+ * 「精度の物証である三次元測定機を目立たなくする」という判断が検査を素通りした。
+ * **止める仕組みは人の目しかない**のだから、目を通る場所が要る。
+ * `--ai` は提案を置くだけで、`--adopt` するまでサイトには効かない。
+ */
+console.log("\n━━━ AI版は、採用するまで効かないか（D-256）━━━");
+{
+  const { writeBrief } = await import("./brief.mjs");
+  const dir = path.join("projects", "zz-brief-flow");
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+  const file = path.join(dir, "project.json");
+  const raw = JSON.parse(fs.readFileSync(path.join("fixtures", "design-diversity", "a-precision.json"), "utf8"));
+  raw.id = "zz-brief-flow";
+  fs.writeFileSync(file, JSON.stringify(raw, null, 2));
+  const read = () => JSON.parse(fs.readFileSync(file, "utf8"));
+
+  const { project, a, ctx } = setup("a-precision");
+  const rulesBrief = ruleBrief(project, a, ctx);
+  /** 実測で外した判断そのもの：**精度の物証（設備）を目立たなくする** */
+  const proposal = {
+    primaryStrength: rulesBrief.primaryStrength,
+    secondaryStrength: rulesBrief.secondaryStrength,
+    blocks: rulesBrief.blocks.map((b) => b.content === "equipment" ? { ...b, emphasis: "quiet" } : { ...b }),
+  };
+  const ask = async () => JSON.stringify(proposal);
+
+  await writeBrief(read(), file, { useAI: false, onProgress: quiet });
+  const afterRules = read();
+  check("規則版は、これまでどおりその場で採用される", afterRules.designBrief?.source === "rules");
+
+  await writeBrief(read(), file, { useAI: true, ask, onProgress: quiet });
+  const afterAI = read();
+  check("AI版は提案として別に保存される", afterAI.designBriefProposal?.source === "ai");
+  check("採用されている判断は、まだ規則版のまま", afterAI.designBrief?.source === "rules");
+  check("提案は、実際にAIが言った内容になっている",
+    afterAI.designBriefProposal.blocks.find((b) => b.content === "equipment")?.emphasis === "quiet");
+  check("提案を保存しても、画面は1文字も変わらない",
+    JSON.stringify(bands(composeTop(project, a, { ...ctx, brief: afterAI.designBrief })))
+    === JSON.stringify(bands(composeTop(project, a, ctx))));
+
+  /** **提案を保存したせいで「案件データが変わりました」と言わない** */
+  check("提案を保存しても、案件データの印は変わらない",
+    projectHashOf(afterAI) === projectHashOf(afterRules));
+  check("採用されている判断の印が、いまの案件データと合っている",
+    afterAI.designBrief.sourceProjectHash === projectHashOf(afterAI));
+
+  const returned = await writeBrief(read(), file, { useAI: true, ask, onProgress: quiet });
+  check("呼んだ側に返るのは、採用されている判断のほう", returned.source === "rules");
+
+  await writeBrief(read(), file, { adopt: true, onProgress: quiet });
+  const adopted = read();
+  check("--adopt で、提案が採用される", adopted.designBrief?.source === "ai");
+  check("採用したら、画面にも効く",
+    composeTop(project, a, { ...ctx, brief: adopted.designBrief })
+      .find((s) => s.content === "equipment")?.emphasis === "quiet");
+
+  /** **人が見たものと、採用されるものがずれない** */
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(raw, null, 2));
+  await writeBrief(read(), file, { useAI: true, ask, onProgress: quiet });
+  const stale = read();
+  stale.basics = { ...stale.basics, employees: 999 };  // 取材の追加。見せ方の前提が変わる
+  fs.writeFileSync(file, JSON.stringify(stale, null, 2));
+  await writeBrief(read(), file, { adopt: true, onProgress: quiet });
+  check("案件データが変わった後の古い提案は、採用されない", read().designBrief?.source !== "ai");
+
+  /** **差の説明が、目立たなくなる帯を指さす**（人が見る手がかり） */
+  const diff = describeDiff(rulesBrief, proposal);
+  check("規則版との差だけが出る（同じ行は出さない）", diff.length === 1, diff.join(" / "));
+  check("目立たなくなることが、はっきり書かれている",
+    diff[0].includes("equipment") && diff[0].includes("目立たなくなります"), diff[0]);
+
+  fs.rmSync(dir, { recursive: true, force: true });
 }
 
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);

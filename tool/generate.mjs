@@ -86,9 +86,13 @@ console.log(`\n${project.basics?.name ?? id} の原稿を生成します`);
    * **情報の見せ方の判断は、原稿より先に決める。**
    * AIを呼ぶのはここ（`--ai-brief` のときだけ）で、**サイトの書き出しでは呼ばない。**
    * AIが使えなければ規則版に落ちる。**止まらない。**
+   *
+   * **`--ai-brief` だけでは採用しない**（D-256）。提案として保存し、
+   * 原稿は**採用されている判断**（規則版）の構成で書く。
+   * 採用するには `--adopt` を足すか、画面を見てから `npm run brief -- <ID> --adopt`。
    */
   const brief = await writeBrief(project, file, {
-    useAI: aiBrief, keep: keepBrief, onProgress: (m) => console.log(m),
+    useAI: aiBrief, adopt: args.includes("--adopt"), keep: keepBrief, onProgress: (m) => console.log(m),
   });
   project.designBrief = brief;
 

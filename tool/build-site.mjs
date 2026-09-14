@@ -129,6 +129,14 @@ console.log(`  写真 ${photoCount}枚${unplaced ? `（うち置き場所が未�
    * **ここでAIは呼ばない。** 判断は `npm run brief` / `npm run generate` の時点で済んでいる。
    */
   const brief = project.designBrief;
+  /**
+   * **採用していない提案は、サイトに効かない**（D-256）。
+   * 黙って効かないと「AI版で建てたつもり」が起きるので、あることだけ言う。
+   */
+  if (project.designBriefProposal) {
+    console.log(`\n  （AI版の提案が保存されていますが、採用されていないので効いていません`);
+    console.log(`    採用する： npm run brief -- ${id} --adopt）`);
+  }
   const sections = composeTop(clean, analysis, { hero, direction, hasProse: drafts > 0, brief });
   const label = DIRECTIONS.find((d) => d.id === direction)?.label ?? direction;
   console.log(`\n  ── 型「${label}」で組み立てます ──`);
