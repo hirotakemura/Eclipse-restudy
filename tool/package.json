@@ -27,7 +27,8 @@
     "check:inquiry": "node check-inquiry.mjs",
     "test:contrast": "node contrast.test.mjs",
     "test": "npm run test:verify && npm run test:internal && npm run test:design && npm run test:presentation && npm run test:prompt && npm run test:brief && npm run test:inquiry && npm run test:contrast",
-    "check:api": "node check-api.mjs"
+    "check:api": "node check-api.mjs",
+    "gaps": "node gaps.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
