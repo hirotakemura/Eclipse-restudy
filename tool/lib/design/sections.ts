@@ -109,12 +109,25 @@ export interface Section {
  * 材料が無いものは `analyze()` の時点で落ちている。
  * 材料があるのに型の都合で消すのは、聞き取った意味がなくなる。
  */
+/**
+ * 型の好みを、見立ての点数に足し引きする。
+ *
+ * **型は「好み」であって、会社の材料を追い越すものではない**（D-282）。
+ *
+ * もとは ±3 だった。汎用の3社（士業・美容室・工務店）を同じ型で並べたところ、
+ * **3社とも先頭の帯が同じ**になった。見立ての点は 2〜6 の幅しかないので、
+ * **±3 はほとんどどの組も逆転させてしまう。**「型を選んだら毎回同じページ」（ご指示§5）
+ * の、いちばん分かりやすい形である。
+ *
+ * ±2 にすると、**大きく離れた組は動かず、僅差の組だけが入れ替わる。**
+ * 製造業3社の基準HTMLは1ページも変わらなかった（点差がもともと大きいため）。
+ */
 function applyDirection(strands: Strand[], directionId: string | undefined): Strand[] {
   const d = getDirection(directionId);
   return strands
     .map((s) => {
-      if (d.favor.includes(s.id)) return { ...s, score: s.score + 3, why: `${s.why}／型「${d.label}」で前に出す` };
-      if (d.defer.includes(s.id)) return { ...s, score: Math.max(1, s.score - 3), why: `${s.why}／型「${d.label}」では後ろに回す` };
+      if (d.favor.includes(s.id)) return { ...s, score: s.score + 2, why: `${s.why}／型「${d.label}」で前に出す` };
+      if (d.defer.includes(s.id)) return { ...s, score: Math.max(1, s.score - 2), why: `${s.why}／型「${d.label}」では後ろに回す` };
       return s;
     })
     .sort((a, b) => b.score - a.score);

@@ -182,10 +182,21 @@ export function analyze(project: Project): Analysis {
       score: isGeneral && text(st.praiseFromClients) ? 5 : 0,
       why: "お客様の言葉を聞き取れている",
     },
+    /**
+     * **汎用では、この帯の中身は「選ばれている理由」である**（D-281）。
+     *
+     * `Present.astro` は前から中身を出し分けていた（汎用は `general.reasonChosen`）のに、
+     * **点は製造業の欄（`wonAfterOthersDeclined`）で付けていた。**
+     * その結果、**選ばれている理由を聞き取れている会社でも、帯が出ない**ことがあった
+     * （検証用の美容室で実測。`reason` が最大の強みなのに、その帯が画面に無い）。
+     * 見出しだけ直して中身を直さなかった D-276 と、**同じ形の見落とし**である。
+     */
     {
       id: "declined",
-      score: (text(st.wonAfterOthersDeclined) ? 3 : 0) + (text(st.workOthersAvoid) ? 1 : 0) + (text(st.hardestJob) ? 1 : 0),
-      why: "他社様で断られた案件を受けた記録がある",
+      score: isGeneral
+        ? (text(p.general?.reasonChosen) ? 3 : 0) + (text(st.wonAfterOthersDeclined) ? 2 : 0)
+        : (text(st.wonAfterOthersDeclined) ? 3 : 0) + (text(st.workOthersAvoid) ? 1 : 0) + (text(st.hardestJob) ? 1 : 0),
+      why: isGeneral ? "選ばれている理由を聞き取れている" : "他社様で断られた案件を受けた記録がある",
     },
     {
       id: "technique",
@@ -322,21 +333,54 @@ export function analyze(project: Project): Analysis {
    * ここで分ける。**製造業の判定は1行も通らない**（`else` の中でそのまま）。
    */
   if (isGeneral) {
+    /**
+     * **「持っているか」ではなく「どれだけ強いか」で点を付ける**（D-280）。
+     *
+     * 最初は「取り扱いが3件以上なら5点」と書いた。ところが汎用の取り扱いは
+     * **必須項目**なので、**まともに取材できた会社は全部満点**になる。
+     * 検証用に作った3社（士業・美容室・工務店）が、**3社とも同じ主役**になった。
+     * 全社が持っているものを強みの根拠にすると、差は出ない。
+     *
+     * 製造業の側は最初からこうなっている（「点数はその主張の根拠がどれだけ強いか」）。
+     * **汎用だけ「あるか無いか」で付けていた。**
+     */
     const g = p.general ?? {};
-    const priced = offerings.filter((o: any) => text(o?.price));
-    add("offering", offerings.length >= 3 ? 5 : offerings.length ? 3 : 0,
-      "取り扱っているものを聞き取れている");
-    add("price", priced.length >= 3 ? 4 : priced.length >= 2 ? 3 : 0,
-      "料金の目安を出せる");
-    add("reason", text(g.reasonChosen) ? 5 : 0,
-      "選ばれている理由を言語化できている");
-    add("voice", text(st.praiseFromClients) ? 4 : 0,
-      "お客様の言葉を聞き取れている");
-    add("record", len(p.cases) >= 3 ? 4 : len(p.cases) >= 1 ? 3 : 0,
-      "実績を聞き取れている");
+    /** 具体的な金額（数字を含む）。「応相談」は料金を出していることにならない */
+    const priced = offerings.filter((o: any) => /\d/.test(text(o?.price)));
+    const reason = text(g.reasonChosen);
+    /** 結果に数字のある事例。**数字の無い事例は実績の根拠として弱い**（D-172） */
+    const proven = arr(p.cases).filter((c: any) => /\d/.test(text(c?.result)));
+
+    /**
+     * **上限に差を付ける。** どれも「あれば良いこと」だが、
+     * **選ばれる理由になりうる強さは同じではない。**
+     *   選ばれている理由・数字で言える実績 … 5（それ自体が差別化）
+     *   料金・幅・お客様の言葉　　　　　　 … 4（あると強いが、同業も持っている）
+     * 製造業の側も同じ考え方で、`equipment` は最大4、`precision` は5 にしてある。
+     */
+    // 取り扱いの**幅**そのものが売りになるのは、数が多いとき
+    add("offering", offerings.length >= 5 ? 4 : offerings.length >= 3 ? 3 : offerings.length ? 2 : 0,
+      "取り扱いの幅がある");
+    // **全件に金額が入っていて初めて「料金が分かる会社」になる。** 半分が応相談では選べない
+    add("price",
+      offerings.length && priced.length === offerings.length ? 4
+        : priced.length >= Math.ceil(offerings.length / 2) ? 2 : 0,
+      "料金の目安を全件で出せる");
+    // **短く言い切れている理由は、そのまま引用として画面に出せる**
+    add("reason", reason ? (reason.length <= 60 ? 5 : 3) : 0,
+      "選ばれている理由を、短く言い切れている");
+    add("voice", /[「『][^」』]{4,}[」』]/.test(text(st.praiseFromClients)) ? 4 : text(st.praiseFromClients) ? 2 : 0,
+      "お客様の言葉を、言われたまま聞き取れている");
+    add("record", proven.length >= 2 ? 5 : proven.length >= 1 ? 3 : len(p.cases) ? 2 : 0,
+      "結果まで数字で言える実績がある");
     add("person",
-      (text(p.executive?.vision) ? 2 : 0) + (photos.some((x: any) => x?.category === "代表者") ? 2 : 0),
-      "代表の言葉と写真がある");
+      (text(p.executive?.vision) ? 2 : 0)
+      + (photos.some((x: any) => x?.category === "代表者") ? 2 : 0)
+      + (len(basics.history) >= 3 ? 1 : 0) + (text(basics.generation) ? 1 : 0),
+      "代表の言葉・写真・受け継いだ年月がある");
+    // ↑ 最大6点になりうるが、**5を超えさせない**（人だけで他を押しのけない）
+    const person = candidates.find((c) => c.id === "person");
+    if (person) person.score = Math.min(person.score, 5);
     add("history", text(basics.founded) && len(basics.history) >= 3 ? 3 : 0,
       "創業年と沿革3件以上を聞き取れている");
   } else {

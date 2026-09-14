@@ -29,7 +29,8 @@
     "test": "npm run test:verify && npm run test:internal && npm run test:design && npm run test:presentation && npm run test:prompt && npm run test:brief && npm run test:inquiry && npm run test:visual && npm run test:contrast",
     "check:api": "node check-api.mjs",
     "gaps": "node gaps.mjs",
-    "test:visual": "node visual.test.mjs"
+    "test:visual": "node visual.test.mjs",
+    "qa:visual": "node qa-visual.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

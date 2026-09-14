@@ -1,7 +1,7 @@
 {
   "a-precision": {
     "index": {
-      "hash": "f70e6e93b916",
+      "hash": "937597dea651",
       "bands": [
         "conditions:spec:lead",
         "cases:process:normal",
@@ -56,7 +56,7 @@
       ]
     },
     "capability/index": {
-      "hash": "6b82e6fed1fe",
+      "hash": "f4ad9ea31e19",
       "bands": [
         "conditions:list:normal",
         "materials:chips:normal",
@@ -99,7 +99,7 @@
       ]
     },
     "equipment/index": {
-      "hash": "03c8331d7033",
+      "hash": "c5c1cc2aa087",
       "bands": [
         "equipment:cardGrid:lead",
         "equipment:spec:quiet",

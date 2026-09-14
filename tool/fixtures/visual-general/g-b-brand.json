@@ -1,0 +1,65 @@
+{
+  "formSet": "general",
+  "photos": [],
+  "basics": {
+    "name": "【検証G-B】ヘアサロン コトノハ",
+    "representative": "田中 里奈",
+    "founded": "2018年",
+    "employees": 3,
+    "businessSummary": "完全予約制の美容室。1日6名まで。担当は最初から最後まで代わらない。",
+    "tel": "093-000-0002",
+    "address": "北九州市小倉北区船場町",
+    "receptionHours": "火〜土 10:00〜19:00（完全予約制）"
+  },
+  "inquiry": {
+    "goals": [
+      "集客"
+    ],
+    "monthlyInquiries": "月3〜5件"
+  },
+  "terms": {
+    "ngItems": [],
+    "inquiryNotifyEmail": "info@example.com"
+  },
+  "general": {
+    "serviceArea": "北九州市小倉北区。駐車場2台。",
+    "idealCustomer": "髪質や広がりに長く悩んでいて、毎回同じ人に見てほしい方。",
+    "reasonChosen": "「今日どうしますか」から始めないこと。前回どう過ごしたかを聞いてから鋏を入れる。",
+    "offerings": [
+      {
+        "name": "カット",
+        "detail": "シャンプー・ブロー込み。骨格と生えぐせを見てから決める。",
+        "price": "6,600円"
+      },
+      {
+        "name": "カット＋カラー",
+        "detail": "白髪ぼかしを含む。薬剤は履歴を見て毎回変える。",
+        "price": "14,300円〜"
+      },
+      {
+        "name": "縮毛矯正",
+        "detail": "全体または前髪のみ。毛先の状態によっては断ることがある。",
+        "price": "応相談（毛先の状態を見てから）"
+      }
+    ]
+  },
+  "strengths": {
+    "praiseFromClients": "「引っ越してからも通っている」と言われる。",
+    "followUpFindings": "【履歴を残す】施術ごとに薬剤と放置時間を記録している。前回との差が分かるので、季節や体調の影響を切り分けられる。"
+  },
+  "cases": [
+    {
+      "title": "広がりを抑えたいが、縮毛矯正は避けたいという相談",
+      "clientIndustry": "40代・女性",
+      "challenge": "矯正をかけると不自然になるのが嫌だが、雨の日に広がるのがつらい。",
+      "solution": "矯正はかけず、毛量調整の位置を変えた。乾かし方も、その方の髪質に合わせて手順を書いて渡した。",
+      "result": "半年後も同じ形を保てている。"
+    }
+  ],
+  "theme": {
+    "palette": "enji",
+    "font": "mincho",
+    "mood": "yawaraka",
+    "direction": "luxury"
+  }
+}

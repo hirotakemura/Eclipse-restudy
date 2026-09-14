@@ -67,8 +67,16 @@ export const PEAKS: Peak[] = [
     contents: ["declined", "praise", "executive", "technique"], presentations: ["quote", "prose", "longform"], needsPhoto: false, role: "statement" },
   { id: "process", label: "工程を大きく", note: "課題→工程→結果を、カードではなく縦の流れとして見せる",
     contents: ["cases", "technique"], presentations: ["process"], needsPhoto: false, role: "display" },
-  { id: "spec", label: "条件を壁に", note: "条件表を、表ではなく画面を占める構成物として見せる",
-    contents: ["conditions", "equipment", "materials"], presentations: ["spec", "cardGrid", "chips"], needsPhoto: false, role: "sectionTitle" },
+  /**
+   * **見出しが大きくならなければ、山にならない**（D-284）。
+   * 最初は `sectionTitle`（ほかの帯と同じ）にしていたため、**見た目が山に立たなかった。**
+   * 見た目の検査で「文字の段が2段しかない」と出て気づいた。
+   * 値の山（`number`）は値のほうを大きくするので見出しは据え置きでよいが、
+   * **表の山は、表そのものを大きくはできない。** 見出しが強さを引き受ける。
+   */
+  { id: "spec", label: "条件を壁に", note: "条件表・料金表を、表ではなく画面を占める構成物として見せる",
+    // **汎用の料金表もここ**（D-283）。料金が全件そろっている会社では、それが山になる
+    contents: ["conditions", "equipment", "materials", "offerings"], presentations: ["spec", "cardGrid", "chips"], needsPhoto: false, role: "statement" },
   { id: "image", label: "写真を全幅", note: "写真を画面いっぱいに。**実写があるときだけ**",
     contents: ["photos", "cases", "equipment"], presentations: ["fullWidth", "cardGrid"], needsPhoto: true, role: "display" },
 ];
