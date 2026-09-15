@@ -125,9 +125,31 @@ export const getTypeRole = (id: string | undefined): TypeRole =>
 export const sizeAt = (role: TypeRole, viewport: number): number =>
   Math.round(Math.min(Math.max(role.min, (role.vw * viewport) / 100), role.max));
 
-/** `clamp()` の文字列。CSS変数に流し込む形（Phase 4 で使う） */
-export const clampOf = (role: TypeRole): string =>
-  `clamp(${role.min}px, ${role.vw}vw, ${role.max}px)`;
+/**
+ * `clamp()` の文字列。CSS変数に流し込む形（Phase 4 で使う）。
+ *
+ * **第2引数は「段の強さ」**（第7段階⑥・D-360）。
+ *
+ * 【なぜ要るか・実測】
+ * 型は15あるのに、**見出しの大きさは15方向とも同じ数字**だった。
+ * 変わるのは色・書体・飾り・余白だけで、**文字の段だけは一度も型を見ていない。**
+ * 1280pxで帯の見出し÷本文は 1.96倍（本文17pxの12方向）／1.85倍（18pxの3方向）で、
+ * **大きい文字を選んだ型のほうが、むしろ段差が浅い**という裏返しまで起きていた。
+ *
+ * 【かける先は見出しだけ】
+ * `head` の役割（山・最初の見出し・値・一言・帯の見出し）にだけかける。
+ * 本文・引用・導入・説明・項目名は動かさない。**全部大きくするのは「強さ」ではない。**
+ *
+ * 【`min` は動かさない】
+ * `min` はスマホでの実寸である。スマホの段はもう詰まっていて、
+ * ここを動かすと山と帯の見出しがぶつかる（D-348）。**変えるのは PC 側だけ。**
+ */
+export const clampOf = (role: TypeRole, scale = 1): string => {
+  const k = role.head ? scale : 1;
+  const vw = Math.round(role.vw * k * 100) / 100;
+  const max = Math.round(role.max * k);
+  return `clamp(${role.min}px, ${vw}vw, ${max}px)`;
+};
 
 /**
  * **文字数が上限を越えたら、一段下の役割に落とす。**

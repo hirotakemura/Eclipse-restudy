@@ -139,6 +139,11 @@ export interface Mood {
   lineWidth: string;
   /** 章と章のあいだ */
   section: string;
+  /**
+   * **段の強さ**（第7段階⑥）。見出しの役割（`head`）の `vw` と上限にかかる倍率。
+   * スマホの実寸（`min`）には**かけない**（D-348）。
+   */
+  typeScale: number;
 }
 
 export const MOODS: Mood[] = [
@@ -152,9 +157,19 @@ export const MOODS: Mood[] = [
    * 余白は中身に見合う分だけ取る。
    * スマホでは別に詰めている（site.css の `@media (width<=720px)`）。
    */
-  { id: "katai", label: "かたい", note: "角ばる・線が太い。図面や仕様書に近い印象", radius: "0px", leading: "1.75", tracking: "0.01em", lineWidth: "2px", section: "60px" },
-  { id: "futsu", label: "標準", note: "既定。かたすぎず、やわらかすぎず", radius: "8px", leading: "1.85", tracking: "0.01em", lineWidth: "1px", section: "72px" },
-  { id: "yawaraka", label: "やわらかい", note: "角丸・線が薄い・行間広め。個人のお客様向けに", radius: "16px", leading: "2.0", tracking: "0.02em", lineWidth: "1px", section: "88px" },
+  /**
+   * **`typeScale` は「段の強さ」**（第7段階⑥・D-360）。見出しの役割にだけかかる。
+   *
+   * **余白の強さは、もうここにある**（`section` 60/72/88）。だから新しい軸は作らない。
+   * 足すのは文字の側だけで、しかも**余白と逆向き**にする——
+   * **強さは、文字か余白のどちらかで出す。両方を同時に上げると、ただ大きいだけになる。**
+   *   かたい　　… 余白は狭い（60px）。**文字で締める**（1.12）
+   *   標準　　　… いまのまま（1.0）
+   *   やわらかい… 余白は広い（88px）。**文字は張らない**（0.92）
+   */
+  { id: "katai", label: "かたい", note: "角ばる・線が太い。図面や仕様書に近い印象", radius: "0px", leading: "1.75", tracking: "0.01em", lineWidth: "2px", section: "60px", typeScale: 1.12 },
+  { id: "futsu", label: "標準", note: "既定。かたすぎず、やわらかすぎず", radius: "8px", leading: "1.85", tracking: "0.01em", lineWidth: "1px", section: "72px", typeScale: 1 },
+  { id: "yawaraka", label: "やわらかい", note: "角丸・線が薄い・行間広め。個人のお客様向けに", radius: "16px", leading: "2.0", tracking: "0.02em", lineWidth: "1px", section: "88px", typeScale: 0.92 },
 ];
 
 export interface Choice {
@@ -410,7 +425,7 @@ export function themeVars(theme: Partial<Theme> | undefined): string {
      * `TYPE_ROLES` を単一の正にして、ここで `--t-<役割>` として流し込む。
      * 語彙を直せば画面が変わり、画面を直したければ語彙を直す、の一方通行にする。
      */
-    ...TYPE_ROLES.map((r) => `--t-${r.id}:${clampOf(r)}`),
+    ...TYPE_ROLES.map((r) => `--t-${r.id}:${clampOf(r, m.typeScale)}`),
     ...TYPE_ROLES.map((r) => `--tw-${r.id}:${r.weight}`),
     ...TYPE_ROLES.map((r) => `--tl-${r.id}:${r.leading}`),
     ...TYPE_ROLES.map((r) => `--tt-${r.id}:${r.tracking}`),

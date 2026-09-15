@@ -424,6 +424,40 @@ console.log("\n━━━ 文字の値が、語彙から画面へ届いている�
   for (const r of TYPE_ROLES) {
     check(`--t-${r.id} が出ている`, vars.includes(`--t-${r.id}:${clampOf(r)}`));
   }
+  /**
+   * ── 段の強さ（第7段階⑥・D-360）────────────────
+   * **型は15あるのに、見出しの大きさは15方向とも同じ数字だった。**
+   * ここで見るのは4つ。
+   *   ① 見出しにだけかかっていること（本文まで大きくするのは「強さ」ではない）
+   *   ② スマホの実寸（`min`）が動いていないこと（D-348）
+   *   ③ 3つの段が本当に別の値になること
+   *   ④ **余白と逆向き**であること（強さは文字か余白のどちらかで出す）
+   */
+  {
+    const { MOODS } = await import("./lib/theme.ts");
+    const vs = Object.fromEntries(MOODS.map((m) => [m.id, themeVars({ palette: "ai", font: "gothic", mood: m.id })]));
+    const of = (id, role) => (new RegExp(`--t-${role}:clamp\\(([^)]*)\\)`).exec(vs[id]) ?? [])[1] ?? "";
+    for (const r of TYPE_ROLES.filter((x) => !x.head)) {
+      check(`「${r.label}」は段の強さで動かない（見出しではない）`,
+        new Set(MOODS.map((m) => of(m.id, r.id))).size === 1, MOODS.map((m) => of(m.id, r.id)).join(" / "));
+    }
+    for (const r of TYPE_ROLES.filter((x) => x.head)) {
+      check(`「${r.label}」のスマホの実寸は動かない（D-348）`,
+        MOODS.every((m) => of(m.id, r.id).startsWith(`${r.min}px,`)), MOODS.map((m) => of(m.id, r.id)).join(" / "));
+    }
+    const vw = (id) => Number(/([\d.]+)vw/.exec(of(id, "sectionTitle"))[1]);
+    check("3つの段が、別の大きさになっている",
+      new Set(MOODS.map((m) => vw(m.id))).size === MOODS.length,
+      MOODS.map((m) => `${m.label} ${vw(m.id)}vw`).join(" / "));
+    /** 余白（`section`）が広い型ほど、文字は張らない */
+    const px = (s2) => Number(/(\d+)/.exec(s2)[1]);
+    const pairs = MOODS.map((m) => ({ label: m.label, sec: px(m.section), vw: vw(m.id) }))
+      .sort((a, b) => a.sec - b.sec);
+    check("余白が広い型ほど、見出しは張らない（強さは文字か余白のどちらかで出す）",
+      pairs.every((x, i) => i === 0 || x.vw < pairs[i - 1].vw),
+      pairs.map((x) => `${x.label} 余白${x.sec}px/見出し${x.vw}vw`).join(" / "));
+  }
+
   /** **CSSに数字を書き写していないこと。** 書き写すと語彙と画面がずれる（D-197） */
   const css = fs.readFileSync("site-template/src/styles/site.css", "utf8");
   const tail = css.slice(css.indexOf("ページ全体のリズムと山"));
