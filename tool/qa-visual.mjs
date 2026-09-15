@@ -34,7 +34,23 @@ const COMPANIES = [
   ["qv-g-b", "汎用B ブランド型", path.join("fixtures", "visual-general", "g-b-brand.json")],
   ["qv-g-c", "汎用C 人・店舗型", path.join("fixtures", "visual-general", "g-c-people.json")],
 ];
-const PAGES = ["index", "strengths/index"];
+/**
+ * **13ページ全部を見る**（D-300）。
+ *
+ * ここは長いあいだ `index` と `strengths` の2ページしか測っていなかった。
+ * 実案件（松原精機）を通して初めて分かったのは、
+ * **13ページのうち9ページに帯が1本も無い**ということである。
+ * 加工事例・会社概要・代表挨拶・採用・問い合わせは、
+ * 帯（`composeVisual`）を通らない素のページなので、
+ * 山も・余白の変化も・組み方の変化も**構造として存在しない。**
+ *
+ * 2ページしか測らなければ、**その9ページは永久に緑のまま**である。
+ * 測っていないものは、無いのと同じ（D-192）。
+ */
+const PAGES = ["index", "strengths/index", "capability/index", "equipment/index",
+  "cases/index", "cases/1/index", "company/index", "message/index", "recruit/index", "contact/index"];
+/** 帯で組まれているページ。ここだけが `composeVisual` を通る */
+const BAND_PAGES = new Set(["index", "strengths/index", "capability/index", "equipment/index"]);
 
 /**
  * **写真は「足すもの」であって、骨格ではない**（D-099・ご指示§10）。
@@ -149,6 +165,34 @@ console.log("  " + "".padEnd(26) + results.map((r) => {
   if (n >= 3) ng++;
   return `${n >= 3 ? "✗" : "○"} ${n}箇所`.padEnd(15);
 }).join(""));
+
+/**
+ * ── ページごとに、見た目の仕組みが効いているか（D-300）───────
+ *
+ * ご指示§11は「**各ページに** Visual Peak」である。**各ページ、と書いてある。**
+ * いま効いているのは4ページで、残り9ページは素のままなので、ここに出す。
+ * **出さなければ、出来ていないことに気づけない。**
+ */
+console.log("\n━━━ ページごとに、見た目の仕組みが効いているか ━━━\n");
+{
+  const r0 = results[0];
+  const rows = PAGES.map((page) => {
+    const b = r0.pages[page]?.bands ?? [];
+    return { page, n: b.length, peak: b.some((x) => x.peak),
+      steps: new Set(b.map((x) => headingPx(x, 1440))).size + 1 };
+  }).filter((x) => r0.pages[x.page]);
+  for (const x of rows) {
+    const on = BAND_PAGES.has(x.page);
+    console.log(`  ${x.page.padEnd(18)}${on ? "○ 帯で組まれている" : "✗ 帯で組まれていない"}　帯 ${String(x.n).padStart(2)}本　山 ${x.peak ? "あり" : "なし"}　文字の段 ${x.steps}`);
+  }
+  const off = rows.filter((x) => !BAND_PAGES.has(x.page));
+  if (off.length) {
+    ng++;
+    console.log(`\n  ✗ **${off.length}ページが、山も余白の変化も持っていません。**`);
+    console.log(`     ご指示§11は「各ページに Visual Peak」です。いまは ${rows.length - off.length}/${rows.length} ページだけです。`);
+    console.log(`     とくに **加工事例（cases）は、我々の見立てで最も問い合わせに繋がるページ**です。`);
+  }
+}
 
 console.log("\n  公開判定");
 console.log("  " + "".padEnd(26) + results.map((r) => `${r.publishable ? "○ 公開可" : "△ 公開不可"}`.padEnd(15)).join(""));

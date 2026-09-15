@@ -155,6 +155,27 @@ console.log("\n━━━ 語彙が、画面に接続されているか ━━━
     /data-density=/.test(band) && /data-peak=/.test(band) && /data-role=/.test(band));
   /** **山が無い帯には、印を付けない**（HTMLを無駄に太らせない） */
   check("山でない帯には data-peak を出さない", /peak !== "none" \? peak : undefined/.test(band));
+
+  /**
+   * **語彙の倍率と、CSSの倍率が同じか**（D-299）。
+   *
+   * Visual QA は `density.ts` から余白を計算し、お客様が見るのは `site.css` である。
+   * **この2つがずれると、検査は緑のまま画面だけが壊れる。**
+   * D-295（圧縮に畳まれて動きが死んでいた）と同じ形の事故で、
+   * 「書いたものが出荷されていない」に気づけない。**だから突き合わせる。**
+   *
+   * site.css 自身の注記が「CSSに数字を書き写さない（D-197）」と言っているのに、
+   * ここだけ手で書き写されていた。写すなら、**写し間違いを機械で捕まえる。**
+   */
+  const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, "");
+  /** スマホの上書きは後ろにあるので、**最初の1件がPCの指定**である */
+  const bare = strip(css);
+  for (const d of DENSITIES) {
+    const m = new RegExp(`\\.band\\[data-density="${d.id}"\\]\\s*\\{[^}]*padding:\\s*([^;]+);`).exec(bare);
+    const want = d.scale === 1 ? "var(--section)" : `calc(var(--section) * ${d.scale})`;
+    check(`余白「${d.id}」の倍率が、語彙とCSSで同じ（${d.scale}倍）`,
+      !!m && m[1].replace(/\s+/g, " ").trim() === `${want} 0`, m ? m[1].trim() : "CSSに指定が無い");
+  }
 }
 
 

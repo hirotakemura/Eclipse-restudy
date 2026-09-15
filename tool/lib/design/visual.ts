@@ -29,7 +29,7 @@ import type { Section } from "./sections.ts";
 import { getDirection } from "./direction.ts";
 import { materialsOf } from "./materials.ts";
 import {
-  PEAKS, canPeak, getPeak, type PeakId,
+  PEAKS, canPeak, getPeak, type PeakId, type Materials,
   type DensityId, type LayoutId, type TypeRoleId,
   fit, getTypeRole,
 } from "./system/index.ts";
@@ -85,6 +85,35 @@ function peakFor(sec: Section, project: Project, a: Analysis, tone: string): Pea
 }
 
 /**
+ * **その山が、画面を占めるだけの中身を持っているか**（D-298）。
+ *
+ * 実案件（松原精機・第1回取材まで）の設備ページで初めて出た壊れ方である。
+ * 4行しかない表に「条件を壁に」の山が立ち、`vast` の余白がついた。
+ * 実測：表の高さ約300px に対し、上下の余白が合計約420px。
+ * **中身より余白のほうが大きい。** 画面には、ほぼ何も無い。
+ *
+ * 山が大きいのは、**中身が大きいから**でなければならない。
+ * 余白で大きく見せようとすると、**中身が薄いことが大きく見える。**
+ *
+ * ここを通らなかった山は、**山であることはやめない。**
+ * 見出しは大きいまま（`role` は山のもの）で、余白だけ `loose` に落とす。
+ * 山を取り消すと、そのページから山が消える。**消すべきは余白であって、山ではない。**
+ */
+function peakFillsScreen(id: PeakId, m: Materials): boolean {
+  switch (id) {
+    /** 大きな数字と全幅の写真は、**それ自体が画面を占める** */
+    case "number": case "image": return true;
+    /** 表は行数がそのまま高さになる。壁と言えるのは6行から */
+    case "spec": return (m.rows ?? m.count) >= 6;
+    /** 工程は段数。3段あって初めて流れに見える */
+    case "process": return (m.steps ?? 0) >= 3;
+    /** 一言は文字数。40字に満たないものを画面いっぱいにしても、余白しか増えない */
+    case "statement": return m.length >= 40;
+    default: return false;
+  }
+}
+
+/**
  * ページ全体の見せ方を決める。**帯の数も順番も変えない。**
  *
  * 変えるのは「どれくらいの余白で」「どの組み方で」「どの大きさの文字で」だけ。
@@ -116,8 +145,11 @@ export function composeVisual(
   }
 
   // ── ② 余白 ─────────────────────────────────────
+  /** **余白は、山の中身が稼いだときだけ広げる**（D-298） */
+  const peakVast = peakAt >= 0
+    && peakFillsScreen(peakId, materialsOf(project, body[peakAt]!.content, a.hasRealPhotos));
   const density: DensityId[] = body.map((s, i) => {
-    if (i === peakAt) return "vast";
+    if (i === peakAt) return peakVast ? "vast" : "loose";
     if (s.emphasis === "quiet") return "tight";
     return SCANNED.has(s.presentation) ? "normal" : "loose";
   });

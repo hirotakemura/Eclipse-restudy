@@ -24,6 +24,25 @@
  *
  * つまり絞るのではなく、**上にも下にも、振れ幅を標準（1.0）へ寄せる**が正しい。
  * 小さい画面では、余白は**差が分かる程度**でよい。
+ *
+ * 【倍率を下げた・実案件で測って】（D-299）
+ * 最初は loose 1.5 ／ vast 2.4 にしていた。**実案件（松原精機）で測って下げた。**
+ *
+ *   山の帯　　余白 合計422px ／ 中身 417px　←　**余白のほうが大きい**
+ *   帯と帯の間　最大 343px（vast の下 211 ＋ 次の帯の上 132）
+ *   PCで「余白＞中身」の帯が 8本
+ *
+ * 倍率は帯1本ごとに掛かるが、**読む人が見るのは隣り合う2本の合計**である。
+ * そこを見ていなかった。1.5倍のつもりが、画面では 264px の空白になっていた。
+ *
+ * これは D-239 で一度出した結論（「余白は中身に見合う分だけ取る。
+ * 我々の帯は中身が薄いので、上げすぎると間延びする」）を、
+ * **Phase 4 が測らずに踏み直したもの**である。だから戻す。
+ *
+ *   tight 0.6 ／ normal 1.0 ／ loose 1.2 ／ vast 1.6
+ *
+ * 4段の差は残る（88pxなら 53 / 88 / 106 / 141）。**リズムは消していない。**
+ * `normal` は D-239 が画面を見て決めた値なので、**動かさない。**
  */
 
 export type DensityId = "tight" | "normal" | "loose" | "vast";
@@ -41,12 +60,12 @@ export interface Density {
 export const DENSITIES: Density[] = [
   { id: "tight",  label: "詰める", note: "補助の帯。前の帯に続けて読ませる", scale: 0.6, mobileScale: 0.7 },
   { id: "normal", label: "標準",   note: "既定。いまの見え方と同じ",       scale: 1.0, mobileScale: 1.0 },
-  { id: "loose",  label: "ゆるめる", note: "読ませる帯。文章が主役のとき",   scale: 1.5, mobileScale: 1.15 },
+  { id: "loose",  label: "ゆるめる", note: "読ませる帯。文章が主役のとき",   scale: 1.2, mobileScale: 1.15 },
   /**
    * **余白そのものを見せる。** 山の前後に置く。
    * 1ページに1〜2回まで。連続して使うと、ただ長いページになる。
    */
-  { id: "vast",   label: "大きく空ける", note: "山の前後。**1ページに1〜2回まで**", scale: 2.4, mobileScale: 1.4 },
+  { id: "vast",   label: "大きく空ける", note: "山の前後。**1ページに1〜2回まで**", scale: 1.6, mobileScale: 1.4 },
 ];
 
 export const getDensity = (id: string | undefined): Density =>

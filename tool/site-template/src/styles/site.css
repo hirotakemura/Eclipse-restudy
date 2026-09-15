@@ -913,11 +913,14 @@ html[data-hero="motif"] .hero {
    **CSSに数字を書き写さない。** 書き写すと語彙と画面がずれる（D-197）。
    ══════════════════════════════════════════════════════════ */
 
-/* ── 余白（読む速度の指示）───────────────────── */
+/* ── 余白（読む速度の指示）─────────────────────
+   **ここの倍率は density.ts と一致していなければならない。**
+   語彙（density.ts）から計算する Visual QA と、画面（このCSS）がずれると、
+   **検査は緑のまま画面だけが壊れる。** `test:visual` が突き合わせている。 */
 .band[data-density="tight"] { padding: calc(var(--section) * 0.6) 0; }
 .band[data-density="normal"] { padding: var(--section) 0; }
-.band[data-density="loose"] { padding: calc(var(--section) * 1.5) 0; }
-.band[data-density="vast"] { padding: calc(var(--section) * 2.4) 0; }
+.band[data-density="loose"] { padding: calc(var(--section) * 1.2) 0; }
+.band[data-density="vast"] { padding: calc(var(--section) * 1.6) 0; }
 
 /* ── 見出しの文字（語彙の段をそのまま使う）───── */
 .band[data-role] > .inner > h2 {
