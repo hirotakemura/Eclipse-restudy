@@ -112,8 +112,22 @@ export const LIBRARY: LibraryAsset[] = [
     intent: "atmosphere",
     role: "background",
     subject: "texture",
-    /** 落ち着き・読み物・静かな型。**紙の上の文章**という見立てに合う型だけ */
-    directions: ["classic", "editorial", "luxury"],
+    /**
+     * **紙の地を使わない型で、素材の目を求めている型だけ。**
+     *
+     * ここが「graphic で満たせるなら library に行かない」の、表の側の現れである。
+     * 老舗（craft）と落ち着き（classic）も `texture` を求めているが、
+     * **その2つは帯の地そのものが紙（`surface="paper"`）**なので、
+     * 実測すると**空いている帯が必ず紙の帯の隣**になり、ここまで降りてこない。
+     * つまり**すでにCSSが紙の目を出している。** 足すと二重になる。
+     *
+     * `product`（製品・開発）は `texture` を挙げているのに、**構成が紙の地を使わない。**
+     * 沿革・素材の帯（内容そのものが「素材の目」を求める帯）が
+     * 無地の上に置かれるので、**CSSでは出せない紙の目が、そこで初めて要る。**
+     * 読み物（editorial）と静か（luxury）も同じ理由で挙げてあるが、
+     * 実測では空いた帯が出ていない——**出番が無いのが正しい状態**である。
+     */
+    directions: ["product", "classic", "editorial", "luxury"],
     license: {
       holder: "KOBO",
       terms: "自社制作・自社保有。商用可・改変可・クレジット不要",

@@ -380,6 +380,26 @@ console.log("\n━━━ 装飾の描き方（site.css）━━━");
     !!alt && /:is\(:not\(\.band\),\s*\.band\[data-surface="plain"\]\)/.test(alt[1]),
     alt ? `条件 → ${alt[1].trim() || "（無し）"}` : "縞の指定が見当たりません");
 
+  /**
+   * **白抜きの帯の中の表**（D-329）。
+   *
+   * D-310 と同じ形の事故が、章の区切りではなく**表**で起きていた。
+   * 実測で 18マス中14マスが 1.10〜1.16:1（白い文字と白い地）。
+   * **縞と見出し列の指定が、暗い地の指定より強い。**
+   */
+  {
+    const table = [...bare.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .map((m) => ({ sel: m[1].trim(), body: m[2].trim() }))
+      .filter((r) => /data-surface="dark"/.test(r.sel) && /\b(th|td|tr)\b/.test(r.sel) && /background/.test(r.body));
+    check("白抜きの帯の中では、表の地も白に倒している",
+      table.length >= 2 && table.every((r) => /rgba\(255,\s*255,\s*255/.test(r.body)),
+      table.map((r) => r.body).join(" | ") || "指定が見当たりません");
+    /** **縞は残す。** 行数の多い表で目が迷わないための型なので、消してはいけない */
+    check("白抜きの帯でも、表の縞は残っている",
+      table.some((r) => /nth-child\(odd\)(?!\s+th)/.test(r.sel)),
+      table.map((r) => r.sel).join(" | "));
+  }
+
   check("淡い光の描き方がある", /\[data-asset-subject="light"\][^{]*::before/.test(bare));
   check("幾何の線の描き方がある", /\[data-asset-subject="geometry"\][^{]*::before/.test(bare));
   /**
@@ -485,7 +505,7 @@ console.log("\n━━━ 素材ライブラリ（第5段階）━━━");
    * 数を固定せず「どこで採られたか」を出して、変わったら目に入るようにする。
    */
   const seen = [];
-  let generatedSeen = 0, evidenceLib = 0, bad = 0;
+  let pageCount = 0, generatedSeen = 0, evidenceLib = 0, bad = 0;
   for (const [name, file] of FIXTURES) {
     const p = load(file);
     const a = analyze(p);
@@ -493,8 +513,16 @@ console.log("\n━━━ 素材ライブラリ（第5段階）━━━");
       for (const page of ["index", ...PAGES]) {
         const base = page === "index" ? composeTop(p, a, { direction: d.id }) : composePage(page, p, a, { direction: d.id });
         const secs = composeAssets(composeVisual(base, p, a, { direction: d.id }), p, a, { direction: d.id, page });
+        pageCount++;
         const libs = secs.filter((s) => s.asset.source === "library");
-        for (const s of libs) seen.push(`${name}/${d.id}/${page}:${s.content}`);
+        secs.forEach((s, i) => {
+          if (s.asset.source !== "library") return;
+          /** 隣の帯に雰囲気の素材があるか。**地の素材どうしを隣り合わせにしない** */
+          const near = [secs[i - 1], secs[i + 1]].some(
+            (n) => n && n.asset.intent === "atmosphere" && n.asset.source === "graphic");
+          seen.push({ where: `${name}/${d.id}/${page}:${s.content}`, subject: s.asset.subject,
+            emphasis: s.emphasis, peak: s.visual?.peak ?? "none", near, id: s.asset.library?.id });
+        });
         /** **1ページ1枚まで** */
         if (libs.length > 1) bad++;
         for (const s of secs) {
@@ -509,50 +537,76 @@ console.log("\n━━━ 素材ライブラリ（第5段階）━━━");
   check("生成画像は、どの型のどのページにも出ない", generatedSeen === 0, String(generatedSeen));
   check("ライブラリが証拠の帯に入ることはない", evidenceLib === 0, String(evidenceLib));
   check("1ページ1枚を超えない・採ったものは記録されている", bad === 0, String(bad));
-  console.log(`      いま採られているライブラリ素材：${seen.length}件${seen.length ? `（${seen.slice(0, 6).join(" ")}）` : "（＝どのページも none のまま成立している）"}`);
+  console.log(`      いま採られているライブラリ素材：${pageCount}ページ中 ${seen.length}件（${(seen.length / pageCount * 100).toFixed(1)}%）`);
+  if (seen.length) console.log(`      ${seen.slice(0, 5).map((x) => x.where).join("  ")}`);
 
   /**
-   * **仕組みが生きていることを、別に確かめる。**
+   * ── 必要なときだけ選ばれているか（追加検証・ご指示）──────────
    *
-   * 上が0件なのは「要らないと判断された」からであって、
-   * 「壊れていて選べない」からではない——それをここで分ける。
-   * 条件（型が texture を挙げている・地紋なし・plain/soft・山か主役）を
-   * 揃えた構成を渡したら、**採られること。**
+   * 「0件」だけでは足りない（**仕組みが壊れていても0件になる**）。
+   * かといって「採られた」だけでも足りない。
+   * **要求のある帯だけで採られていること**を、実データで見る。
+   */
+  check("実データでも、要求のある帯では採られる", seen.length > 0, `${seen.length}件`);
+  /** **枚数を増やす仕組みになっていないこと。** 採用は例外であって既定ではない */
+  check("採用はごく一部のページにとどまる（1割未満）", seen.length / pageCount < 0.1,
+    `${(seen.length / pageCount * 100).toFixed(1)}%`);
+  /** **CSSが描ける主題には行かない。** 行っていたら「graphic で満たせるのに使った」ことになる */
+  check("採られた帯の主題は、すべて texture", seen.every((x) => x.subject === "texture"),
+    [...new Set(seen.map((x) => x.subject))].join(","));
+  /** **地の素材どうしを隣り合わせにしない**（第2段階と同じ規則） */
+  check("採られた帯の隣に、雰囲気の graphic は無い", seen.every((x) => !x.near),
+    seen.filter((x) => x.near).map((x) => x.where).join(" "));
+  /** **控えめに置くと決めた帯には置かない** */
+  check("控えめな帯には置かない", seen.every((x) => x.emphasis !== "quiet"),
+    seen.filter((x) => x.emphasis === "quiet").map((x) => x.where).join(" "));
+
+  /**
+   * ── 素材が無ければ `none` になるか（追加検証③）───────────
+   *
+   * **登録簿から1枚抜いて、同じ構成をもう一度組む。**
+   * 代わりを探しにいかないこと・空いた帯を埋めにいかないことを、
+   * **実データの構成そのもので**確かめる。
    */
   {
     const p = load(FIXTURES[0][1]);
     const a = analyze(p);
-    const base = composeVisual(composeTop(p, a, { direction: "classic" }), p, a, { direction: "classic" });
-    /** 地紋と紙の地を外す＝「graphic では満たせない」状態を作る */
-    /** 地紋も紙の地も無い＝「graphic では雰囲気が出ていない」状態を、手で作る */
-    const flat = base.map((s) => ({ ...s, motif: "none", surface: "plain" }));
+    const build = (dir, page) => {
+      const base = composePage(page, p, a, { direction: dir });
+      return composeAssets(composeVisual(base, p, a, { direction: dir }), p, a, { direction: dir, page });
+    };
+    const before = build("product", "company");
+    check("実データで、素材を求める帯に採られている",
+      before.some((s) => s.asset.source === "library" && s.content === "history"),
+      before.filter((s) => s.asset.intent === "atmosphere").map((s) => `${s.content}:${s.asset.source}`).join(" "));
+
+    const kept = LIBRARY.splice(0, LIBRARY.length);
+    let after;
+    try { after = build("product", "company"); } finally { LIBRARY.push(...kept); }
+    check("素材が1枚も無ければ、同じ構成が none のまま成立する",
+      after.every((s) => s.asset.source !== "library")
+      && after.length === before.length
+      && after.every((s, i) => s.content === before[i].content && s.surface === before[i].surface
+        && s.emphasis === before[i].emphasis && s.motif === before[i].motif));
+    /** 戻せていること。**試験が次の試験を壊さない** */
+    check("登録簿を元に戻せている", LIBRARY.length === kept.length);
+
+    /** **挙げていない型では、要求があっても採らない** */
+    check("型が挙げていなければ、要求があっても採らない",
+      build("technical", "company").every((s) => s.asset.source !== "library"));
+
     /**
-     * 主役の帯に「素材の話」を持たせる。
-     *
-     * **実案件でこの形にならないのは、構成の側がそう決めているから**であって、
-     * 素材の層が壊れているからではない——それをここで分ける。
-     * （実測：どの型でも、主役の帯は表紙で、表紙には紙の地が入っている）
+     * **graphic で満たせているページには行かない。**
+     * 老舗（craft）と落ち着き（classic）は帯の地そのものが紙なので、
+     * **空いた帯が必ず紙の帯の隣になり、ここまで降りてこない**（実測）。
      */
-    const at = flat.findIndex((s) => s.kind !== "hero" && !EVIDENTIAL.includes(s.content));
-    const forced = flat.map((s, k) => (k === at ? { ...s, content: "materials", emphasis: "lead" } : s));
-    const got = composeAssets(forced, p, a, { direction: "classic", page: "index" });
-    const hit = got.filter((s) => s.asset.source === "library");
-    check("条件が揃えば、ライブラリが採られる（仕組みが死んでいない）", hit.length === 1,
-      hit.map((s) => `${s.content}:${s.asset.library?.id}`).join(" ") || "0件");
-    check("採られるのは、山か主役の帯だけ",
-      hit.every((s) => (s.visual?.peak ?? "none") !== "none" || s.emphasis === "lead"),
-      hit.map((s) => `${s.content}:${s.emphasis}`).join(" "));
-
-    /** **graphic で満たせるページには足さない。** 紙の地を1本戻すだけで採らなくなる */
-    const withPaper = forced.map((s, i) => (i === 0 ? { ...s, surface: "paper" } : s));
-    const got2 = composeAssets(withPaper, p, a, { direction: "classic", page: "index" });
-    check("graphic で雰囲気が出ているページには足さない",
-      got2.every((s) => s.asset.source !== "library"));
-
-    /** **挙げていない型では、条件が揃っていても採らない** */
-    const got3 = composeAssets(forced, p, a, { direction: "technical", page: "index" });
-    check("型が挙げていなければ、条件が揃っても採らない",
-      got3.every((s) => s.asset.source !== "library"));
+    for (const dir of ["craft", "classic"]) {
+      const got = build(dir, "company");
+      const lib = got.filter((s) => s.asset.source === "library");
+      const paper = got.filter((s) => s.asset.intent === "atmosphere" && s.asset.source === "graphic");
+      check(`${dir}：紙の地で足りているので、ライブラリに降りてこない`,
+        lib.length === 0 && paper.length > 0, `library ${lib.length} / graphic ${paper.length}`);
+    }
   }
 
   /** ── 描き方（site.css）───────────────────── */

@@ -43,7 +43,7 @@ import { composeTop, composePage } from "./sections.ts";
 import { composeVisual } from "./visual.ts";
 import type { VisualSection } from "./visual.ts";
 import {
-  DRAWABLE, EVIDENTIAL, SUBJECT_OF, canUse, findLibraryAsset,
+  DRAWABLE, EVIDENTIAL, SUBJECT_OF, canUse, findLibraryAsset, LIBRARY_SUBJECTS,
   type Asset, type AssetSource, type AssetRole, type AssetSubject, type PhotoCategoryId,
 } from "./system/index.ts";
 
@@ -320,32 +320,45 @@ export function composeAssets(
  */
 function adoptLibrary(out: AssetSection[], d: ReturnType<typeof getDirection>): AssetSection[] {
   /**
-   * **そのページに雰囲気の素材が1つでもあるなら、足さない。**
+   * **その帯が求めている主題を、CSSが描けないこと。**
    *
-   * 地紋でも、第2段階の光でも、幾何でも同じ。
-   * 装飾の数は品質ではない（docs/31 原則⑤）ので、**雰囲気は1ページ1系統まで**にする。
-   * これがあるおかげで、地紋を持っている型（製造業のほとんど）には**そもそも届かない。**
-   */
-  if (out.some((s) => s.asset.intent === "atmosphere" && s.asset.source === "graphic")) return out;
-
-  /**
-   * 置いてよい帯か。**「空いている帯」ではなく「そこにあると効く帯」だけ。**
+   * ここが「graphic で満たせるなら library に行かない」の実体である。
+   * `light` と `geometry` はCSSが描ける（第2段階）ので、**ライブラリには来ない。**
+   * 来るのは `texture`——**紙や布の不規則な目は、CSSの繰り返しでは作れない**（D-322）。
    *
-   * 山か主役に限る。控えめに置くと決めた帯に素材を敷くのは、
-   * **決めた控えめさを素材で打ち消している**ということであって、品質は上がらない。
-   * `decorate` が最後に使っていた「それ以外の帯」への逃げ道は、ここには作らない。
+   * `source === "none"` は「この帯にはまだ何も描かれていない」の意味である。
+   * 地紋のある帯・紙の地の帯は、この時点で `graphic` になっているので、
+   * **ここを通らない＝graphic で足りているページには足さない。**
    */
-  const ok = (s: AssetSection) =>
+  const wants = (s: AssetSection) =>
     s.kind !== "hero"
     && s.asset.intent === "atmosphere"
     && s.asset.source === "none"
     && s.motif === "none"
-    && ((s.visual?.peak ?? "none") !== "none" || s.emphasis === "lead")
+    && (LIBRARY_SUBJECTS as readonly string[]).includes(s.asset.subject)
     /** **構成がその主題を要求しているか。** 型が挙げていない主題は、要求ではない */
     && d.assets.includes(s.asset.subject);
 
-  const i = out.findIndex((s) => ok(s) && (s.visual?.peak ?? "none") !== "none");
-  const at = i >= 0 ? i : out.findIndex(ok);
+  /**
+   * **すでに雰囲気の素材がある帯から、2本以上離す。**
+   *
+   * 第2段階で light と geometry に課したのと**同じ規則**を使う（D-324）。
+   * 同じことを2つの場所で別々に決めない。
+   * 地の素材どうしが隣り合うと、**どちらも効かない。**
+   */
+  const decorated = out
+    .map((s, i) => (s.asset.intent === "atmosphere" && s.asset.source === "graphic" ? i : -1))
+    .filter((i) => i >= 0);
+  const apart = (i: number) => decorated.every((j) => Math.abs(i - j) >= 2);
+
+  /**
+   * 置く場所は、**山 → 主役 → それ以外**の順で探す。
+   * これも `decorate` と同じ順序である。**控えめに置くと決めた帯には置かない。**
+   */
+  const ok = (s: AssetSection, i: number) => wants(s) && apart(i);
+  const peak = out.findIndex((s, i) => ok(s, i) && (s.visual?.peak ?? "none") !== "none");
+  const lead = peak >= 0 ? peak : out.findIndex((s, i) => ok(s, i) && s.emphasis === "lead");
+  const at = lead >= 0 ? lead : out.findIndex((s, i) => ok(s, i) && s.emphasis !== "quiet");
   if (at < 0) return out;
 
   /**

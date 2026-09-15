@@ -520,7 +520,7 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
   構成の側でも使わせないが（lib/design/sections.ts）、**片方だけに頼らない**
 */
 .band:is([data-surface="accent"],[data-surface="dark"]) .case-card { background: rgba(255,255,255,.08); color: #fff; border-color: rgba(255,255,255,.4); }
-.band:is([data-surface="accent"],[data-surface="dark"]) .case-card:hover { background: rgba(255,255,255,.16); }
+.band:is([data-surface="accent"],[data-surface="dark"]) .case-card:hover { background: rgba(255,255,255,.99); }
 .band:is([data-surface="accent"],[data-surface="dark"]) .case-industry,
 .band:is([data-surface="accent"],[data-surface="dark"]) .case-challenge { color: rgba(255,255,255,.85); }
 .band:is([data-surface="accent"],[data-surface="dark"]) .case-tags em { background: rgba(255,255,255,.18); color: #fff; }
@@ -530,6 +530,36 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
 .band:is([data-surface="accent"],[data-surface="dark"]) .declined { border-left-color: #fff; }
 .band:is([data-surface="accent"],[data-surface="dark"]) .figures > div { border-color: rgba(255,255,255,.4); }
 .band:is([data-surface="accent"],[data-surface="dark"]) .figures dt { color: rgba(255,255,255,.85); }
+/**
+ * **白抜きの帯の中では、表の地も白抜きに倒す**（D-329）。
+ *
+ * 【実測】`product` の型で会社概要ページを撮ったら、
+ * **18マスのうち14マスが白い文字と白い地で、1.10〜1.16:1** だった。
+ * 表の見出し列は `th { background: var(--bg-soft) }`（0,0,1）、
+ * 縞は `html[data-tables="stripe"] tbody tr:nth-child(odd)`（0,2,3）で、
+ * **どちらも暗い地の指定（0,2,0）より強い。** 白い文字だけが残る。
+ *
+ * D-310（章の区切りの縞が暗い帯を塗り潰していた）と**まったく同じ形**である。
+ * あのとき縞だけを直して、**表を見ていなかった。**
+ * `test:contrast` は宣言を見ているので、ここも通してしまう。
+ *
+ * 見つけたのは第5段階の画面確認で、`qa:assets` が撮る6型に
+ * `product` が入っていなかったため、**91画面の検査を緑のまますり抜けていた。**
+ *
+ * 縞は残す（行数の多い表で目が迷わないための型なので）が、**白の透過で作る。**
+ */
+.band:is([data-surface="accent"],[data-surface="dark"]) :is(th, td) {
+  border-color: rgba(255,255,255,.4);
+}
+.band:is([data-surface="accent"],[data-surface="dark"]) th,
+.band:is([data-surface="accent"],[data-surface="dark"]) thead th,
+.band:is([data-surface="accent"],[data-surface="dark"]) tbody tr:nth-child(odd) th,
+.band:is([data-surface="accent"],[data-surface="dark"]) tbody tr:nth-child(even) th {
+  background: rgba(255,255,255,.16);
+}
+.band:is([data-surface="accent"],[data-surface="dark"]) tbody tr:nth-child(odd) {
+  background: rgba(255,255,255,.07);
+}
 
 /* 方眼。図面の下地。**線は薄く。本文の邪魔をしない** */
 .band[data-surface="grid"] {
