@@ -39,6 +39,20 @@ fs.mkdirSync(OUT, { recursive: true });
 const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
 let n = 0, measured = 0;
 const checks = [];
+/**
+ * **走り出しの1枚は捨てる**（D-309）。
+ * まっさらな窓で撮っても、**ブラウザ自体が冷えている1枚目だけ**は
+ * 字の読み込みが間に合わず、他と違う絵になる。
+ * これを数えたために「製造業の画面が変わった」と誤って報告しかけた（実測・2度目）。
+ */
+{
+  const warm = await serve(JOBS[0].root, 4802);
+  const ctx = await b.newContext({ viewport: { width: 1440, height: 900 } });
+  const pg = await ctx.newPage();
+  await pg.goto("http://127.0.0.1:4802/", { waitUntil: "networkidle" }).catch(() => {});
+  await pg.screenshot({ fullPage: true }).catch(() => {});
+  await ctx.close(); warm.close();
+}
 for (const job of JOBS) {
   const srv = await serve(job.root, 4801);
   for (const [w, tag] of [[1440, "pc"], [390, "sp"]]) {

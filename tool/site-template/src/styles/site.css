@@ -1051,8 +1051,12 @@ html[data-hero="motif"] .hero {
 .band[data-peak="spec"] :is(th, td) { padding: 18px 20px; }
 
 /* 写真を全幅に */
-.band[data-peak="image"] .gallery { gap: 4px; }
-.band[data-peak="image"] .photo img { border-radius: 0; }
+/**
+ * 写真の山。**大きくするのは写真であって、見出しではない**（D-320）。
+ * `object-fit: cover` と畳み方は下の既定のまま。ここで足すのは列数と縦横比だけ。
+ */
+.band[data-peak="image"] .gallery { gap: 4px; grid-template-columns: 1fr; }
+.band[data-peak="image"] .photo img { border-radius: 0; aspect-ratio: 16 / 9; }
 
 @media (max-width: 720px) {
   /**

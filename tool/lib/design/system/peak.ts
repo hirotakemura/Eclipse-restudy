@@ -66,8 +66,17 @@ export const PEAKS: Peak[] = [
   { id: "statement", label: "一言を大きく", note: "会社を一言で言う文を大きく。**写真0枚でもここで山が作れる**",
     // **採用の「何をする仕事か」もここ**（D-302）。求職者がいちばん先に読む
     contents: ["declined", "praise", "executive", "technique", "recruit"], presentations: ["quote", "prose", "longform"], needsPhoto: false, role: "statement" },
+  /**
+   * **山は「見出しを大きくする仕組み」ではない**（D-320）。
+   * **その帯で最も重要な視覚対象を主役にする仕組み**である。
+   *
+   * 工程の山は、番号・工程見出し・工程本文という**中身の側が既に大きくなっている**
+   * （`site.css` の `[data-peak="process"]`）。そこへ帯の見出しまで最大にしていたため、
+   * **「ご相談から結果まで」という汎用の語が、工程そのものより強くなっていた**（実測・約110px対20px）。
+   * 見出しは据え置き、主役は工程に返す。
+   */
   { id: "process", label: "工程を大きく", note: "課題→工程→結果を、カードではなく縦の流れとして見せる",
-    contents: ["cases", "technique"], presentations: ["process"], needsPhoto: false, role: "display" },
+    contents: ["cases", "technique"], presentations: ["process"], needsPhoto: false, role: "sectionTitle" },
   /**
    * **見出しが大きくならなければ、山にならない**（D-284）。
    * 最初は `sectionTitle`（ほかの帯と同じ）にしていたため、**見た目が山に立たなかった。**
@@ -80,8 +89,16 @@ export const PEAKS: Peak[] = [
     // **事例の条件表もここ**（D-302）。調達担当者の目が最初に止まるのは、材質・数量・納期である
     // **会社概要と募集要項もここ**（D-302）。どちらも「突き合わせて読む表」がページの主題である
     contents: ["conditions", "equipment", "materials", "offerings", "cases", "profile", "recruit"], presentations: ["spec", "cardGrid", "chips"], needsPhoto: false, role: "statement" },
+  /**
+   * **名前どおり、写真そのものを主役にする**（D-320）。
+   *
+   * 直す前は、写真を1ミリも大きくせずに**帯の見出しだけを最大**にしていた。
+   * 「写真を全幅」という名前と実装が食い違っていた（D-278① と同じ形）。
+   * 実測：設備一覧で「工場・設備」が約110px、その下の写真は通常のギャラリー寸法。
+   * 大きくするのは写真であって、見出しではない。
+   */
   { id: "image", label: "写真を全幅", note: "写真を画面いっぱいに。**実写があるときだけ**",
-    contents: ["photos", "cases", "equipment"], presentations: ["fullWidth", "cardGrid"], needsPhoto: true, role: "display" },
+    contents: ["photos", "cases", "equipment"], presentations: ["fullWidth", "cardGrid"], needsPhoto: true, role: "sectionTitle" },
 ];
 
 export const getPeak = (id: string | undefined): Peak =>
