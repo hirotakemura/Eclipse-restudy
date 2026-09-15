@@ -12,6 +12,7 @@ export * from "./motif.ts";
 export * from "./media.ts";
 export * from "./asset.ts";
 export * from "./library.ts";
+export * from "./page.ts";
 export * from "./motion.ts";
 export * from "./content.ts";
 export * from "./presentation.ts";

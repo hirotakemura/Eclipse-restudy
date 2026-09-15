@@ -40,6 +40,7 @@ import type { Project } from "../schema.ts";
 import type { Analysis } from "./analysis.ts";
 import { getDirection } from "./direction.ts";
 import { composeTop, composePage } from "./sections.ts";
+import { composeSite } from "./architecture.ts";
 import { composeVisual } from "./visual.ts";
 import type { VisualSection } from "./visual.ts";
 import {
@@ -490,35 +491,50 @@ export function photoRequestsFor(
 ): ReturnType<typeof photoRequests> {
   const p = project as any;
   const dir = opts.direction ?? p.theme?.direction;
-  const isGeneral = p.formSet === "general";
-  const goals = new Set(p.inquiry?.goals ?? []);
-  const hasRecruit = goals.has("採用") && Boolean(p.recruitment);
-  const hasMessage = (goals.has("採用") || goals.has("信用構築")) && Boolean(p.executive?.vision);
-  const cases = Array.isArray(p.cases) ? p.cases : [];
   const photosOf = (c: string) => (Array.isArray(p.photos) ? p.photos : []).filter((x: any) => x?.category === c);
+  const cases = Array.isArray(p.cases) ? p.cases : [];
 
-  const pages: [string, string, any][] = [
-    ["index", "トップ", p],
-    ["strengths", isGeneral ? "選ばれている理由" : "強み・技術", p],
-    ...(isGeneral ? [] : ([["capability", "対応可能範囲", p], ["equipment", "設備一覧", p]] as [string, string, any][])),
-    ["cases", isGeneral ? "実績" : "加工事例の一覧", { ...p, photos: photosOf("加工事例") }],
-    ...(isGeneral ? [] : cases.map((c: any, i: number): [string, string, any] => [
-      "case",
-      `${i + 1}件目「${String(c?.title ?? "").slice(0, 16)}」`,
-      { ...p, caseDetail: true, cases: [c], photos: photosOf("加工事例").filter((x: any) => x.caseNo === i + 1) },
-    ])),
-    ["company", "会社概要", { ...p, photos: photosOf("外観") }],
-    ...(hasMessage ? ([["message", "代表挨拶", { ...p, photos: photosOf("代表者") }]] as [string, string, any][]) : []),
-    ...(hasRecruit ? ([["recruit", "採用情報", { ...p, photos: photosOf("働く人") }]] as [string, string, any][]) : []),
-    ["contact", "お問い合わせ", p],
-  ];
+  /**
+   * **どのページが作られるかは、サイトの骨格が知っている**（第6段階）。
+   *
+   * ここには同じ条件が書き写してあった（採用ページを作る条件など）。
+   * **書き写した表は必ずいつかずれる**ので、`asset.test.mjs` が
+   * `lib/site.ts` と突き合わせて凌いでいた。その突き合わせごと不要になった。
+   */
+  const plan = composeSite(project, a);
 
-  const all = pages.map(([slug, label, source]) => {
-    const base = slug === "index"
-      ? composeTop(source, a, { direction: dir })
-      : composePage(slug as any, source, a, { direction: dir });
-    return { page: label, sections: composeAssets(composeVisual(base, source, a, { direction: dir }), source, a, { direction: dir, page: slug }) };
-  });
+  /**
+   * ページごとに、**そのページが見る写真だけ**に絞る（D-301）。
+   * 会社概要の帯が見るのは外観、代表挨拶は代表者、事例の個別ページはその1件である。
+   */
+  const NARROW: Partial<Record<string, (pg: { caseNo?: number }) => any>> = {
+    cases: () => ({ photos: photosOf("加工事例") }),
+    case: (pg) => ({ caseDetail: true, cases: [cases[pg.caseNo! - 1]], photos: photosOf("加工事例").filter((x: any) => x.caseNo === pg.caseNo) }),
+    company: () => ({ photos: photosOf("外観") }),
+    message: () => ({ photos: photosOf("代表者") }),
+    recruit: () => ({ photos: photosOf("働く人") }),
+  };
+  /** 人に読ませる名前。**slug ではなく日本語で返す** */
+  const NAME: Record<string, string> = { cases: plan.formSet === "general" ? "実績" : "加工事例の一覧" };
+
+  /** 帯を組まないページは飛ばす（汎用の「サービス・料金」は散文だけのページ） */
+  const SKIP = new Set(["services"]);
+
+  const all = plan.pages
+    .filter((pg) => !SKIP.has(pg.id))
+    .map((pg) => {
+      const source = { ...p, ...(NARROW[pg.id]?.(pg) ?? {}) };
+      const label = pg.id === "case"
+        ? `${pg.caseNo}件目「${String(cases[pg.caseNo! - 1]?.title ?? "").slice(0, 16)}」`
+        : (NAME[pg.id] ?? pg.label);
+      const base = pg.id === "index"
+        ? composeTop(source, a, { direction: dir })
+        : composePage(pg.id as any, source, a, { direction: dir });
+      return {
+        page: label,
+        sections: composeAssets(composeVisual(base, source, a, { direction: dir }), source, a, { direction: dir, page: pg.id }),
+      };
+    });
   return photoRequests(all);
 }
 

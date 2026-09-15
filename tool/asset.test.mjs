@@ -134,19 +134,37 @@ console.log("\n━━━ 語を2箇所で持っている所の突き合わせ �
       `内容=${SUBJECT_OF[content]} 置き場所=${viaCategory}`);
   }
   /**
-   * **どのページが作られるかの条件が、`gaps.mjs` と `lib/site.ts` で同じか。**
-   * 写真の依頼は「作られるページ」から出すので、ここがずれると
-   * **作られないページの写真をお願いする**ことになる。
+   * **どのページが作られるかの条件が、1箇所にまとまったか**（第6段階）。
+   *
+   * かつては `lib/site.ts` のメニュー・各 `.astro` の `getStaticPaths`・
+   * `assets.ts` の写真依頼に、同じ条件が**3箇所に書き写して**あった。
+   * ずれると「作られないページの写真をお願いする」が起きるので、
+   * 文字列を突き合わせて凌いでいた——**その突き合わせごと不要にする**のが目的である。
+   *
+   * だから見るのは「同じ文字列があるか」ではなく、
+   * **どのファイルも条件を持っていないこと**である。
    */
-  const gaps = fs.readFileSync("lib/design/assets.ts", "utf8");
-  const site = fs.readFileSync("site-template/src/lib/site.ts", "utf8");
-  for (const [name, cond] of [
-    ["採用ページ", 'goals.has("採用") && Boolean(p.recruitment)'],
-    ["代表挨拶", '(goals.has("採用") || goals.has("信用構築")) && Boolean(p.executive?.vision)'],
-  ]) {
-    const inSite = cond.replace(/\bp\./g, "project.");
-    check(`${name}を作る条件が、Asset層と site.ts で同じ`,
-      gaps.includes(cond) && site.includes(inSite), `site.ts に「${inSite}」が見当たりません`);
+  {
+    const site = fs.readFileSync("site-template/src/lib/site.ts", "utf8");
+    const assets = fs.readFileSync("lib/design/assets.ts", "utf8");
+    /** メニューの手書き配列が消えていること */
+    check("メニューが骨格から作られている",
+      /navOf\(sitePlan\)/.test(site) && !/href: "\/capability\/"/.test(site));
+    /** 写真の依頼が骨格を見ていること */
+    check("写真の依頼が骨格から作られている",
+      /composeSite\(project, a\)/.test(assets) && !/hasRecruit/.test(assets));
+    /** 各ページの `getStaticPaths` が骨格を見ていること */
+    for (const [f, id] of [
+      ["site-template/src/pages/capability/[...page].astro", "capability"],
+      ["site-template/src/pages/equipment/[...page].astro", "equipment"],
+      ["site-template/src/pages/services/[...page].astro", "services"],
+      ["site-template/src/pages/[slug].astro", "recruit"],
+    ]) {
+      const t = fs.readFileSync(f, "utf8");
+      const gsp = t.slice(t.indexOf("getStaticPaths"), t.indexOf("getStaticPaths") + 320);
+      check(`${id} を作る条件が、骨格だけを見ている`,
+        gsp.includes(`buildsPage("${id}")`) && !/isGeneral \?|hasRecruit/.test(gsp), gsp.split("\n")[1] ?? "");
+    }
   }
   check("型すべてに、素材の主題の候補がある", DIRECTIONS.every((d) => Array.isArray(d.assets)));
   check("描ける主題だけが DRAWABLE に入っている",

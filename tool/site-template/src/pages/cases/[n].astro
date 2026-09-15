@@ -17,16 +17,15 @@ import { analyze } from "../../../../lib/design/analysis.ts";
 import { composePage } from "../../../../lib/design/sections.ts";
 import { composeVisual } from "../../../../lib/design/visual.ts";
 import { composeAssets, willDraw } from "../../../../lib/design/assets.ts";
-import { project, cases, isGeneral, photosOfCase, narrowTo } from "../../lib/site";
+import { project, cases, isGeneral, photosOfCase, narrowTo, casePages } from "../../lib/site";
 import { theme } from "../../lib/theme";
 import { hasDraft } from "../../lib/draft";
 
 export function getStaticPaths() {
-  // 汎用ベーシックは事例を1ページにまとめる。個別ページは作らない
-  if (isGeneral) return [];
-  return (cases ?? []).map((item, i) => ({
-    params: { n: String(i + 1) },
-    props: { item, index: i },
+  // 何件ぶん作るかは、サイトの骨格が持っている（第6段階）
+  return casePages.map((pg) => ({
+    params: { n: String(pg.caseNo) },
+    props: { item: cases[pg.caseNo! - 1], index: pg.caseNo! - 1 },
   }));
 }
 const { item, index } = Astro.props;

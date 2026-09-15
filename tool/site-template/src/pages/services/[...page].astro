@@ -9,13 +9,13 @@
  */
 import Base from "../../layouts/Base.astro";
 import Prose from "../../components/Prose.astro";
-import { companyName, offerings, serviceArea, idealCustomer, isGeneral } from "../../lib/site";
+import { companyName, offerings, serviceArea, idealCustomer, isGeneral, buildsPage } from "../../lib/site";
 
 export function getStaticPaths() {
   // 取り扱いが1件も無ければ、このページは作らない。
   // **中身の無いページを1枚増やすより、無いほうがいい。**
   // （未確認マークを付けた項目は、サイトに出さない＝ここが空になることがある）
-  return isGeneral && offerings.length ? [{ params: { page: undefined } }] : [];
+  return buildsPage("services") ? [{ params: { page: undefined } }] : [];
 }
 ---
 <Base title="サービス・料金" description={`${companyName}の取り扱いと料金の目安`}>

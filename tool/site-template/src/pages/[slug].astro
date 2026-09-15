@@ -15,14 +15,14 @@ import { analyze } from "../../../lib/design/analysis.ts";
 import { composePage } from "../../../lib/design/sections.ts";
 import { composeVisual } from "../../../lib/design/visual.ts";
 import { composeAssets, willDraw } from "../../../lib/design/assets.ts";
-import { project, hasRecruit, hasMessage, companyName, photosOf, narrowTo } from "../lib/site";
+import { project, hasRecruit, hasMessage, companyName, photosOf, narrowTo, buildsPage } from "../lib/site";
 import { theme } from "../lib/theme";
 import { hasDraft } from "../lib/draft";
 
 export function getStaticPaths() {
   const paths = [];
-  if (hasRecruit) paths.push({ params: { slug: "recruit" }, props: { kind: "recruit" } });
-  if (hasMessage) paths.push({ params: { slug: "message" }, props: { kind: "message" } });
+  if (buildsPage("recruit")) paths.push({ params: { slug: "recruit" }, props: { kind: "recruit" } });
+  if (buildsPage("message")) paths.push({ params: { slug: "message" }, props: { kind: "message" } });
   return paths;
 }
 const { kind } = Astro.props;

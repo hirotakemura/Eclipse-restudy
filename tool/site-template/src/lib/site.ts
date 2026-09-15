@@ -13,6 +13,9 @@ import type { Project } from "../../../lib/schema.ts";
 import raw from "../site-data/project.json";
 import { sanitizeProject } from "../../../lib/sanitize.ts";
 import type { StoredBrief } from "../../../lib/design/brief.ts";
+import { analyze } from "../../../lib/design/analysis.ts";
+import { composeSite, navOf, hasPage } from "../../../lib/design/architecture.ts";
+import type { PageId } from "../../../lib/design/system/index.ts";
 
 /**
  * **落とす処理は `lib/sanitize.ts` が単一の正**（D-213）。
@@ -76,28 +79,28 @@ export interface NavItem {
   label: string;
 }
 
-export const nav: NavItem[] = isGeneral
-  ? [
-      { href: "/", label: "トップ" },
-      ...(offerings.length ? [{ href: "/services/", label: "サービス・料金" }] : []),
-      { href: "/strengths/", label: "選ばれている理由" },
-      ...(cases.length ? [{ href: "/cases/", label: "実績" }] : []),
-      { href: "/company/", label: "会社概要" },
-      ...(hasRecruit ? [{ href: "/recruit/", label: "採用情報" }] : []),
-      ...(hasMessage ? [{ href: "/message/", label: "代表挨拶" }] : []),
-      { href: "/contact/", label: "お問い合わせ" },
-    ]
-  : [
-      { href: "/", label: "トップ" },
-      { href: "/capability/", label: "対応可能範囲" },
-      { href: "/equipment/", label: "設備一覧" },
-      { href: "/strengths/", label: "強み・技術" },
-      ...(cases.length ? [{ href: "/cases/", label: "加工事例" }] : []),
-      { href: "/company/", label: "会社概要" },
-      ...(hasRecruit ? [{ href: "/recruit/", label: "採用情報" }] : []),
-      ...(hasMessage ? [{ href: "/message/", label: "代表挨拶" }] : []),
-      { href: "/contact/", label: "お問い合わせ" },
-    ];
+/**
+ * **メニューは、サイトの骨格から作る**（第6段階）。
+ *
+ * ここには長らく**手書きの配列**が2本あった（製造業用と汎用用）。
+ * 同じ集合が `getStaticPaths` と `assets.ts` にも書き写してあり、
+ * ずれないよう試験で突き合わせていた——**表が3つある状態そのものが負債**だった（D-197）。
+ *
+ * いまは `composeSite()` が単一の正で、メニューも・作るページも・写真の依頼も
+ * ・sitemap も、すべてここから出る。
+ */
+export const sitePlan = composeSite(project, analyze(project as any));
+export const nav: NavItem[] = navOf(sitePlan).map((p) => ({ href: p.href, label: p.label }));
+
+/**
+ * **そのページを作るか。** 各ページの `getStaticPaths()` はこれだけを見る。
+ *
+ * 「汎用なら作らない」のような条件を `.astro` に書かない。
+ * **条件が散ると、メニューには出ているのにページが無い、が起きる。**
+ */
+export const buildsPage = (id: PageId): boolean => hasPage(sitePlan, id);
+/** 事例の個別ページ。**件数も骨格が持っている** */
+export const casePages = sitePlan.pages.filter((p) => p.id === "case");
 
 /**
  * 頭のメニューには「お問い合わせ」を入れない。

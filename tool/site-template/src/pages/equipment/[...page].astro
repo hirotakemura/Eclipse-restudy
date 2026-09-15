@@ -22,7 +22,7 @@ import { analyze } from "../../../../lib/design/analysis.ts";
 import { composePage } from "../../../../lib/design/sections.ts";
 import { composeVisual } from "../../../../lib/design/visual.ts";
 import { composeAssets, willDraw } from "../../../../lib/design/assets.ts";
-import { project, companyName, photosOf, isGeneral } from "../../lib/site";
+import { project, companyName, photosOf, isGeneral, buildsPage } from "../../lib/site";
 import { theme } from "../../lib/theme";
 import { hasDraft } from "../../lib/draft";
 
@@ -48,7 +48,7 @@ const sections = composeAssets(
  * 汎用ベーシック（198,000円）には対応材質も設備一覧も無いので、空の表だけのページを作らない。
  */
 export function getStaticPaths() {
-  return isGeneral ? [] : [{ params: { page: undefined } }];
+  return buildsPage("equipment") ? [{ params: { page: undefined } }] : [];
 }
 ---
 <Base title="設備一覧" description={`${companyName}の保有設備一覧（メーカー・型番・台数）`}>
