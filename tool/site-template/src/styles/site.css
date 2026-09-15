@@ -705,18 +705,33 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
  * 55px の見出しとして出ていた**（実測）。書いた本人が気づいていなかった。
  * 見出しの大きさは、**中身の長さで決める**（`maxChars`・D-277）。
  */
-.hero-sub {
-  font-size: 21px !important; line-height: 1.7; font-weight: 400;
+.hero h1.hero-sub {
+  font-size: 21px; line-height: 1.7; font-weight: 400;
   color: var(--ink); max-width: var(--measure);
 }
 /** 短い一言で言い切れている会社は、そのまま大きく出してよい */
-.hero-sub[data-role="statement"] { font-size: var(--t-statement) !important; line-height: var(--tl-statement); font-weight: var(--tw-statement); }
-.hero-motif[data-role="heroTitle"] { font-size: var(--t-heroTitle); }
-.hero-motif[data-role="lead"] { font-size: var(--t-lead); font-weight: 400; line-height: 1.8; }
+.hero h1.hero-sub[data-role="statement"] { font-size: var(--t-statement); line-height: var(--tl-statement); font-weight: var(--tw-statement); }
+.hero h1.hero-motif[data-role="heroTitle"] { font-size: var(--t-heroTitle); }
+.hero h1.hero-motif[data-role="lead"] { font-size: var(--t-lead); font-weight: 400; line-height: 1.8; }
 
 /* 余白と文字だけ。材料が少なくても成立し、静かで格が出る */
 html[data-hero="type"] .hero { padding: 96px 0 78px; }
-.hero-type { font-size: clamp(32px, 5.5vw, 60px); line-height: 1.3; margin: 0 0 32px; }
+/**
+ * **`.hero h1` の指定が、型ごとの見出しを全部食っていた**（D-292）。
+ *
+ * `.hero-type` `.hero-motif` はどちらも `<h1>` に付いている。
+ * CSSの強さは `.hero h1`（要素を含む）＞ `.hero-type`（クラス1つ）なので、
+ * **型が選んだ大きさが一度も効いていなかった。**
+ *
+ * 実測：型「静か・上質」の最初の画面は `clamp(32px, 5.5vw, 60px)` と書いてあるのに、
+ * 実際は 27〜55px（＝`.hero h1` の値）だった。**スマホでは 27px で、
+ * すぐ下の見出し 24px との差が3px**しかなく、Phase 1 で直したはずの症状が
+ * この型でだけ残っていた。
+ *
+ * `.hero-sub` は D-279 で `!important` を当てて塞いだが、**同じ形の穴が3つあった。**
+ * 対症ではなく、**`.hero h1` と同じ強さの指定にして正面から勝たせる。**
+ */
+.hero h1.hero-type { font-size: clamp(32px, 5.5vw, 60px); line-height: 1.3; margin: 0 0 32px; }
 .hero-type-lead { font-size: 19px; max-width: 34em; }
 
 /* 技術の地紋。方眼の上に見出しを置く */
@@ -727,7 +742,7 @@ html[data-hero="motif"] .hero {
     var(--bg);
   padding: 72px 0 60px;
 }
-.hero-motif { font-size: clamp(26px, 3.4vw, 40px); line-height: 1.5; max-width: 22em; }
+.hero h1.hero-motif { font-size: clamp(26px, 3.4vw, 40px); line-height: 1.5; max-width: 22em; }
 
 @media (max-width: 860px) {
   html[data-hero="type"] .hero { padding: 56px 0 44px; }

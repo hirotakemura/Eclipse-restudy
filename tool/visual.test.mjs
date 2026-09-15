@@ -454,5 +454,82 @@ console.log("\n━━━ 写真は、骨格ではなくメディアの層か（D
   check("存在しない区分（加工品）を探していない", !src.includes('photoOf("加工品")'));
 }
 
+
+/**
+ * ── Phase 8 ───────────────────────────────────────────
+ *
+ * **Desktopだけで成立するデザインは禁止**（ご指示§18）。
+ *
+ * 新しく効かせた語彙（組み方・余白・山）に、**スマホの姿が定義されているか**を見る。
+ * ブラウザは立てない。**定義の漏れ**は、CSSを読めば分かる。
+ * 実際の見え方は、キャプチャで人が見る（D-192）。
+ */
+console.log("\n━━━ スマホの姿が定義されているか（D-294）━━━");
+{
+  const css = fs.readFileSync("site-template/src/styles/site.css", "utf8");
+  const { LAYOUTS, DENSITIES, PEAKS, TYPE_ROLES, sizeAt, getTypeRole } = await import("./lib/design/system/index.ts");
+  /** スマホ向けの指定が入っている塊だけを取り出す */
+  const mobile = [...css.matchAll(/@media \([^)]*max-width:\s*(\d+)px[^)]*\)\s*\{/g)]
+    .map((m) => { // 対応する閉じ括弧までを取る
+      let i = m.index + m[0].length, depth = 1;
+      while (i < css.length && depth > 0) { if (css[i] === "{") depth++; else if (css[i] === "}") depth--; i++; }
+      return { w: Number(m[1]), body: css.slice(m.index, i) };
+    });
+  const mobileCss = mobile.filter((x) => x.w <= 900).map((x) => x.body).join("\n");
+
+  check("スマホ向けの指定がある", mobileCss.length > 500, `${mobileCss.length}文字`);
+  /** **横に並べる組み方は、必ず畳み方を書く。** 書かないと画面からはみ出す */
+  for (const l of ["split", "offset", "editorial"]) {
+    check(`組み方「${l}」に、スマホの畳み方がある`, mobileCss.includes(`data-layout="${l}"`));
+  }
+  /** **余白は振れ幅を標準へ寄せる**（D-271）。`normal` は倍率1なので指定不要 */
+  for (const d of DENSITIES.filter((x) => x.id !== "normal")) {
+    check(`余白「${d.id}」に、スマホの値がある`, mobileCss.includes(`data-density="${d.id}"`));
+  }
+  /** 山は、大きくするものによって調整が要るものと要らないものがある */
+  for (const id of ["number", "process"]) {
+    check(`山「${id}」に、スマホの調整がある`, mobileCss.includes(`data-peak="${id}"`));
+  }
+  check("指で押すものの最小の高さが決めてある", /--tap:\s*\d+px/.test(css));
+
+  /**
+   * **文字の階層が、スマホで潰れないこと**（Phase 1 の実測は 27/24/21 で3px差だった）。
+   *
+   * 最初は「隣り合う段の差が2px以上」と書いて落ちた。**主張が厳しすぎた。**
+   * `body` `technical` `caption` `label` は**大きさではなく太さと字間で分けている**役割で、
+   * 15pxと14pxが並ぶのは設計どおりである。
+   * 潰れて困るのは**見出しの段**のほうなので、そこだけを見る。
+   */
+  const HEADINGS = ["display", "heroTitle", "numeric", "statement", "sectionTitle"];
+  const at390 = HEADINGS.map((id) => sizeAt(getTypeRole(id), 390));
+  const gaps = at390.slice(0, -1).map((v, i) => v - at390[i + 1]);
+  check("スマホでも、見出しの段どうしが2px以上離れている", gaps.every((g) => g >= 2), at390.join("/"));
+  check("スマホでも、いちばん小さい見出しが本文よりはっきり大きい",
+    sizeAt(getTypeRole("sectionTitle"), 390) - sizeAt(getTypeRole("body"), 390) >= 4,
+    `${sizeAt(getTypeRole("sectionTitle"), 390)} と ${sizeAt(getTypeRole("body"), 390)}`);
+
+  /** **最初の画面の大きさは、型が決める。`.hero h1` に食われていないこと**（D-292） */
+  for (const cls of ["hero-type", "hero-motif", "hero-sub"]) {
+    check(`${cls} が、.hero h1 と同じ強さで書かれている`,
+      new RegExp(`\\.hero h1\\.${cls}`).test(css), "クラスだけだと .hero h1 に負ける");
+  }
+  check("その修正に !important を使っていない",
+    !/\.hero h1\.hero-[a-z]+[^{]*\{[^}]*!important/.test(css));
+}
+
+console.log("\n━━━ 商品ごとの言い換えに、漏れがないか（D-293）━━━");
+{
+  const { headingFor } = await import("./lib/design/sections.ts");
+  /**
+   * **製造業の言葉が、汎用の画面にそのまま出ていないか。**
+   * 美容室に「工場・設備」と出ていた（実測）。D-276 で直したつもりの表からの漏れ。
+   */
+  const MFG_WORDS = ["加工事例", "他社様で難しいと言われた案件", "どうやって受けているか",
+    "主な設備", "保有設備一覧", "対応できる材質", "対応できる材質・加工法", "工場・設備"];
+  for (const w of MFG_WORDS) {
+    check(`汎用では「${w}」を使わない`, headingFor(w, true) !== w, headingFor(w, true));
+  }
+}
+
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);
 process.exit(ng ? 1 : 0);

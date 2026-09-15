@@ -1,7 +1,7 @@
 {
   "a-precision": {
     "index": {
-      "hash": "937597dea651",
+      "hash": "e903ebea760f",
       "bands": [
         "conditions:spec:lead",
         "cases:process:normal",
@@ -11,7 +11,7 @@
       ]
     },
     "strengths/index": {
-      "hash": "ab5c17d88509",
+      "hash": "951188b9aaa2",
       "bands": [
         "technique:prose:normal",
         "praise:cardGrid:normal",
@@ -19,7 +19,7 @@
       ]
     },
     "capability/index": {
-      "hash": "6d1bcb3156c9",
+      "hash": "c13d88bac53a",
       "bands": [
         "conditions:largeNumber:lead",
         "materials:chips:normal",
@@ -27,7 +27,7 @@
       ]
     },
     "equipment/index": {
-      "hash": "9e43fe3f2a4e",
+      "hash": "30fc599db8a1",
       "bands": [
         "equipment:cardGrid:lead",
         "equipment:spec:quiet",
@@ -37,7 +37,7 @@
   },
   "b-difficulty": {
     "index": {
-      "hash": "db456713083b",
+      "hash": "a7e8897668fd",
       "bands": [
         "declined:quote:lead",
         "cases:process:normal",
@@ -47,7 +47,7 @@
       ]
     },
     "strengths/index": {
-      "hash": "e8e8db25afba",
+      "hash": "ccabb8c2a64a",
       "bands": [
         "declined:quote:lead",
         "technique:process:normal",
@@ -56,7 +56,7 @@
       ]
     },
     "capability/index": {
-      "hash": "f4ad9ea31e19",
+      "hash": "9264f728fab6",
       "bands": [
         "conditions:list:normal",
         "materials:chips:normal",
@@ -64,7 +64,7 @@
       ]
     },
     "equipment/index": {
-      "hash": "d13db258fb22",
+      "hash": "a7606ae88747",
       "bands": [
         "equipment:spec:normal",
         "photos:fullWidth:normal"
@@ -73,7 +73,7 @@
   },
   "c-speed": {
     "index": {
-      "hash": "5cc3b960ca54",
+      "hash": "d76833455329",
       "bands": [
         "conditions:comparison:lead",
         "cases:process:normal",
@@ -83,7 +83,7 @@
       ]
     },
     "strengths/index": {
-      "hash": "483c25d4752c",
+      "hash": "68bf2d4189fe",
       "bands": [
         "technique:process:normal",
         "praise:cardGrid:normal",
@@ -91,7 +91,7 @@
       ]
     },
     "capability/index": {
-      "hash": "3a72349d34cb",
+      "hash": "02b4018a4fba",
       "bands": [
         "conditions:comparison:lead",
         "materials:chips:normal",
@@ -99,7 +99,7 @@
       ]
     },
     "equipment/index": {
-      "hash": "c5c1cc2aa087",
+      "hash": "90dfeaf972d4",
       "bands": [
         "equipment:cardGrid:lead",
         "equipment:spec:quiet",
