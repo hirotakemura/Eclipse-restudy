@@ -356,7 +356,27 @@ console.log("\n━━━ ページ全体のリズムと山（D-277）━━━")
     const top = composeVisual(composeTop(p, a, { hero: r.hero.id, direction: r.direction, hasProse: false }), p, a, { direction: r.direction });
     const body = top.filter((s) => s.kind !== "hero");
 
-    check(`${name}：山は1ページに1つまで`, peakCount(top) <= 1, `${peakCount(top)}個`);
+    /**
+     * **主役は1つ。終盤の小さな山を入れても2つまで**（第7段階⑤）。
+     * 2つ目は「ページが山のあと減衰するだけ」を直すためのもので、
+     * **主役と並ぶものではない。** 下の3つで「小さい」ことを縛る。
+     */
+    check(`${name}：山は1ページに2つまで（主役1つ＋終盤1つ）`, peakCount(top) <= 2, `${peakCount(top)}個`);
+    {
+      const pk = body.map((s, i) => ({ i, s })).filter((x) => x.s.visual.peak !== "none");
+      if (pk.length === 2) {
+        const [a1, b1] = pk;
+        check(`${name}：2つ目の山は、ページの後半にある`, b1.i >= Math.ceil(body.length / 2), `${b1.i + 1}/${body.length}`);
+        check(`${name}：2つの山は2本以上離れている`, b1.i - a1.i >= 2, `${a1.i}→${b1.i}`);
+        check(`${name}：2つの山の種類が違う`, a1.s.visual.peak !== b1.s.visual.peak,
+          `${a1.s.visual.peak}／${b1.s.visual.peak}`);
+        check(`${name}：2つ目の山は、余白も見出しも大きくしない`,
+          b1.s.visual.density !== "vast" && b1.s.visual.role === "sectionTitle",
+          `${b1.s.visual.density}/${b1.s.visual.role}`);
+        check(`${name}：2つ目の山は、写真や工程ではない（画面を占めすぎる）`,
+          !["image", "process"].includes(b1.s.visual.peak), b1.s.visual.peak);
+      }
+    }
     check(`${name}：余白が2種類以上ある（前は全帯同一）`,
       new Set(body.map((s) => s.visual.density)).size >= 2,
       body.map((s) => s.visual.density).join(","));
@@ -383,7 +403,7 @@ console.log("\n━━━ ページ全体のリズムと山（D-277）━━━")
   const a = analyze(gen);
   const r = resolveTheme(gen.theme, "general");
   const noPhoto = composeVisual(composeTop({ ...gen, photos: [] }, analyze({ ...gen, photos: [] }), { hero: r.hero.id, direction: "editorial", hasProse: false }), { ...gen, photos: [] }, analyze({ ...gen, photos: [] }), { direction: "editorial" });
-  check("写真0枚でも、山が作れている", peakCount(noPhoto) === 1,
+  check("写真0枚でも、山が作れている", peakCount(noPhoto) >= 1,
     noPhoto.filter((s) => s.visual.peak !== "none").map((s) => `${s.content}:${s.visual.peak}`).join(","));
 
   /** 下層ページでも効いていること */
@@ -638,6 +658,29 @@ console.log("\n━━━ 帯の幅（第7段階②）━━━");
   check("「全幅」は左右の余白を捨てている",
     /max-width:\s*none/.test(cap("full")) && /padding-left:\s*0/.test(cap("full")), cap("full").trim());
   check("「広い」に上限を書いていない（既定が使える幅いっぱい）", cap("wide") === "", cap("wide"));
+  /**
+   * **余白を捨てた帯は、はみ出したものを切る**（D-353）。
+   * 写真が現れる動きは 1.02 倍から戻るので、左右に 1% ずつ出る。余白があるうちは
+   * 余白が飲んでいたが、`full` では**そのまま横スクロールになった。**
+   * 「余白を捨てる」と「切る」は**必ず一緒**でなければならないので、ここで一緒に見る。
+   */
+  check("「全幅」は、はみ出したものを帯の端で切っている",
+    /overflow-x:\s*clip/.test(cap("full")), cap("full").trim());
+  /**
+   * **端まで届くのは写真であって、言葉ではない**（D-354）。
+   * 実測では、見出しも写真の説明書きも画面の端（左 0px）に貼り付いていた。
+   * さらに、戻し方が `padding` だと**見出しの左罫（`padding-left: 14px`）を打ち消す**ので、
+   * 罫だけが画面の端に残る。だから `margin` でなければならない。ここは両方を見る。
+   */
+  {
+    const words = [...bare.matchAll(/([^{}]*\.band\[data-width="full"\][^{}]*h2[^{}]*)\{([^}]*)\}/g)]
+      .filter((m) => !m[1].includes("data-layout"));
+    check("「全幅」の帯でも、言葉には左右の余白がある", words.length > 0,
+      words.map((m) => m[2].trim()).join(" | ") || "規則が無い");
+    check("その余白は margin で戻している（padding だと見出しの飾りを打ち消す）",
+      words.length > 0 && words.every((m) => /margin-left:/.test(m[2]) && !/padding-left:/.test(m[2])),
+      words.map((m) => m[2].trim()).join(" | "));
+  }
 
   /**
    * **同じ見せ方なら、いつでも同じ幅。**

@@ -152,12 +152,58 @@ export function composeVisual(
     if (id !== "none") { peakAt = i; peakId = id; break; }
   }
 
+  // ── ①-2 終盤に、小さな山をもう1つだけ ───────────
+  /**
+   * **山が上から1/3にあって、そのあとページは減衰するだけだった**（docs/34・第7段階⑤）。
+   * 終盤に**もう1つだけ**小さな山を許す。「小さい」は、次を守るという意味である。
+   *
+   *   ・種類は**値・一言・表の3つだけ。** 工程と写真は画面をまるごと占めるので、
+   *     2つ目には大きすぎる（終盤にもう1つ「全幅の写真」が来ると、山が2つに割れる）
+   *   ・**主役と同じ種類にしない。** 同じ見せ方が2度出ると、どちらも山に見えない
+   *   ・**余白は広げない**（`vast` にしない）。**見出しも大きくしない**（役は `sectionTitle`）
+   *   ・主役から**2本以上離す。** 隣どうしに立つ山は、1つの長い山になる
+   *
+   * 置ける帯が無ければ**作らない。** 埋め合わせに立てる山は、山ではない（D-298）。
+   * 材料の厚みの下限は主役と同じ（薄い材料で山を作らない）。
+   */
+  let subAt = -1;
+  let subId: PeakId = "none";
+  if (peakAt >= 0 && body.length >= 4) {
+    const from = Math.max(peakAt + 2, Math.ceil(body.length / 2));
+    outer: for (let i = from; i < body.length; i++) {
+      const s = body[i]!;
+      /** **「控えめに」と決めた帯を、山にしない**（D-302。主役と同じ理屈） */
+      if (s.emphasis === "quiet") continue;
+      const m = materialsOf(project, s.content, a.hasRealPhotos);
+      for (const id of ["number", "statement", "spec"] as PeakId[]) {
+        if (id === peakId) continue;
+        if (!canPeak(getPeak(id), s.content, a.hasRealPhotos, s.presentation)) continue;
+        if (id === "number" && !m.hasStrongValue) continue;
+        /** 一言は文字数。40字に満たないものを大きくしても、余白しか増えない（D-298） */
+        if (id === "statement" && m.length < 40) continue;
+        if (id === "spec" && (m.rows ?? m.count) < 3) continue;
+        /**
+         * **2つ目の山は、その帯で本当に何かが大きくならなければ意味が無い**（D-251・D-278）。
+         * 「条件を壁に」が大きくするのは表（`table`／`th, td`）である。
+         * 語彙の上では札（`chips`）や札束（`cardGrid`）の帯にも当てられるが、
+         * **主役と違って余白も見出しも動かさない**ので、表が無ければ**画面は1pxも変わらない。**
+         * 実際に、松原精機のトップで「対応できる材質」の札の帯に付いて、何も起きなかった。
+         */
+        if (id === "spec" && s.presentation !== "spec") continue;
+        subAt = i; subId = id;
+        break outer;
+      }
+    }
+  }
+
   // ── ② 余白 ─────────────────────────────────────
   /** **余白は、山の中身が稼いだときだけ広げる**（D-298） */
   const peakVast = peakAt >= 0
     && peakFillsScreen(peakId, materialsOf(project, body[peakAt]!.content, a.hasRealPhotos));
   const density: DensityId[] = body.map((s, i) => {
     if (i === peakAt) return peakVast ? "vast" : "loose";
+    /** 2つ目の山は**広げない。** 広げると、主役と同じ大きさの山が2つになる */
+    if (i === subAt) return "loose";
     if (s.emphasis === "quiet") return "tight";
     return SCANNED.has(s.presentation) ? "normal" : "loose";
   });
@@ -168,7 +214,7 @@ export function composeVisual(
    */
   const NEXT: Record<DensityId, DensityId> = { tight: "normal", normal: "loose", loose: "normal", vast: "loose" };
   for (let i = 2; i < density.length; i++) {
-    if (density[i] === density[i - 1] && density[i - 1] === density[i - 2] && i !== peakAt) {
+    if (density[i] === density[i - 1] && density[i - 1] === density[i - 2] && i !== peakAt && i !== subAt) {
       density[i] = NEXT[density[i]!]!;
     }
   }
@@ -215,7 +261,7 @@ export function composeVisual(
    */
   for (let i = 2; i < layout.length; i++) {
     if (body[i]!.width === "narrow") continue;
-    if (layout[i] === layout[i - 1] && layout[i - 1] === layout[i - 2] && i !== peakAt) {
+    if (layout[i] === layout[i - 1] && layout[i - 1] === layout[i - 2] && i !== peakAt && i !== subAt) {
       const other = d.layouts.find((l) => l !== layout[i] && (l !== "fullbleed" || a.hasRealPhotos));
       if (other) layout[i] = other;
     }
@@ -231,10 +277,11 @@ export function composeVisual(
       return { ...s, visual: { peak: "none", density: "normal", layout: s.layout, role: "heroTitle" } };
     }
     const i = b++;
-    return { ...s, visual: { peak: i === peakAt ? peakId : "none", density: density[i]!, layout: layout[i]!, role: role[i]! } };
+    const peak = i === peakAt ? peakId : i === subAt ? subId : "none";
+    return { ...s, visual: { peak, density: density[i]!, layout: layout[i]!, role: role[i]! } };
   });
 }
 
-/** 検証用。**山が1つだけであることを、外から数えられるようにする** */
+/** 検証用。**山の数を外から数えられるようにする**（主役1つ＋終盤の小さな山1つまで） */
 export const peakCount = (list: VisualSection[]): number =>
   list.filter((s) => s.visual.peak !== "none").length;

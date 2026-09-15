@@ -442,6 +442,43 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
 .band[data-width="narrow"] > .inner { max-width: 720px; }
 .band[data-width="normal"] > .inner { max-width: 900px; }
 .band[data-width="full"] > .inner { max-width: none; padding-left: 0; padding-right: 0; }
+/**
+ * **端まで届く帯は、帯の外がそのまま画面の外である**（D-353）。
+ *
+ * 写真が現れる動き（`kobo-reveal`）は 1.02 倍から等倍へ戻る。左右に 1% ずつ出る。
+ * これまでは `.inner` の左右 20px の余白がそれを飲んでいたが、`full` で余白を捨てた結果、
+ * **その 1% がそのまま横スクロールになった**（スマホ 394 > 390、PC 1445 > 1440）。
+ * 幅の段を戻すのでも、動きを消すのでもなく、**帯の側で切る。**
+ * `hidden` ではなく `clip` を使うのは、`hidden` にすると縦方向がスクロール箱になり、
+ * 帯の中身の位置の前提が変わるためである。
+ */
+.band[data-width="full"] > .inner { overflow-x: clip; }
+/**
+ * **端まで届くのは写真であって、言葉ではない**（D-354）。
+ *
+ * 余白を捨てた結果、見出し「工場・設備」も写真の説明書きも画面の端に貼り付いていた
+ * （実測：スマホで左 0px。ほかの帯の見出しは 16px）。**読む言葉には余白を戻す。**
+ * 画面の端まで届くのは、写真そのものだけでよい。
+ *
+ * **内側の余白（padding）ではなく、外側の余白（margin）で戻す。**
+ * 見出しの飾り（`html[data-headings="rule"]` の左罫）は `padding-left: 14px` で
+ * 文字を右へ送っている。同じ強さの規則なので、ここで `padding` を書くと
+ * **飾りの分を打ち消して、罫だけが画面の端に貼り付く**（実測でそうなった）。
+ * `margin` なら、罫ごと内側へ寄るので、**ほかの帯の見出しと左端が揃う。**
+ */
+.band[data-width="full"] > .inner > h2,
+.band[data-width="full"] > .inner > .band-body > p,
+.band[data-width="full"] .photo figcaption { margin-left: 20px; margin-right: 20px; }
+/**
+ * スマホの余白は 16px（`.inner` と同じ）。**この上書きは、上の規則より後ろに置く。**
+ * 同じ強さの規則は**後ろが勝つ**ので、画面幅の条件があっても、前に書くと効かない
+ * （最初これで 20px のままになった）。
+ */
+@media (max-width: 720px) {
+  .band[data-width="full"] > .inner > h2,
+  .band[data-width="full"] > .inner > .band-body > p,
+  .band[data-width="full"] .photo figcaption { margin-left: 16px; margin-right: 16px; }
+}
 
 /* 強さ。**重要情報と補助情報を同じ大きさで出さない** */
 .band[data-emphasis="lead"] > .inner > h2 { font-size: clamp(24px, 2.4vw, 38px); }
