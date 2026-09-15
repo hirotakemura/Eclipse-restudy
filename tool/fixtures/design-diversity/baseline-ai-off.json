@@ -27,11 +27,10 @@
       ]
     },
     "equipment/index": {
-      "hash": "1701f5d567c4",
+      "hash": "0561952703bd",
       "bands": [
         "equipment:cardGrid:lead",
-        "equipment:spec:quiet",
-        "photos:fullWidth:normal"
+        "equipment:spec:quiet"
       ]
     }
   },
@@ -64,10 +63,9 @@
       ]
     },
     "equipment/index": {
-      "hash": "384d1240be85",
+      "hash": "a8cb2cb3a15b",
       "bands": [
-        "equipment:spec:normal",
-        "photos:fullWidth:normal"
+        "equipment:spec:normal"
       ]
     }
   },
@@ -99,11 +97,10 @@
       ]
     },
     "equipment/index": {
-      "hash": "96247398eea9",
+      "hash": "0629e2c0a045",
       "bands": [
         "equipment:cardGrid:lead",
-        "equipment:spec:quiet",
-        "photos:fullWidth:normal"
+        "equipment:spec:quiet"
       ]
     }
   }

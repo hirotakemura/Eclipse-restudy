@@ -14,7 +14,7 @@ import Present from "../components/Present.astro";
 import { analyze } from "../../../lib/design/analysis.ts";
 import { composePage } from "../../../lib/design/sections.ts";
 import { composeVisual } from "../../../lib/design/visual.ts";
-import { composeAssets } from "../../../lib/design/assets.ts";
+import { composeAssets, willDraw } from "../../../lib/design/assets.ts";
 import { project, hasRecruit, hasMessage, companyName, photosOf, narrowTo } from "../lib/site";
 import { theme } from "../lib/theme";
 import { hasDraft } from "../lib/draft";
@@ -37,7 +37,7 @@ const sections = composeAssets(
     source, analysis, { direction: theme.direction },
   ),
   source, analysis, { direction: theme.direction, page: kind },
-);
+).filter((s) => willDraw(s, source, kind));
 ---
 <Base title={title} description={`${companyName}の${title}`}>
   <div class="page-head"><div class="inner">

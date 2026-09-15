@@ -14,7 +14,7 @@ import Present from "../components/Present.astro";
 import { analyze } from "../../../lib/design/analysis.ts";
 import { composePage } from "../../../lib/design/sections.ts";
 import { composeVisual } from "../../../lib/design/visual.ts";
-import { composeAssets } from "../../../lib/design/assets.ts";
+import { composeAssets, willDraw } from "../../../lib/design/assets.ts";
 import { project, companyName } from "../lib/site";
 import { theme } from "../lib/theme";
 
@@ -25,7 +25,7 @@ const sections = composeAssets(
     project as any, analysis, { direction: theme.direction },
   ),
   project as any, analysis, { direction: theme.direction, page: "contact" },
-);
+).filter((s) => willDraw(s, project as any, "contact"));
 ---
 <Base title="お問い合わせ" description={`${companyName}へのお問い合わせ。お電話・メールで承ります`}>
   <div class="page-head"><div class="inner">

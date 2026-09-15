@@ -18,6 +18,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { DIRECTIONS } from "./lib/design/direction.ts";
+import { analyze } from "./lib/design/analysis.ts";
+import { photoRequestsFor } from "./lib/design/assets.ts";
 
 const arg = (k, d) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : d; };
 const OUT = arg("--out", path.join("..", "docs", "assets", "captures", "asset-stage2"));
@@ -129,14 +131,21 @@ console.log("\n━━━ 写真 0枚 / 少数 / 十分（A/B/C）━━━\n");
     /** 面・余白・組み方は注記にとどめる */
     const rhythm = top.filter((b) => b.content !== "photos")
       .map((b) => `${b.surface}/${b.density}/${b.layout}`).join(" ");
-    let wanted = 0, customer = 0, pages = 0;
+    /**
+     * **依頼は画面からは数えられない**（D-317）。
+     * 写真の無い帯は描かれないので、`data-asset-wanted` はHTMLに出ない。
+     * **持っているが描かない**ものなので、Asset層に直接聞く。
+     */
+    const wanted = photoRequestsFor(p, analyze(p)).length;
+    let customer = 0, pages = 0;
     for (const pg of ["", "strengths", "capability", "equipment", "cases", "cases/1", "cases/2", "company", "contact"]) {
       const r = read(pg); if (!r) continue; pages++;
-      wanted += r.filter((b) => b.wanted).length;
       customer += r.filter((b) => b.src === "customer").length;
     }
     const peak = top.find((b) => b.peak);
-    seen.push({ label, skeleton, rhythm, wanted, customer, pages, peak: peak ? `${peak.content}:${peak.peak}` : "なし", pid });
+    seen.push({ label, skeleton, rhythm, wanted, customer, pages, peak: peak ? `${peak.content}:${peak.peak}` : "なし", pid, root });
+    /** **人が見て判断するための3枚**（第4段階）。トップ・事例1件目・設備 */
+    built.push({ plan: "A/B/C", id: `abc-${seen.length}`, label, pid, root, shots: ["/", "/cases/1/", "/equipment/"] });
   }
   for (const x of seen) {
     console.log(`  ${x.label.padEnd(14)} ${x.pages}ページ　写真の帯 ${String(x.customer).padStart(2)}本　写真の依頼 ${String(x.wanted).padStart(2)}本　トップの山 ${x.peak}`);
@@ -151,13 +160,79 @@ console.log("\n━━━ 写真 0枚 / 少数 / 十分（A/B/C）━━━\n");
     for (const x of seen) console.log(`      ${x.label.padEnd(14)} ${x.rhythm}`);
   }
   const down = seen[0].wanted >= seen[1].wanted && seen[1].wanted >= seen[2].wanted;
-  console.log(`  ${down ? "○" : "✗"} 写真が届くほど、依頼が減る（${seen.map((x) => x.wanted).join(" → ")}）`);
+  console.log(`  ${down ? "○" : "✗"} 写真が届くほど、依頼が減る（${seen.map((x) => x.wanted).join(" → ")}　※置き場所ごとに1件）`);
   const up = seen[0].customer <= seen[1].customer && seen[1].customer <= seen[2].customer;
   console.log(`  ${up ? "○" : "✗"} 写真が届くほど、お客様の写真を出す帯が増える（${seen.map((x) => x.customer).join(" → ")}）`);
   if (!same || !down || !up) process.exitCode = 1;
 }
 
 console.log("\n  画面を撮ります…");
-const shot = spawnSync("node", ["qa-assets-shot.mjs", OUT, ...built.map((b) => `${b.pid}|${b.plan} ${b.label}|${b.root}`)], { encoding: "utf8", stdio: "inherit" });
+const shot = spawnSync("node", ["qa-assets-shot.mjs", OUT, ...built.map((b) => `${b.pid}|${b.plan} ${b.label}|${b.root}|${(b.shots ?? []).join(",")}`)], { encoding: "utf8", stdio: "inherit" });
 if (shot.status !== 0) process.exitCode = 1;
+/**
+ * ── 人が見て判断するための紙 ────────────────────────
+ *
+ * **機械が確かめられることと、人が見て決めることを分ける**（ご指示・第4段階）。
+ *
+ * 機械に言えるのは「あってはいけないことが無い」までである。
+ * **「写真0枚でも完成して見えるか」は、人が画面を見て決めるしかない。**
+ * 数にすると、その数を下げることが目的になってしまう（docs/31 原則⑤）。
+ */
+{
+  const q = [
+    ["写真0枚でも未完成に見えないか", "A 写真0枚 の3枚。**穴が空いて見えないか。** 装飾が無い型（落ち着き・信頼）も同じ目で見る"],
+    ["写真がある場合、意味のある使われ方になっているか", "B と C。**その写真でなければいけない場所に出ているか**（事例の写真が事例のページに、など）"],
+    ["視線の流れがあるか", "各型のトップ。上から下へ、止まる場所と流す場所があるか"],
+    ["ページに適切な Visual Peak があるか", "各型のトップ。**どこが山か、目で分かるか**"],
+    ["会社ごとの個性が感じられるか", "6つの型を並べて見る。**同じ会社データで型だけを変えている**ので、差は型の差である"],
+    ["装飾過多になっていないか", "モダン・力強い。**装飾が本文より目立っていないか**"],
+    ["写真が単なる穴埋めになっていないか", "C 十分。**枚数が増えただけになっていないか**"],
+  ];
+  const lines = [];
+  const o = (x = "") => lines.push(x);
+  o("# 素材（Asset）の見え方 — 人が見て判断するもの");
+  o("");
+  o(`作成 ${new Date().toLocaleDateString("ja-JP")}　／　\`npm run qa:assets\` が作っています`);
+  o("");
+  o("**機械が確かめたことは、ここには書きません。**（画面に出ています）");
+  o("ここにあるのは、**人が画面を見ないと決められないこと**だけです。");
+  o("");
+  o("> 数にしないでください。**「装飾が何本」「写真が何枚」は品質ではありません。**");
+  o("> `none`（素材を置かない）は、決まらなかったのではなく**要らないと決めた**状態です。");
+  o("");
+  o("---");
+  o("");
+  o("## 見るところ");
+  o("");
+  for (const [i, [name, how]] of q.entries()) {
+    o(`### ${i + 1}. ${name}`);
+    o("");
+    o(`- ${how}`);
+    o("- [ ] 見た　／　気づいたこと：");
+    o("");
+  }
+  o("---");
+  o("");
+  o("## 画面の一覧");
+  o("");
+  o("### 型ごと（同じ会社データ・写真0枚）");
+  o("");
+  o("| 型 | PC | スマホ |");
+  o("|---|---|---|");
+  for (const b of built.filter((x) => x.plan !== "A/B/C")) {
+    o(`| ${b.plan} ${b.label} | \`${b.pid}-pc-index.png\` ほか4枚 | \`${b.pid}-sp-index.png\` ほか4枚 |`);
+  }
+  o("");
+  o("### 写真 0枚 / 少数 / 十分（同じ会社・同じ型）");
+  o("");
+  o("| | PC | スマホ |");
+  o("|---|---|---|");
+  for (const b of built.filter((x) => x.plan === "A/B/C")) {
+    o(`| ${b.label} | \`${b.pid}-pc-index.png\` / \`-cases-1.png\` / \`-equipment.png\` | 同名の \`-sp-\` |`);
+  }
+  o("");
+  fs.writeFileSync(path.join(OUT, "検査票.md"), lines.join("\n") + "\n");
+  console.log(`  検査票： ${path.join(OUT, "検査票.md")}`);
+}
+
 console.log(`\n  保存先： ${OUT}\n`);

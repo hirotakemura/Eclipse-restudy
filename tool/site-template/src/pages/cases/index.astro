@@ -11,7 +11,7 @@ import Present from "../../components/Present.astro";
 import { analyze } from "../../../../lib/design/analysis.ts";
 import { composePage } from "../../../../lib/design/sections.ts";
 import { composeVisual } from "../../../../lib/design/visual.ts";
-import { composeAssets } from "../../../../lib/design/assets.ts";
+import { composeAssets, willDraw } from "../../../../lib/design/assets.ts";
 import { project, companyName, isGeneral, photosOf, narrowTo } from "../../lib/site";
 import { theme } from "../../lib/theme";
 
@@ -24,7 +24,7 @@ const sections = composeAssets(
     source, analysis, { direction: theme.direction },
   ),
   source, analysis, { direction: theme.direction, page: "cases" },
-);
+).filter((s) => willDraw(s, source, "cases"));
 const title = isGeneral ? "実績" : "加工事例";
 ---
 <Base title={title} description={`${companyName}の${title}`}>

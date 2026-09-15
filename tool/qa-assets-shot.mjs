@@ -14,8 +14,17 @@
  */
 import fs from "node:fs"; import path from "node:path"; import http from "node:http";
 const OUT = process.argv[2];
-const JOBS = process.argv.slice(3).map((s) => { const [pid, label, root] = s.split("|"); return { pid, label, root }; });
-const PAGES = ["/", "/strengths/", "/capability/", "/company/", "/contact/"];
+const JOBS = process.argv.slice(3).map((s) => { const [pid, label, root, shots] = s.split("|"); return { pid, label, root, shots: shots ? shots.split(",") : null }; });
+/** 撮る画面。**人が見るためのもの**なので絞る */
+const SHOT_PAGES = ["/", "/strengths/", "/capability/", "/company/", "/contact/"];
+/**
+ * 測る画面。**撮る枚数は増やさずに、検査だけ広げる**（第4段階）。
+ *
+ * 会社概要しか測っていなかったとき、**写真0枚の会社で「外観」の見出しだけが出ていた**のを
+ * 1ページぶんしか見つけられなかった。**測っていないページは、無いのと同じ**（D-192）。
+ */
+const CHECK_PAGES = ["/", "/strengths/", "/capability/", "/equipment/", "/cases/", "/cases/1/",
+  "/company/", "/message/", "/recruit/", "/contact/"];
 const MIME = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp" };
 let chromium;
 try { chromium = (await import("/opt/node22/lib/node_modules/playwright/index.js")).default.chromium; }
@@ -33,7 +42,7 @@ const checks = [];
 for (const job of JOBS) {
   const srv = await serve(job.root, 4801);
   for (const [w, tag] of [[1440, "pc"], [390, "sp"]]) {
-    for (const p of PAGES) {
+    for (const p of (job.shots ?? SHOT_PAGES)) {
       const ctx = await b.newContext({ viewport: { width: w, height: 900 } });
       const pg = await ctx.newPage();
       const r = await pg.goto("http://127.0.0.1:4801" + p, { waitUntil: "networkidle" }).catch(() => null);
@@ -50,7 +59,7 @@ for (const job of JOBS) {
   for (const [w, tag] of [[1440, "PC"], [390, "スマホ"]]) {
     const ctx = await b.newContext({ viewport: { width: w, height: 900 } });
     const pg = await ctx.newPage();
-    for (const p of PAGES) {
+    for (const p of (job.shots ?? CHECK_PAGES)) {
       const r = await pg.goto("http://127.0.0.1:4801" + p, { waitUntil: "networkidle" }).catch(() => null);
       if (!r || r.status() !== 200) continue;
       const out = await pg.evaluate(() => {
@@ -145,10 +154,51 @@ for (const job of JOBS) {
             if (hit) overlap.push({ band: el.dataset.content, subject: el.dataset.assetSubject, text: hit });
           }
         }
-        return { low, overlap };
+        /**
+         * ── 機械が確かめられること（第4段階）──────────
+         * **どれも「あってはいけないこと」だけを見る。**
+         * 数の多さ・少なさは見ない（装飾の数も写真の枚数も品質ではない・docs/31 原則⑤）。
+         */
+        const faults = [];
+
+        /** ① 仮の画像が残っていないか */
+        for (const img of document.images) {
+          if (/\.svg(\?|$)/i.test(img.getAttribute("src") ?? "")) faults.push(`仮の画像が残っています：${img.getAttribute("src")}`);
+        }
+        /** ② 中身の無い帯が無いか（見出しだけの帯） */
+        for (const el of document.querySelectorAll(".band")) {
+          const body = el.querySelector(".band-body");
+          if (!body) continue;
+          const t = (body.textContent ?? "").trim();
+          if (!t && body.querySelectorAll("img, table, svg").length === 0) {
+            faults.push(`中身の無い帯：${el.dataset.content ?? "?"}（見出し「${(el.querySelector("h2")?.textContent ?? "").trim()}」）`);
+          }
+        }
+        /** ③ 画像の参照が切れていないか */
+        for (const img of document.images) {
+          if (img.complete && img.naturalWidth === 0) faults.push(`画像が読めません：${img.getAttribute("src")}`);
+        }
+        /**
+         * ④ **「お客様の写真あり」と言っている帯に、本当に画像があるか。**
+         * 逆も見る——画像を出しているのに名乗っていない帯が無いか。
+         * ここがずれると、**写真の依頼が的外れになる。**
+         */
+        for (const el of document.querySelectorAll(".band")) {
+          const n = el.querySelectorAll("img").length;
+          const src = el.dataset.assetSource;
+          if (src === "customer" && n === 0) faults.push(`お客様の写真ありと出ているのに画像が無い：${el.dataset.content}`);
+          if (src !== "customer" && n > 0) faults.push(`画像を出しているのに名乗っていない：${el.dataset.content}（${src}）`);
+        }
+        /** ⑤ 横にはみ出していないか */
+        if (document.documentElement.scrollWidth > window.innerWidth + 1) {
+          faults.push(`横にはみ出しています（${document.documentElement.scrollWidth} > ${window.innerWidth}）`);
+        }
+
+        return { low, overlap, faults };
       });
       for (const x of out.low) checks.push(`  ✗ ${job.label} ${tag} ${p} 文字が読めません（${x.where}）比 ${x.v}　文字 ${x.c} ／ 地 ${x.bg}`);
       for (const x of out.overlap) checks.push(`  ✗ ${job.label} ${tag} ${p} 線の装飾が文字に重なっています（${x.band}:${x.subject}）「${x.text}」`);
+      for (const f of out.faults) checks.push(`  ✗ ${job.label} ${tag} ${p} ${f}`);
       measured++;
     }
     await ctx.close();

@@ -23,6 +23,9 @@ import path from "node:path";
 import { getFormSet } from "./lib/form-definition.ts";
 import { hasCaseMaterial } from "./lib/generate/pages.ts";
 import { NEEDS_REVIEW_MARKER } from "./lib/schema.ts";
+import { analyze } from "./lib/design/analysis.ts";
+import { photoRequestsFor } from "./lib/design/assets.ts";
+import { sanitizeProject } from "./lib/sanitize.ts";
 
 const args = process.argv.slice(2);
 const id = args.find((a) => !a.startsWith("--"));
@@ -224,6 +227,46 @@ for (const [rank, title] of RANKS) {
   out("");
   for (const x of list) out(`- ${x.where}　…　${x.now === "（空欄）" ? "" : x.now + "　"}**${x.ask}**`);
   out("");
+}
+
+/**
+ * ── お客様にお願いする写真 ──────────────────────────
+ *
+ * **写真は、聞き取りでは埋まらない。** お客様から預かるものである。
+ * それなのに、ここには写真の質問が1件も無かった（実測0件）のに、
+ * **公開判定は仮の画像で止まっていた。**
+ * 止める基準はあるのに、何をもらえばよいかを出す仕組みが無かった（docs/31 §1-3）。
+ *
+ * **判定そのものはここでしない。** Asset層（`lib/design/assets.ts`）が
+ * ページを組んだうえで出した `wanted` を、**人が読める形に並べ替えるだけ**である。
+ */
+{
+  /** **判定は Asset層がする。ここは人が読む形に並べ替えるだけ** */
+  const p = sanitizeProject(project);
+  const requests = photoRequestsFor(p, analyze(p));
+  if (requests.length) {
+    out("---");
+    out("");
+    out(`# お客様にお願いする写真　${requests.length}件`);
+    out("");
+    out("> **この欄は取材では埋まりません。** 写真はお客様から預かるものです。");
+    out("> 下は「どの写真が、どのページで、どれくらい効くか」を、組み上げた画面から出したものです。");
+    out("");
+    const LABEL = { high: "★ 先にお願いしたい", medium: "あると良い", low: "余裕があれば" };
+    for (const level of ["high", "medium", "low"]) {
+      const list = requests.filter((r) => r.priority === level);
+      if (!list.length) continue;
+      out(`## ${LABEL[level]}　${list.length}件`);
+      out("");
+      list.forEach((r, i) => {
+        out(`**${i + 1}. ${r.category}**`);
+        out("");
+        out(`- どこで使う：${r.places.join("・")}`);
+        out(`- なぜ　　　：${r.why}`);
+        out("");
+      });
+    }
+  }
 }
 
 out("---");

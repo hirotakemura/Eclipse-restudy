@@ -16,7 +16,7 @@ import Figure from "../components/Figure.astro";
 import { analyze } from "../../../lib/design/analysis.ts";
 import { composeTop, resolveHero } from "../../../lib/design/sections.ts";
 import { composeVisual } from "../../../lib/design/visual.ts";
-import { composeAssets } from "../../../lib/design/assets.ts";
+import { composeAssets, willDraw } from "../../../lib/design/assets.ts";
 /** **見出しの大きさは、中身の長さで決める**（D-277）。長文を巨大に組まない */
 import { fit } from "../../../lib/design/system/typography.ts";
 import { project, designBrief, companyName, cases, photoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen } from "../lib/site";
@@ -50,7 +50,7 @@ const sections = composeAssets(
     brief: designBrief,
   }), project as any, analysis, { direction: theme.direction }),
   project as any, analysis, { direction: theme.direction, page: "index" },
-);
+).filter((s) => willDraw(s, project as any, "index"));
 
 /**
  * 10秒で「自分の用は足りるか」を判断してもらうための札。

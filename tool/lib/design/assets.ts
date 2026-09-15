@@ -39,6 +39,8 @@
 import type { Project } from "../schema.ts";
 import type { Analysis } from "./analysis.ts";
 import { getDirection } from "./direction.ts";
+import { composeTop, composePage } from "./sections.ts";
+import { composeVisual } from "./visual.ts";
 import type { VisualSection } from "./visual.ts";
 import {
   DRAWABLE, EVIDENTIAL, SUBJECT_OF, canUse,
@@ -358,6 +360,84 @@ function decorate(out: AssetSection[], d: ReturnType<typeof getDirection>): Asse
     if (second >= 0) put(second, kinds[1]!);
   }
   return out;
+}
+
+/**
+ * **その帯が、画面に何かを描くか**（D-317）。
+ *
+ * 写真の帯は、出す写真が1枚も無ければ `Gallery` が何も描かない。
+ * それでも帯を置いたままにすると、**見出しだけの帯**が残る
+ * （実測：写真0枚の会社の会社概要ページに「外観」という見出しだけが出ていた）。
+ *
+ * **ただし帯そのものは消さない。**
+ * 消すと「このページには外観の写真が要る」という判断まで消えて、
+ * **写真が1枚も無いページから、写真の依頼が出なくなる**（実測：事例3・4件目の依頼が消えた）。
+ * いちばん頼みたいページから頼めなくなるので、本末転倒である。
+ *
+ * だから**持つ**（`wanted` を出す）が、**描かない**。
+ * 「このページに何が要るか」と「このページに何を描くか」は別のことである。
+ *
+ * **仮の画像（SVG）は描く。** あれは「ここに写真が入る」とお客様に見てもらうための
+ * もので、画面には出る（D-242）。実写かどうか（`source`）とは別の話。
+ */
+export const willDraw = (sec: VisualSection, project: Project, page = "index"): boolean => {
+  if (sec.content !== "photos") return true;
+  /**
+   * **その帯が出す置き場所の写真があるか**を見る。枚数の合計ではない。
+   * 合計で見ていたため、**外観と事例の写真を2枚預かっている会社で、
+   * 「工場・設備」の見出しだけの帯**が出ていた（実測・B 少数）。
+   */
+  const cat = categoryFor("photos", page);
+  const photos = Array.isArray((project as any).photos) ? (project as any).photos : [];
+  return photos.some((x: any) => x?.category === cat);
+};
+
+/**
+ * この案件でお願いすべき写真を、**サイト全体から集める**。
+ *
+ * どのページが作られるかは案件データで変わる（採用ページを作らない会社もある）。
+ * **その条件の単一の正は `site-template/src/lib/site.ts`** なので、
+ * ここに書き写した分は `asset.test.mjs` が突き合わせている（D-197と同じ形）。
+ *
+ * ページ名は**人に読ませる**ので、slug ではなく日本語で返す。
+ */
+export function photoRequestsFor(
+  project: Project,
+  a: Analysis,
+  opts: { direction?: string } = {},
+): ReturnType<typeof photoRequests> {
+  const p = project as any;
+  const dir = opts.direction ?? p.theme?.direction;
+  const isGeneral = p.formSet === "general";
+  const goals = new Set(p.inquiry?.goals ?? []);
+  const hasRecruit = goals.has("採用") && Boolean(p.recruitment);
+  const hasMessage = (goals.has("採用") || goals.has("信用構築")) && Boolean(p.executive?.vision);
+  const cases = Array.isArray(p.cases) ? p.cases : [];
+  const photosOf = (c: string) => (Array.isArray(p.photos) ? p.photos : []).filter((x: any) => x?.category === c);
+
+  const pages: [string, string, any][] = [
+    ["index", "トップ", p],
+    ["strengths", isGeneral ? "選ばれている理由" : "強み・技術", p],
+    ...(isGeneral ? [] : ([["capability", "対応可能範囲", p], ["equipment", "設備一覧", p]] as [string, string, any][])),
+    ["cases", isGeneral ? "実績" : "加工事例の一覧", { ...p, photos: photosOf("加工事例") }],
+    ...(isGeneral ? [] : cases.map((c: any, i: number): [string, string, any] => [
+      "case",
+      `${i + 1}件目「${String(c?.title ?? "").slice(0, 16)}」`,
+      { ...p, caseDetail: true, cases: [c], photos: photosOf("加工事例").filter((x: any) => x.caseNo === i + 1) },
+    ])),
+    ["company", "会社概要", { ...p, photos: photosOf("外観") }],
+    ...(hasMessage ? ([["message", "代表挨拶", { ...p, photos: photosOf("代表者") }]] as [string, string, any][]) : []),
+    ...(hasRecruit ? ([["recruit", "採用情報", { ...p, photos: photosOf("働く人") }]] as [string, string, any][]) : []),
+    ["contact", "お問い合わせ", p],
+  ];
+
+  const all = pages.map(([slug, label, source]) => {
+    const base = slug === "index"
+      ? composeTop(source, a, { direction: dir })
+      : composePage(slug as any, source, a, { direction: dir });
+    return { page: label, sections: composeAssets(composeVisual(base, source, a, { direction: dir }), source, a, { direction: dir, page: slug }) };
+  });
+  return photoRequests(all);
 }
 
 /** この案件で、お客様にお願いすべき写真。**ページ単位の生の並び** */

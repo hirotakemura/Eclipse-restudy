@@ -12,7 +12,7 @@ import fs from "node:fs";
 import { analyze } from "./lib/design/analysis.ts";
 import { composeTop, composePage } from "./lib/design/sections.ts";
 import { composeVisual } from "./lib/design/visual.ts";
-import { composeAssets, wantedPhotos, photoRequests, PHOTO_OF_PAGE, SUBJECT_OF_CATEGORY, categoryFor } from "./lib/design/assets.ts";
+import { composeAssets, wantedPhotos, photoRequests, willDraw, PHOTO_OF_PAGE, SUBJECT_OF_CATEGORY, categoryFor } from "./lib/design/assets.ts";
 import { ALLOWED, EVIDENTIAL, SUBJECT_OF, DRAWABLE, canUse } from "./lib/design/system/index.ts";
 import { DIRECTIONS } from "./lib/design/direction.ts";
 
@@ -132,6 +132,21 @@ console.log("\n━━━ 語を2箇所で持っている所の突き合わせ �
     const viaCategory = SUBJECT_OF_CATEGORY[categoryFor(content, "index")];
     check(`「${content}」の主題が、内容と置き場所で一致（${viaCategory}）`, SUBJECT_OF[content] === viaCategory,
       `内容=${SUBJECT_OF[content]} 置き場所=${viaCategory}`);
+  }
+  /**
+   * **どのページが作られるかの条件が、`gaps.mjs` と `lib/site.ts` で同じか。**
+   * 写真の依頼は「作られるページ」から出すので、ここがずれると
+   * **作られないページの写真をお願いする**ことになる。
+   */
+  const gaps = fs.readFileSync("lib/design/assets.ts", "utf8");
+  const site = fs.readFileSync("site-template/src/lib/site.ts", "utf8");
+  for (const [name, cond] of [
+    ["採用ページ", 'goals.has("採用") && Boolean(p.recruitment)'],
+    ["代表挨拶", '(goals.has("採用") || goals.has("信用構築")) && Boolean(p.executive?.vision)'],
+  ]) {
+    const inSite = cond.replace(/\bp\./g, "project.");
+    check(`${name}を作る条件が、Asset層と site.ts で同じ`,
+      gaps.includes(cond) && site.includes(inSite), `site.ts に「${inSite}」が見当たりません`);
   }
   check("型すべてに、素材の主題の候補がある", DIRECTIONS.every((d) => Array.isArray(d.assets)));
   check("描ける主題だけが DRAWABLE に入っている",
@@ -315,7 +330,32 @@ console.log("\n━━━ 写真の依頼（第3段階）━━━");
   check("加工事例の依頼がいちばん強い", req[0] && ["加工事例", "工場・設備"].includes(req[0].category),
     req[0]?.category ?? "依頼が無い");
 
-  /** ⑧ 骨格は写真の枚数で変わらない（ご指示8） */
+  /**
+   * ⑧ **持つが、描かない**（D-317）。
+   *
+   * 写真の帯は、出す写真が無ければ何も描かない。それでも帯を置いたままにすると
+   * **見出しだけの帯**が残る。かといって帯ごと消すと、
+   * **写真が1枚も無いページから依頼が出なくなる**——いちばん頼みたいページから頼めない。
+   */
+  const noPhoto = build(p, "company", { photos: [] });
+  const gallery = noPhoto.assets.find((x) => x.content === "photos");
+  check("写真0枚でも、写真の帯は判断として残る", !!gallery, noPhoto.assets.map((x) => x.content).join(" "));
+  check("写真0枚の写真の帯は、依頼を立てる", !!gallery?.asset.wanted, JSON.stringify(gallery?.asset.wanted ?? null));
+  check("写真0枚の写真の帯は、画面には描かない", gallery && !willDraw(gallery, { ...p, photos: [] }, "company"));
+  /** **仮の画像は描く。** 「ここに写真が入る」と見てもらうためのもの（D-242） */
+  const mockOne = { ...p, photos: [{ file: "gaikan.svg", category: "外観" }] };
+  const withMock = build(p, "company", { photos: mockOne.photos });
+  const g2 = withMock.assets.find((x) => x.content === "photos");
+  check("仮の画像があれば、写真の帯は描く", g2 && willDraw(g2, mockOne, "company"));
+  /** **別の置き場所の写真では描かない**（合計で見ると、見出しだけの帯が出る） */
+  const other = { ...p, photos: [{ file: "kojo-1.png", category: "工場・設備" }] };
+  check("別の置き場所の写真では、その帯は描かない", g2 && !willDraw(g2, other, "company"));
+  /** **依頼は、写真の無いページからこそ出る** */
+  const perCase = ["cases", "case"].flatMap((pg) => build(p, pg, { photos: [] }).assets)
+    .filter((x) => x.asset.wanted).length;
+  check("写真0枚の事例ページからも依頼が出る", perCase > 0, `${perCase}本`);
+
+  /** ⑨ 骨格は写真の枚数で変わらない（ご指示8） */
   const bone = (x) => flat(x).filter((s) => s.content !== "photos").map((s) => `${s.content}:${s.presentation}`).join(" ");
   check("写真の枚数で、帯の並びと見せ方が変わらない", bone(zero) === bone(full));
 }
