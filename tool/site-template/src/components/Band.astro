@@ -40,11 +40,15 @@ interface Props {
   assetIntent?: string;
   assetRole?: string;
   assetSubject?: string;
-  /** 実写が要るのに無い帯。**置き場所を出す**（第3段階で写真の依頼に使う） */
+  /**
+   * 実写が要るのに無い帯。**置き場所と、どれくらい効くか**を出す（第3段階）。
+   * 写真の依頼はこの2つから作る。`why`（人に読ませる理由）は画面に出さない。
+   */
   assetWanted?: string;
+  assetPriority?: string;
 }
 const { width = "normal", emphasis = "normal", surface = "plain", layout = "stack", motif = "none", content, presentation, decidedBy, heading, density = "normal", peak = "none", role,
-  assetSource, assetIntent, assetRole, assetSubject, assetWanted } = Astro.props;
+  assetSource, assetIntent, assetRole, assetSubject, assetWanted, assetPriority } = Astro.props;
 ---
 <section
   class="section band"
@@ -64,6 +68,7 @@ const { width = "normal", emphasis = "normal", surface = "plain", layout = "stac
   data-asset-role={assetRole}
   data-asset-subject={assetSubject}
   data-asset-wanted={assetWanted}
+  data-asset-priority={assetPriority}
 >
   <div class="inner">
     {heading && <h2>{heading}</h2>}

@@ -1,7 +1,7 @@
 {
   "a-precision": {
     "index": {
-      "hash": "ee71059270d9",
+      "hash": "9cd115a836e6",
       "bands": [
         "conditions:spec:lead",
         "cases:process:normal",
@@ -27,7 +27,7 @@
       ]
     },
     "equipment/index": {
-      "hash": "fee0b13a343f",
+      "hash": "1701f5d567c4",
       "bands": [
         "equipment:cardGrid:lead",
         "equipment:spec:quiet",
@@ -37,7 +37,7 @@
   },
   "b-difficulty": {
     "index": {
-      "hash": "64583376e64b",
+      "hash": "7eba352920b8",
       "bands": [
         "declined:quote:lead",
         "cases:process:normal",
@@ -64,7 +64,7 @@
       ]
     },
     "equipment/index": {
-      "hash": "1a5645971bab",
+      "hash": "384d1240be85",
       "bands": [
         "equipment:spec:normal",
         "photos:fullWidth:normal"
@@ -73,7 +73,7 @@
   },
   "c-speed": {
     "index": {
-      "hash": "8eb4d4e68200",
+      "hash": "0ffe0d7de455",
       "bands": [
         "conditions:comparison:lead",
         "cases:process:normal",
@@ -99,7 +99,7 @@
       ]
     },
     "equipment/index": {
-      "hash": "78e1428ae4f6",
+      "hash": "96247398eea9",
       "bands": [
         "equipment:cardGrid:lead",
         "equipment:spec:quiet",

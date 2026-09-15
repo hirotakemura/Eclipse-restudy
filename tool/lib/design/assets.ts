@@ -93,6 +93,51 @@ export const SUBJECT_OF_CATEGORY: Record<PhotoCategoryId, AssetSubject> = {
   その他: "light",
 };
 
+/**
+ * **いま何枚あって、何件に対して足りないのか**（第3段階）。
+ *
+ * 理由の文に混ぜて出す。`wanted` が持つのは `category` / `why` / `priority` の3つまで
+ * （ご指示4）なので、**数は別の欄にせず、人が読む理由の中に入れる。**
+ */
+function reasonFor(category: PhotoCategoryId, project: Project): string {
+  const base = WHY[category] ?? WHY["その他"]!;
+  const p = project as any;
+  const have = realPhotosOf(project, category);
+  const arr = (v: unknown) => (Array.isArray(v) ? v : []);
+  /** 何件に対しての写真か。**件数の分かるものだけ**添える */
+  const need =
+    category === "加工事例" ? arr(p.cases).length
+    : category === "工場・設備" ? arr(p.capability?.equipment).length
+    : 0;
+  if (have === 0 && need > 1) return `${base}（${need}件のうち、まだ1枚も届いていません）`;
+  if (have > 0 && need > have) return `${base}（${need}件のうち ${have}枚）`;
+  return base;
+}
+
+/**
+ * **どの写真から先にお願いするか**（第3段階・ご指示「どの情報を証拠化すると効果が高いか」）。
+ *
+ * 置き場所ごとの重みは**思いつきで決めない。** `analysis.ts` が写真の見立てに使っている
+ * 点数をそのまま使う——**同じことを2箇所で決めないため**（D-197）。
+ *
+ *   `score: (工場・設備 ? 2 : 0) + (外観 ? 1 : 0) + (加工事例 ? 2 : 0)`
+ *
+ * 2点のもの（加工品・設備）が `high`、1点のもの（外観）が `medium`。
+ * 見立てに入っていない代表者・働く人は、**証拠として要るが順位は下**なので `medium`。
+ *
+ * そのうえで、帯の置かれ方で一段動かす。
+ * **山になる帯の写真はいちばん効き、控えめに置くと決めた帯の写真は後回しでよい。**
+ */
+const BASE_PRIORITY: Record<PhotoCategoryId, number> = {
+  加工事例: 3, "工場・設備": 3, 外観: 2, 代表者: 2, 働く人: 2, ロゴ: 1, その他: 1,
+};
+function priorityOf(category: PhotoCategoryId, sec: VisualSection, isPeak: boolean): "high" | "medium" | "low" {
+  let n = BASE_PRIORITY[category] ?? 2;
+  if (isPeak) n += 1;
+  if (sec.emphasis === "quiet") n -= 1;
+  return n >= 3 ? "high" : n === 2 ? "medium" : "low";
+}
+
 /** なぜその写真が要るのか。**お客様に依頼するときの理由になる**（第3段階で `gaps` に流す） */
 const WHY: Record<string, string> = {
   加工事例: "加工したものが写っている写真が、いちばん問い合わせに繋がります",
@@ -186,17 +231,37 @@ export function composeAssets(
        */
       const category = categoryFor(sec.content, page);
       subject = SUBJECT_OF_CATEGORY[category];
-      if (realPhotosOf(project, category) > 0) {
+      const have = realPhotosOf(project, category);
+
+      /**
+       * **写真を実際に描いている帯だけが、お客様の素材を名乗る**（第3段階）。
+       *
+       * 画面に画像を出すのは `photos` の帯だけである
+       * （`CaseCard` `Equipment` `People` `Points` のどれにも `<img>` は無い）。
+       * 事例の表・設備のカード・会社概要の表は、**写真ではなく事実で証拠を出す帯**で、
+       * その事例の写真は**すぐ隣の `photos` の帯**が引き受けている。
+       *
+       * ここを「写真があるかどうか」で決めていたため、
+       * **画像を1枚も描かない帯が「お客様の写真あり」と名乗っていた**（第1〜2段階）。
+       * 「写真があるから使う」ではない（ご指示6）。**出している帯だけが名乗る。**
+       */
+      const shows = sec.content === "photos";
+      if (shows && have > 0) {
         source = "customer";
-      } else {
+      } else if (shows) {
         source = "none";
         /**
-         * **山になる帯と、写真そのものの帯を、いちばん強く求める。**
-         * 控えめに置くと決めた帯の写真は、無くても画面は成立する。
+         * **依頼は、その写真を出す帯からだけ出す。**
+         *
+         * 事例の表からも設備のカードからも同じ置き場所を頼むと、
+         * 実案件で**加工事例の依頼が15本**立った（第1段階の実測）。
+         * 同じ「加工品の写真をください」が15回並ぶのは、人に渡す紙として役に立たない。
+         * **出す場所ごとに1本**にすれば、事例ページ4枚なら4本＝どの事例が欠けているかが分かる。
          */
-        const priority = isPeak || sec.content === "photos" ? "high"
-          : sec.emphasis === "quiet" ? "low" : "medium";
-        wanted = { category, why: WHY[category] ?? WHY["その他"]!, priority };
+        wanted = { category, why: reasonFor(category, project), priority: priorityOf(category, sec, isPeak) };
+      } else {
+        /** 写真を出さない帯。**証拠であることは変わらないが、素材は持たない** */
+        source = "none";
       }
     } else {
       /**
@@ -295,9 +360,37 @@ function decorate(out: AssetSection[], d: ReturnType<typeof getDirection>): Asse
   return out;
 }
 
-/** この案件で、お客様にお願いすべき写真。**第3段階で `gaps` が使う** */
+/** この案件で、お客様にお願いすべき写真。**ページ単位の生の並び** */
 export function wantedPhotos(sections: AssetSection[]): NonNullable<Asset["wanted"]>[] {
   const out: NonNullable<Asset["wanted"]>[] = [];
   for (const s of sections) if (s.asset.wanted) out.push(s.asset.wanted);
   return out;
+}
+
+const RANK = { high: 3, medium: 2, low: 1 } as const;
+
+/**
+ * **お客様にお願いする写真の一覧**（第3段階）。
+ *
+ * 置き場所ごとに1行にまとめ、**いちばん強い優先度**を代表にする。
+ * 同じ頼みを何度も並べない——人に渡す紙として役に立たないから。
+ *
+ * `places` は「どのページのどこで要るか」で、**なぜ要るのかを説明するために持つ。**
+ * 枚数を品質の指標にしない（docs/31 原則⑤）ので、**この数を検査に使わない。**
+ */
+export function photoRequests(
+  all: { page: string; sections: AssetSection[] }[],
+): { category: PhotoCategoryId; why: string; priority: "high" | "medium" | "low"; places: string[] }[] {
+  const map = new Map<string, { category: PhotoCategoryId; why: string; priority: "high" | "medium" | "low"; places: string[] }>();
+  for (const { page, sections } of all) {
+    for (const s of sections) {
+      const w = s.asset.wanted;
+      if (!w) continue;
+      const cur = map.get(w.category);
+      if (!cur) { map.set(w.category, { ...w, places: [page] }); continue; }
+      if (!cur.places.includes(page)) cur.places.push(page);
+      if (RANK[w.priority] > RANK[cur.priority]) { cur.priority = w.priority; cur.why = w.why; }
+    }
+  }
+  return [...map.values()].sort((a, b) => RANK[b.priority] - RANK[a.priority]);
 }

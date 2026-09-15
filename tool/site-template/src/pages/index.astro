@@ -135,7 +135,7 @@ const desc = [basics.address, cap.processes?.join("ãƒ»"), cap.materials?.join("ã
 
     return (
       <Band width={s.width} emphasis={s.emphasis} surface={s.surface} motif={s.motif} content={s.content} presentation={s.presentation} decidedBy={s.decidedBy} density={s.visual?.density} peak={s.visual?.peak} role={s.visual?.role} layout={s.visual?.layout ?? s.layout}
-            assetSource={s.asset?.source} assetIntent={s.asset?.intent} assetRole={s.asset?.role} assetSubject={s.asset?.subject} assetWanted={s.asset?.wanted?.category}
+            assetSource={s.asset?.source} assetIntent={s.asset?.intent} assetRole={s.asset?.role} assetSubject={s.asset?.subject} assetWanted={s.asset?.wanted?.category} assetPriority={s.asset?.wanted?.priority}
             heading={s.kind === "prose" ? undefined : s.heading}>
         <Present content={s.content} presentation={s.presentation} decidedBy={s.decidedBy} analysis={analysis} slug={s.slug} />
       </Band>

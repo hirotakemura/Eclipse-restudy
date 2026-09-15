@@ -12,9 +12,12 @@ import fs from "node:fs";
 import { analyze } from "./lib/design/analysis.ts";
 import { composeTop, composePage } from "./lib/design/sections.ts";
 import { composeVisual } from "./lib/design/visual.ts";
-import { composeAssets, wantedPhotos, PHOTO_OF_PAGE, SUBJECT_OF_CATEGORY, categoryFor } from "./lib/design/assets.ts";
+import { composeAssets, wantedPhotos, photoRequests, PHOTO_OF_PAGE, SUBJECT_OF_CATEGORY, categoryFor } from "./lib/design/assets.ts";
 import { ALLOWED, EVIDENTIAL, SUBJECT_OF, DRAWABLE, canUse } from "./lib/design/system/index.ts";
 import { DIRECTIONS } from "./lib/design/direction.ts";
+
+const ORDER = { high: 3, medium: 2, low: 1 };
+const RANK_OK = (a, b) => ORDER[a] >= ORDER[b];
 
 let ok = 0, ng = 0;
 const check = (name, cond, detail = "") => {
@@ -76,23 +79,32 @@ console.log("\n━━━ 写真が無いときに、人に知らせているか 
     { file: "kojo-1.png", category: "工場・設備", caption: "現場" },
     { file: "jirei-1.png", category: "加工事例", caption: "事例", caseNo: 1 },
   ];
-  const zero = build(p, "index", { photos: [] });
-  const some = build(p, "index", { photos: PHOTOS });
-  const svg = build(p, "index", { photos: [{ file: "jirei-1.svg", category: "加工事例" }] });
+  /**
+   * **依頼はサイト全体で見る**（第3段階）。
+   *
+   * 最初はトップページだけで数えていたが、**写真を出す帯はページによって違う。**
+   * トップに写真の帯が無い会社では、依頼が0本に見えて検査が落ちた。
+   * 依頼が立つのは**その写真を出すページ**である。
+   */
+  const across = (photos) => ["index", ...PAGES].flatMap((page) => build(p, page, { photos }).assets);
+  const zero = across([]);
+  const some = across(PHOTOS);
+  const svg = across([{ file: "jirei-1.svg", category: "加工事例", caseNo: 1 }]);
 
-  check("写真0枚：依頼が立つ", wantedPhotos(zero.assets).length > 0,
-    wantedPhotos(zero.assets).map((w) => w.category).join(" "));
+  check("写真0枚：依頼が立つ", wantedPhotos(zero).length > 0,
+    [...new Set(wantedPhotos(zero).map((w) => w.category))].join(" "));
   check("写真あり：その置き場所の依頼が消える",
-    !wantedPhotos(some.assets).some((w) => w.category === "加工事例"),
-    wantedPhotos(some.assets).map((w) => w.category).join(" ") || "（依頼なし）");
+    !wantedPhotos(some).some((w) => w.category === "加工事例"),
+    [...new Set(wantedPhotos(some).map((w) => w.category))].join(" ") || "（依頼なし）");
   check("写真あり：お客様の素材として印が付く",
-    some.assets.some((s) => s.asset.source === "customer"));
+    some.some((s) => s.asset.source === "customer"));
   /** **仮の画像を実写として数えない**（D-174） */
   check("仮の画像（SVG）は実写として数えない",
-    wantedPhotos(svg.assets).some((w) => w.category === "加工事例"));
+    wantedPhotos(svg).some((w) => w.category === "加工事例"),
+    [...new Set(wantedPhotos(svg).map((w) => w.category))].join(" ") || "（依頼なし）");
   /** **代替素材で埋めない**（docs/31 原則②） */
   check("写真0枚の証拠の帯は、素材ライブラリで埋まっていない",
-    zero.assets.filter((s) => s.asset.intent === "evidence").every((s) => s.asset.source === "none"));
+    zero.filter((s) => s.asset.intent === "evidence").every((s) => s.asset.source === "none"));
 }
 
 console.log("\n━━━ 語を2箇所で持っている所の突き合わせ ━━━");
@@ -222,6 +234,90 @@ console.log("\n━━━ 装飾が、付きすぎていないか（第2段階）
     manNew += secs.filter((s) => s.asset.source === "graphic" && ["light", "geometry"].includes(s.asset.subject)).length;
   }
   check("製造業の6型には、第2段階の装飾を出していない", manNew === 0, `${manNew}本`);
+}
+
+/**
+ * ── 第3段階：写真の依頼（`wanted`）──────────────────
+ *
+ * **目的は「写真を増やすこと」ではない。**
+ * 「どの情報を本物の写真で証拠化すると効果が高いか」を判定できるようにすること。
+ */
+console.log("\n━━━ 写真の依頼（第3段階）━━━");
+{
+  const PHOTOS = [
+    { file: "gaikan.png", category: "外観", caption: "外観" },
+    { file: "kojo-1.png", category: "工場・設備", caption: "現場" },
+    { file: "jirei-1.png", category: "加工事例", caption: "事例1", caseNo: 1 },
+    { file: "daihyo.png", category: "代表者", caption: "代表" },
+    { file: "hataraku-1.png", category: "働く人", caption: "働く人" },
+  ];
+  const p = load("fixtures/design-diversity/b-difficulty.json");
+  const all = (photos, pages = ["index", ...PAGES]) => pages.map((page) => {
+    const project = { ...p, photos };
+    const a = analyze(project);
+    const dir = project.theme?.direction;
+    const base = page === "index" ? composeTop(project, a, { direction: dir }) : composePage(page, project, a, { direction: dir });
+    return { page, sections: composeAssets(composeVisual(base, project, a, { direction: dir }), project, a, { direction: dir, page }) };
+  });
+
+  const zero = all([]), full = all(PHOTOS);
+  const flat = (x) => x.flatMap((y) => y.sections);
+
+  /** ① 証拠はお客様のものだけ（ご指示1） */
+  const evid = flat(full).filter((s) => s.asset.intent === "evidence");
+  check("証拠の帯の素材は customer か none だけ",
+    evid.every((s) => ["customer", "none"].includes(s.asset.source)),
+    [...new Set(evid.map((s) => s.asset.source))].join(" "));
+
+  /** ② 顧客写真が無ければ none（ご指示2・3） */
+  check("写真0枚のとき、証拠の帯は1本も素材を持たない",
+    flat(zero).filter((s) => s.asset.intent === "evidence").every((s) => s.asset.source === "none"));
+  /** **仮の画像で代替しない**（D-174）。SVG は実写として数えない */
+  const mock = all([{ file: "jirei-1.svg", category: "加工事例", caseNo: 1 }]);
+  check("仮の画像（SVG）を証拠として使わない",
+    flat(mock).every((s) => s.asset.source !== "customer"));
+
+  /** ③ category / why / priority の3つまで（ご指示4） */
+  const wants = flat(zero).map((s) => s.asset.wanted).filter(Boolean);
+  check("依頼が持つのは category / why / priority の3つだけ",
+    wants.length > 0 && wants.every((w) => JSON.stringify(Object.keys(w).sort()) === JSON.stringify(["category", "priority", "why"])),
+    wants[0] ? Object.keys(wants[0]).join(" ") : "依頼が無い");
+  check("理由の文が空でない", wants.every((w) => typeof w.why === "string" && w.why.length > 6));
+
+  /** ④ 写真があるから必ず使う、にはしない（ご指示6） */
+  const shows = flat(full).filter((s) => s.asset.source === "customer");
+  check("お客様の素材を名乗るのは、写真を実際に出す帯だけ",
+    shows.length > 0 && shows.every((s) => s.content === "photos"),
+    [...new Set(shows.map((s) => s.content))].join(" "));
+  /** 事例の表・設備のカードは画像を1枚も描かないので、素材を持たない */
+  check("事例の表・設備のカードは素材を持たない",
+    flat(full).filter((s) => ["cases", "equipment", "profile"].includes(s.content)).every((s) => s.asset.source === "none"));
+
+  /** ⑤ 置き場所との対応を見ている（ご指示5） */
+  const onlyExterior = all([{ file: "gaikan.png", category: "外観", caption: "外観" }]);
+  const stillWant = flat(onlyExterior).map((s) => s.asset.wanted).filter(Boolean).map((w) => w.category);
+  check("外観だけ届いても、加工事例の依頼は残る", stillWant.includes("加工事例"), stillWant.join(" "));
+  check("外観が届いたら、外観の依頼は消える", !stillWant.includes("外観"), stillWant.join(" "));
+
+  /** ⑥ 届くほど依頼は減り、写真を出す帯は増える */
+  const w0 = flat(zero).filter((s) => s.asset.wanted).length;
+  const w1 = flat(full).filter((s) => s.asset.wanted).length;
+  check(`写真が届くと依頼が減る（${w0} → ${w1}）`, w1 < w0);
+
+  /** ⑦ 同じ頼みを何度も並べない（人に渡す紙として役に立たない） */
+  const req = photoRequests(zero);
+  check("依頼は置き場所ごとに1行にまとまる",
+    req.length === new Set(req.map((r) => r.category)).size && req.length > 0,
+    req.map((r) => `${r.category}:${r.priority}`).join(" "));
+  check("強い順に並ぶ", req.every((r, i) => i === 0 || RANK_OK(req[i - 1].priority, r.priority)),
+    req.map((r) => r.priority).join(" "));
+  /** **加工品と設備をいちばん先に頼む**（`analysis.ts` の写真の点数付けに合わせている） */
+  check("加工事例の依頼がいちばん強い", req[0] && ["加工事例", "工場・設備"].includes(req[0].category),
+    req[0]?.category ?? "依頼が無い");
+
+  /** ⑧ 骨格は写真の枚数で変わらない（ご指示8） */
+  const bone = (x) => flat(x).filter((s) => s.content !== "photos").map((s) => `${s.content}:${s.presentation}`).join(" ");
+  check("写真の枚数で、帯の並びと見せ方が変わらない", bone(zero) === bone(full));
 }
 
 console.log("\n━━━ 装飾の描き方（site.css）━━━");
