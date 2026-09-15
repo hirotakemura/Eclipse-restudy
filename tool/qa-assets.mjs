@@ -68,5 +68,5 @@ for (const b of built) {
 
 console.log("\n  画面を撮ります…");
 const shot = spawnSync("node", ["qa-assets-shot.mjs", OUT, ...built.map((b) => `${b.pid}|${b.plan} ${b.label}|${b.root}`)], { encoding: "utf8", stdio: "inherit" });
-if (shot.status !== 0) console.error("  撮影に失敗しました（ブラウザが無い環境では飛ばしてください）");
+if (shot.status !== 0) process.exitCode = 1;
 console.log(`\n  保存先： ${OUT}\n`);
