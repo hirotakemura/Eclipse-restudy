@@ -131,6 +131,52 @@ export function usablePresentations(content: ContentId, m: Materials): Presentat
 }
 
 /**
+ * ── その組み合わせで、何件が画面に出るか（第6.5段階）────────────
+ *
+ * **`detail` は表現だけの性質で、組み合わせの性質ではなかった。**
+ *
+ * `prose`（`detail: 2`）は `technique` や `declined` では全文が出るが、
+ * **`history` では「創業 1972年」の1行**になり、聞き取った沿革が丸ごと消える。
+ * `offerings` では**名前だけ**になり、内容も料金も消える。
+ * つまり**同じ表現でも、内容によって落ちる量が違う。**
+ * 表現だけを見ていた `detail` では、これを表せない。
+ *
+ * ここは**組み合わせごとに**「全件出るか、1件に畳むか」を持つ。
+ * 書いてある値は `Present.astro` の実際の描き方と対応していて、
+ * **書き出したHTMLで数え直す検査**（`qa:assets` の原則C）が突き合わせている。
+ *
+ * 【`one` は悪ではない】
+ * 「代表的な案件を工程で見せて、一覧へ誘導する」は**正しい設計**である（トップページ）。
+ * 悪いのは、**一覧そのものの帯が `one` になること。**
+ * だから禁止はせず、**「この帯は全件を見せる」と宣言した帯だけ**に効かせる
+ * （`Section.keepAll` → `choosePresentation`）。
+ */
+export type Keeps = "all" | "one";
+export const KEEPS: Partial<Record<ContentId, Partial<Record<PresentationId, Keeps>>>> = {
+  /** 工程は代表1件、引用は1発言。どちらも残りが画面から消える */
+  cases: { cardGrid: "all", spec: "all", process: "one", quote: "one" },
+  /** 「保有設備 7台」の1語に潰れる（D-259で実測） */
+  equipment: { cardGrid: "all", spec: "all", list: "all", largeNumber: "one" },
+  /** 散文は名前だけを並べる。内容も料金も消える */
+  offerings: { cardGrid: "all", spec: "all", list: "all", longform: "all", prose: "one" },
+  /** 散文は「創業 1972年」の1行。聞き取った出来事が消える */
+  history: { timeline: "all", list: "all", longform: "all", prose: "one" },
+  /** 引用は1発言。3項目が1つになる（D-259で実測） */
+  praise: { cardGrid: "all", prose: "all", quote: "one" },
+  materials: { chips: "all", list: "all", spec: "all" },
+};
+
+/**
+ * **その組み合わせで、複数件が全部出るか。**
+ *
+ * 表に書いていない組み合わせは `all` とみなす。
+ * 「知らない＝落ちる」にすると、表を書き忘れた内容が全部使えなくなる。
+ * 落ちるものだけを**明示的に**書く。
+ */
+export const keepsAll = (content: ContentId, p: PresentationId): boolean =>
+  (KEEPS[content]?.[p] ?? "all") === "all";
+
+/**
  * **その乗り換えで、画面に出る情報が減るか**（D-259）。
  *
  * 可否表（`canPresent`）は「見せられるか」だけを見ている。

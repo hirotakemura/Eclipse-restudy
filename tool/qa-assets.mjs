@@ -166,6 +166,50 @@ console.log("\n━━━ 写真 0枚 / 少数 / 十分（A/B/C）━━━\n");
   if (!same || !down || !up) process.exitCode = 1;
 }
 
+/**
+ * ── 原則C：表現が内容を壊していないか（第6.5段階）───────────────
+ *
+ * **語彙表（`KEEPS`）を信じない。書き出したHTMLで数え直す。**
+ *
+ * 実測でこうなっていた：加工事例が4件ある会社の一覧ページで、
+ * **画面に出ていたのは0件**（`process` が代表1件、`quote` が1発言）。
+ * 可否表も材料の条件も通っていたので、どの検査も緑のまま素通ししていた。
+ *
+ * ここで見るのは「サイト全体のどこかで、その内容の全件が読めるか」である。
+ * **1つの帯で全部出せという意味ではない**——トップページが代表1件を見せて
+ * 一覧へ誘導するのは正しい設計で、一覧に全件あれば内容は壊れていない。
+ */
+{
+  const strip = (h) => h.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  const bad = [];
+  let checked = 0;
+  for (const b of built) {
+    const pj = JSON.parse(fs.readFileSync(path.join("projects", b.pid, "project.json"), "utf8"));
+    const cap = pj.capability ?? {};
+    const ITEMS = {
+      加工事例: (pj.cases ?? []).map((c) => c.title).filter(Boolean),
+      設備: (cap.equipment ?? []).map((e) => e.model || e.maker).filter(Boolean),
+      対応材質: (cap.materials ?? []).filter(Boolean),
+      沿革: (pj.basics?.history ?? []).map((h) => h.event).filter(Boolean),
+      取り扱い: (pj.general?.offerings ?? []).map((o) => o.name).filter(Boolean),
+    };
+    const root = b.root;
+    if (!fs.existsSync(root)) continue;
+    const files = fs.readdirSync(root, { recursive: true }).filter((f) => String(f).endsWith(".html"));
+    /** サイト全体の文字。**どのページで読めてもよい** */
+    const all = files.map((f) => strip(fs.readFileSync(path.join(root, String(f)), "utf8"))).join(" ");
+    for (const [name, items] of Object.entries(ITEMS)) {
+      if (items.length < 2) continue;
+      checked++;
+      const hit = items.filter((t) => all.includes(String(t).slice(0, 12))).length;
+      if (hit < items.length) bad.push(`  ✗ ${b.plan} ${b.label} ${name}：${items.length}件のうち ${hit}件しか画面に出ていません`);
+    }
+  }
+  console.log(`\n  ── 表現が内容を壊していないか（原則C）── ${checked}件の内容`);
+  if (bad.length) { bad.forEach((x) => console.log(x)); process.exitCode = 1; }
+  else console.log("  ○ 複数件ある内容は、すべてサイトのどこかで全件読める");
+}
+
 console.log("\n  画面を撮ります…");
 const shot = spawnSync("node", ["qa-assets-shot.mjs", OUT, ...built.map((b) => `${b.pid}|${b.plan} ${b.label}|${b.root}|${(b.shots ?? []).join(",")}`)], { encoding: "utf8", stdio: "inherit" });
 if (shot.status !== 0) process.exitCode = 1;

@@ -11,9 +11,14 @@
  *   ・材料が無ければ選べないこと
  *   ・AIの出力が4段で検査され、落ちても止まらないこと
  */
+import fs from "node:fs";
 import {
   CONTENTS, PRESENTATIONS, COMPATIBLE, canPresent, hasMaterial, usablePresentations,
+  KEEPS, keepsAll,
 } from "./lib/design/system/index.ts";
+import { analyze, PRIMARY_STRENGTHS } from "./lib/design/analysis.ts";
+import { composePage } from "./lib/design/sections.ts";
+import { composeSite, hasPage } from "./lib/design/architecture.ts";
 import { validateBrief, projectHash } from "./lib/design/brief.ts";
 import { asContentPresentation } from "./lib/design/sections.ts";
 
@@ -105,6 +110,87 @@ check("語彙にない強みは落ちる",
 console.log("\n━━━ 案件データが変わったら分かる（ご指示④）━━━");
 check("同じデータからは同じ印", projectHash({ a: 1 }) === projectHash({ a: 1 }));
 check("違うデータからは違う印", projectHash({ a: 1 }) !== projectHash({ a: 2 }));
+
+console.log("\n━━━ 表現が内容を壊していないか（第6.5段階）━━━");
+{
+  /**
+   * **「表現は、理由なく内容を消してはいけない」**（ご指示）。
+   *
+   * 消すこと自体は禁じない——トップページが代表1件を工程で見せて
+   * 一覧へ誘導するのは正しい設計である。禁じるのは、
+   * **一覧そのものの帯が1件に畳まれること。**
+   */
+  /** 表と表が食い違っていないか。**可否表に無い組み合わせを書いていないか** */
+  for (const [c, m] of Object.entries(KEEPS)) {
+    for (const pres of Object.keys(m)) {
+      check(`KEEPS の「${c} × ${pres}」が可否表にもある`, canPresent(c, pres));
+    }
+  }
+  /** **落ちるものだけを明示的に書く。** 書いていない組み合わせは「全件」 */
+  check("表に無い組み合わせは全件とみなす", keepsAll("technique", "prose") && keepsAll("declined", "quote"));
+  /** 実測で見つかった、内容を壊す組み合わせ */
+  check("事例 × 引用は、1件に畳むと記録されている", !keepsAll("cases", "quote"));
+  check("事例 × 工程は、1件に畳むと記録されている", !keepsAll("cases", "process"));
+  check("沿革 × 散文は、1件に畳むと記録されている", !keepsAll("history", "prose"));
+  check("取り扱い × 散文は、1件に畳むと記録されている", !keepsAll("offerings", "prose"));
+  check("設備 × 大きな数字は、1件に畳むと記録されている", !keepsAll("equipment", "largeNumber"));
+
+  const FIX = [
+    "fixtures/design-diversity/a-precision.json",
+    "fixtures/design-diversity/b-difficulty.json",
+    "fixtures/design-diversity/c-speed.json",
+    "fixtures/visual-general/g-a-service.json",
+    "fixtures/visual-general/g-b-brand.json",
+    "fixtures/visual-general/g-c-people.json",
+  ];
+  /**
+   * **一覧の帯は、2件以上あるとき必ず全件を保てる表現になる。**
+   * 勝ち筋を全部当てて確かめる——実データに出る強みだけでは、
+   * 手順書の15行のうち数行しか通らない。
+   */
+  /**
+   * **旗を見ずに、結果を見る。**
+   *
+   * 最初は「`keepAll` が付いた帯が全件を保てているか」だけを見ていた。
+   * ところが**旗そのものを外すと、見る帯が無くなって緑のまま通った。**
+   * 検査が守るべきなのは旗ではなく、**2件以上ある事例が全件読めること**である。
+   */
+  const broken = [];
+  for (const f of FIX) {
+    const pj = JSON.parse(fs.readFileSync(f, "utf8"));
+    const a0 = analyze(pj);
+    const n = (pj.cases ?? []).length;
+    if (n < 2) continue;
+    for (const st of PRIMARY_STRENGTHS) {
+      const secs = composePage("cases", pj, { ...a0, primaryStrength: st });
+      const full = secs.some((sec) => sec.content === "cases" && keepsAll(sec.content, sec.presentation));
+      if (!full) broken.push(`${f.split("/").pop()}/${st}:${secs.filter((x) => x.content === "cases").map((x) => x.presentation).join("+") || "帯なし"}`);
+    }
+  }
+  check("事例が2件以上あるとき、一覧のページで必ず全件が読める（6社 × 全15勝ち筋）",
+    broken.length === 0, broken.slice(0, 4).join(" "));
+
+  /**
+   * **1件しか無いときは、一覧そのものを出さない。**
+   * 上の「代表的な案件」が同じ1件を全部出しているので、二度出ることになる。
+   */
+  const one = JSON.parse(fs.readFileSync(FIX[1], "utf8"));
+  check("試験データが1件であること（前提）", (one.cases ?? []).length === 1);
+  const a1 = analyze(one);
+  const secs1 = composePage("cases", one, a1);
+  const caseBands = secs1.filter((x) => x.content === "cases");
+  check("事例が1件のとき、事例の帯は1本だけ", caseBands.length === 1,
+    caseBands.map((x) => `${x.kind}:${x.presentation}`).join(" "));
+
+  /** **0件のときは、ページそのものを作らない**（第6段階の骨格） */
+  const zero = { ...JSON.parse(fs.readFileSync(FIX[1], "utf8")), cases: [] };
+  check("事例が0件のとき、一覧のページを作らない",
+    !hasPage(composeSite(zero, analyze(zero)), "cases"));
+  /** **作らない条件が、ページ側にも書いてある**（静的ページは作るかどうかを選べない） */
+  const casesPage = fs.readFileSync("site-template/src/pages/cases/[...page].astro", "utf8");
+  check("事例一覧のページが、骨格を見て作るかどうかを決めている",
+    /buildsPage\("cases"\)/.test(casesPage));
+}
 
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);
 process.exit(ng ? 1 : 0);

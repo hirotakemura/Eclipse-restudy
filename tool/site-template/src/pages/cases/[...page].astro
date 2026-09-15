@@ -12,7 +12,7 @@ import { analyze } from "../../../../lib/design/analysis.ts";
 import { composePage } from "../../../../lib/design/sections.ts";
 import { composeVisual } from "../../../../lib/design/visual.ts";
 import { composeAssets, willDraw } from "../../../../lib/design/assets.ts";
-import { project, companyName, isGeneral, photosOf, narrowTo, depthOf, descriptionOf } from "../../lib/site";
+import { project, companyName, isGeneral, photosOf, narrowTo, depthOf, descriptionOf, buildsPage } from "../../lib/site";
 import { theme } from "../../lib/theme";
 
 const analysis = analyze(project as any);
@@ -26,6 +26,19 @@ const sections = composeAssets(
   source, analysis, { direction: theme.direction, page: "cases" },
 ).filter((s) => willDraw(s, source, "cases"));
 const title = isGeneral ? "実績" : "加工事例";
+/**
+ * **事例が1件も無ければ、このページは作らない**（第6.5段階）。
+ *
+ * ここだけ `getStaticPaths` を持っていなかったため、
+ * 事例0件の会社でも**メニューにも sitemap にも載っていない空のページ**が
+ * 書き出されていた（実測：9ページ書き出し・sitemap 8件）。
+ * 静的な `index.astro` では作るかどうかを選べないので、
+ * 対応可能範囲・設備一覧と同じ形（`[...page].astro`）に揃える。URLは `/cases/` のまま。
+ */
+export function getStaticPaths() {
+  return buildsPage("cases") ? [{ params: { page: undefined } }] : [];
+}
+
 ---
 <Base title={title} description={descriptionOf("cases")}>
   <div class="page-head"><div class="inner">

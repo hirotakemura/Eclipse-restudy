@@ -12,7 +12,7 @@
 
 import type { Analysis, PrimaryStrength } from "./analysis.ts";
 import type { ContentId, PresentationId, Materials, PageId, PageRole } from "./system/index.ts";
-import { canPresent, hasMaterial, COMPATIBLE } from "./system/index.ts";
+import { canPresent, hasMaterial, keepsAll, COMPATIBLE } from "./system/index.ts";
 
 export interface Play {
   /** 主役にする内容 */
@@ -189,13 +189,28 @@ export function choosePresentation(
   content: ContentId,
   a: Analysis,
   materials: Materials,
-  opts: { isLead?: boolean; avoid?: PresentationId[] } = {},
+  opts: { isLead?: boolean; avoid?: PresentationId[]; keepAll?: boolean } = {},
 ): { presentation: PresentationId; why: string } {
   const play = PLAYBOOK[a.primaryStrength];
   const avoid = new Set(opts.avoid ?? []);
+
+  /**
+   * **全件を見せると宣言した帯では、1件に畳む表現を候補から外す**（第6.5段階）。
+   *
+   * 実測：難加工が強みの会社の加工事例ページで、手順書の1番目（`process`）を
+   * 上の「代表的な案件」が使っていたため、一覧の帯が2番目の `quote` に落ちた。
+   * **4件のうち画面に出ていたのは0件**で、しかもこのページでは「すべて見る」の
+   * 導線も出ない作りだったので、**残り3件に到達する道が1つも無かった。**
+   *
+   * **1件しか無いときは効かせない。** 1件の内容にとって、1件は全件である。
+   * ここで絞ると、事例が1件の会社で一覧が作れなくなる。
+   */
+  const keep = (p: PresentationId) =>
+    !opts.keepAll || materials.count < 2 || keepsAll(content, p);
+
   const wanted = (opts.isLead && play.lead === content
     ? play.leadPresentations
-    : (play.prefer[content] ?? [])).filter((p) => !avoid.has(p));
+    : (play.prefer[content] ?? [])).filter((p) => !avoid.has(p) && keep(p));
 
   for (const p of wanted) {
     if (canPresent(content, p) && hasMaterial(p, materials)) {
@@ -203,14 +218,20 @@ export function choosePresentation(
     }
   }
   // 手順書が効かない。**材料のある既定へ落とす。強制しない**
-  const fallback = (COMPATIBLE[content] ?? []).find((p) => !avoid.has(p) && hasMaterial(p, materials));
+  const fallback = (COMPATIBLE[content] ?? []).find((p) => !avoid.has(p) && keep(p) && hasMaterial(p, materials));
   if (fallback) {
     const why = wanted.length
       ? `${LABEL[a.primaryStrength]}向けの見せ方は材料が足りないので、既定に落としました`
       : "既定の見せ方";
     return { presentation: fallback, why };
   }
-  return { presentation: (COMPATIBLE[content] ?? ["prose"])[0]!, why: "材料が足りないため既定" };
+  /**
+   * **どれも通らなかったとき。**
+   * 全件を見せる帯なら、全件を保てる先頭の表現に落とす（材料が無くても、
+   * 「1件に畳む表現」よりはましである——畳むと残りに到達する道が消える）。
+   */
+  const last = (COMPATIBLE[content] ?? ["prose"]).find(keep) ?? (COMPATIBLE[content] ?? ["prose"])[0]!;
+  return { presentation: last, why: "材料が足りないため既定" };
 }
 
 export const LABEL: Record<PrimaryStrength, string> = {

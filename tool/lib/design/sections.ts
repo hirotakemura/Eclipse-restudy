@@ -21,7 +21,7 @@ import type { Analysis, ShowBy, Strand } from "./analysis.ts";
 import { getDirection, type Tone } from "./direction.ts";
 import type { SurfaceId, LayoutId, MotifId, MediaId, ContentId, PresentationId } from "./system/index.ts";
 import { MOTIFS } from "./system/index.ts";
-import { canPresent, hasMaterial } from "./system/index.ts";
+import { canPresent, hasMaterial, keepsAll } from "./system/index.ts";
 import { choosePresentation, PLAYBOOK, LABEL } from "./playbook.ts";
 import { materialsOf } from "./materials.ts";
 import type { BriefSource, BriefTrace, DesignBrief, Emphasis, StoredBrief } from "./brief.ts";
@@ -95,6 +95,22 @@ export interface Section {
    * 変えてよいのは、その上にある「対応できる条件」「主な設備」のほうである。
    */
   form?: PresentationId;
+  /**
+   * **この帯は、その内容の全件を見せる帯である**（第6.5段階）。
+   *
+   * 一覧のページの一覧そのものに付ける。
+   * 付いていると、`choosePresentation` が**1件に畳む表現を候補から外す。**
+   *
+   * 【なぜ帯の側で宣言するか】
+   * 「代表1件を工程で見せて、一覧へ誘導する」は正しい設計である（トップページ）。
+   * **1件に畳むこと自体は悪ではない。** 悪いのは、
+   * **一覧そのものの帯が1件に畳まれること**で、それは帯の役割でしか区別できない。
+   *
+   * 実測：加工事例の一覧ページで、4件のうち**画面に出ていたのは0件**だった
+   * （`process` が代表1件、`quote` が1発言。しかもこのページでは「すべて見る」の
+   * 導線も出ない作りだったので、**残り3件に到達する道が1つも無かった**）。
+   */
+  keepAll?: boolean;
   /** なぜこの順・この形なのか。**社長に説明できるようにする**（画面には出さない） */
   why?: string;
   /**
@@ -368,7 +384,7 @@ function repress(
     return { sec: fixed, note: sec.form === sec.presentation ? "" : `／突き合わせて読む表なので「${sec.form}」で見せる` };
   }
 
-  const rules = choosePresentation(sec.content, a, m, { isLead, avoid });
+  const rules = choosePresentation(sec.content, a, m, { isLead, avoid, keepAll: sec.keepAll });
   const rulesEmphasis = sec.emphasis;
 
   /**
@@ -379,7 +395,14 @@ function repress(
    * 2重にして守る）。落ちたら規則版に戻す。**止めない。**
    */
   const want = usable(brief)?.blocks.find((b) => b.content === sec.content && !avoid.includes(b.presentation));
-  const ok = Boolean(want && canPresent(want.content, want.presentation) && hasMaterial(want.presentation, m));
+  /**
+   * **AIの判断にも、同じ条件を当てる**（第6.5段階）。
+   * 規則版だけを直しても、Brief を効かせたときに同じ穴が開く。
+   */
+  const ok = Boolean(
+    want && canPresent(want.content, want.presentation) && hasMaterial(want.presentation, m)
+    && (!sec.keepAll || m.count < 2 || keepsAll(sec.content, want.presentation)),
+  );
   /**
    * **規則版と同じ判断なら、AIが決めたことにしない。**
    *
@@ -825,10 +848,32 @@ export function composePage(
    * 難加工が強みの会社では、代表1件を工程として先に見せる（D-301）。
    */
   if (slug === "cases") {
-    if (["difficulty", "craft", "engineering"].includes(a.primaryStrength)) {
+    const caseCount = (p.cases ?? []).length;
+    const showsOne = ["difficulty", "craft", "engineering"].includes(a.primaryStrength);
+    if (showsOne) {
       add({ kind: "caseSteps", width: "narrow", emphasis: "lead", heading: "代表的な案件" }, "難しい仕事が強みの会社は、1件を順を追って見せたほうが伝わる");
     }
-    add({ kind: "cases", width: "wide", emphasis: "normal", heading: isGeneral ? "実績" : "加工事例" }, "一覧");
+    /**
+     * **事例が1件のときは、一覧を出さない**（第6.5段階）。
+     *
+     * 上の「代表的な案件」が、その1件を課題→対応→結果まで全部出している。
+     * その下にもう一度同じ案件の一覧を置くと、**同じ言葉が2度出る。**
+     * 実測：1件だけの会社で、「代表的な案件」の①に書いてある
+     * 「削ると反って精度が出ない」が、すぐ下の「加工事例」にもう一度出ていた。
+     * **1件の一覧は、一覧ではない。**
+     */
+    if (!(showsOne && caseCount <= 1)) {
+    /**
+     * **ここが一覧そのものである。全件が読めなければ意味がない**（第6.5段階）。
+     *
+     * 実測：このページに4件の事例があるのに、**画面に出ていたのは0件**だった。
+     * 手順書の1番目（`process`）を上の「代表的な案件」が使い、
+     * 一覧の帯が2番目の `quote`（1発言）に落ちていた。
+     * しかもこのページでは「すべて見る」の導線も出ない作りなので、
+     * **残り3件に到達する道が1つも無かった。**
+     */
+    add({ kind: "cases", width: "wide", emphasis: "normal", keepAll: true, heading: isGeneral ? "実績" : "加工事例" }, "一覧");
+    }
     add({ kind: "gallery", width: "full", emphasis: "quiet", heading: "加工したもの" }, "加工品の写真がいちばん問い合わせに繋がる");
     /**
      * **厚くするとき**（難加工・設計・職人・実績が強みの会社）。
