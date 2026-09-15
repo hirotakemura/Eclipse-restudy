@@ -534,3 +534,62 @@ A/B/C の3パターン比較を、第2段階より先に用意する。
 | AI Brief に依存させすぎない | `composeAssets` が `brief` を引数に取らない |
 | Astro build 中にAIを呼ばない | Asset層にAIの判断が1つも無い |
 | 画像を増やして豪華にしない | §0-1 の原則6項目。QAに「素材数」の行を作らない |
+
+---
+
+## 付記：第1段階の実装（2026-09-15・D-307〜309）
+
+**計算して持ち、data属性で出すところまで。描画は1つも変えていない。**
+
+### 足したもの
+
+| ファイル | 内容 |
+|---|---|
+| `lib/design/system/asset.ts`（新） | 語彙・可否表（`ALLOWED`）・`EVIDENTIAL`・`SUBJECT_OF` |
+| `lib/design/assets.ts`（新） | `composeAssets()` ／ `wantedPhotos()` |
+| `asset.test.mjs`（新） | 32件 |
+| `direction.ts` | 型ごとに `assets` を1本足した（既存の値は未変更） |
+| `Band.astro` | `data-asset-source / -intent / -role / -subject / -wanted` を出すだけ |
+| 帯を組む9ページ | `composeVisual(...)` を `composeAssets(...)` で包んだ |
+
+### 変えていないもの（機械で確認）
+
+`visual.ts` `sections.ts` `analysis.ts` `brief.ts` `brief-rules.ts` `playbook.ts` `materials.ts`
+`theme.ts` `schema.ts` `motif.ts` `surface.ts` `typography.ts` `motion.ts` `media.ts`
+`peak.ts` `density.ts` `layout.ts` `content.ts` `compat.ts`
+`site.css` `Present.astro` `Gallery.astro` `Figure.astro` `site.ts` ── **すべて無傷**
+
+### 証明
+
+| 見るもの | 結果 |
+|---|---|
+| `npm test` | 586 → **618／全通過** |
+| `npm run typecheck` / `astro build` | 通過・13ページ書き出し |
+| `npm run qa:companies` | 12ページとも「**帯は同じですが、中身が変わっています**」＝帯の記録は不変 |
+| **HTMLの差分** | 書き出した48枚から `data-asset-*` だけを取り除くと、**変更前と1バイトも違わない（48/48）** |
+| **画面の差分** | 6社 × 10ページ × PC/スマホ ＝ **90枚が画素まで完全一致** |
+| `qa:visual` / `qa:directions` | 既存の数値がすべて同じ |
+
+### 実案件に通した結果（松原精機・第1回取材まで）
+
+| 置き場所 | 「実写が要るのに無い」と判定された帯 |
+|---|---|
+| 加工事例 | 15本 |
+| 工場・設備 | 3本 |
+| 代表者 | 3本 |
+| 外観 | 2本 |
+| 働く人 | 2本 |
+
+**これが第3段階（写真の依頼）の入力になる。**
+いまは `npm run gaps` が写真の質問を1件も出していないので、ここが埋まれば
+「この会社は何の写真をもらえば、いちばんサイトの品質が上がるか」を出せる。
+
+### 第1段階で意図的にやらなかったこと（D-308）
+
+`source: "graphic"` を返すのは、**いま実際に地紋が描かれている帯だけ**にしてある。
+「ここにも地紋が要る」という判断は、**描き方を足してから**（第2段階）。
+先に立てると「記録にはあるが、画面には無い」という状態になり、
+それは D-295（謳っている動きが1つも動いていなかった）と同じ形の嘘になる。
+
+**証拠の側（`wanted`）は第1段階から本物の判断をしている。**
+実写があるかどうかは、いま確かめられるから。

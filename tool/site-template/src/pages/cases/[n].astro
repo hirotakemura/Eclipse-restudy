@@ -16,6 +16,7 @@ import Present from "../../components/Present.astro";
 import { analyze } from "../../../../lib/design/analysis.ts";
 import { composePage } from "../../../../lib/design/sections.ts";
 import { composeVisual } from "../../../../lib/design/visual.ts";
+import { composeAssets } from "../../../../lib/design/assets.ts";
 import { project, cases, isGeneral, photosOfCase, narrowTo } from "../../lib/site";
 import { theme } from "../../lib/theme";
 import { hasDraft } from "../../lib/draft";
@@ -46,9 +47,12 @@ const source = narrowTo({
   /** 材質・加工法の札は、**この案件のもの**を出す。会社の対応材質ではない */
   capability: { ...((project as any).capability ?? {}), materials: item.materials ?? [], processes: item.processes ?? [] },
 });
-const sections = composeVisual(
-  composePage("case", source, analysis, { direction: theme.direction, hasProse: hasDraft(slug) }),
-  source, analysis, { direction: theme.direction },
+const sections = composeAssets(
+  composeVisual(
+    composePage("case", source, analysis, { direction: theme.direction, hasProse: hasDraft(slug) }),
+    source, analysis, { direction: theme.direction },
+  ),
+  source, analysis, { direction: theme.direction, page: "case" },
 );
 ---
 <Base title={`加工事例：${item.title}`} description={`${item.clientIndustry}｜${item.partDescription ?? ""}`}>
@@ -58,7 +62,8 @@ const sections = composeVisual(
   </div></div>
   {sections.map((sec) => (
     <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} motif={sec.motif} content={sec.content} presentation={sec.presentation}
-          decidedBy={sec.decidedBy} density={sec.visual?.density} peak={sec.visual?.peak} role={sec.visual?.role} layout={sec.visual?.layout ?? sec.layout} heading={sec.kind === "prose" ? undefined : sec.heading}>
+          decidedBy={sec.decidedBy} density={sec.visual?.density} peak={sec.visual?.peak} role={sec.visual?.role} layout={sec.visual?.layout ?? sec.layout}
+          assetSource={sec.asset?.source} assetIntent={sec.asset?.intent} assetRole={sec.asset?.role} assetSubject={sec.asset?.subject} assetWanted={sec.asset?.wanted?.category} heading={sec.kind === "prose" ? undefined : sec.heading}>
       <Present content={sec.content} presentation={sec.presentation} analysis={analysis} slug="case" caseNo={n} draftSlug={slug} />
     </Band>
   ))}

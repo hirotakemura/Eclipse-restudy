@@ -28,8 +28,23 @@ interface Props {
   density?: string;
   peak?: string;
   role?: string;
+  /**
+   * 素材の判断（docs/31・`lib/design/assets.ts`）。**第1段階では出すだけで、描画は変えない。**
+   *
+   * `assetSource` は **`"none"` のときも出す。**
+   * ほかの属性（`data-peak` `data-motif`）は none を省いているが、ここだけは違う。
+   * **素材を置かないことは「決まらなかった」ではなく「要らないと決めた」**であり、
+   * 省くと決めたことが画面に残らない（docs/31 原則①）。
+   */
+  assetSource?: string;
+  assetIntent?: string;
+  assetRole?: string;
+  assetSubject?: string;
+  /** 実写が要るのに無い帯。**置き場所を出す**（第3段階で写真の依頼に使う） */
+  assetWanted?: string;
 }
-const { width = "normal", emphasis = "normal", surface = "plain", layout = "stack", motif = "none", content, presentation, decidedBy, heading, density = "normal", peak = "none", role } = Astro.props;
+const { width = "normal", emphasis = "normal", surface = "plain", layout = "stack", motif = "none", content, presentation, decidedBy, heading, density = "normal", peak = "none", role,
+  assetSource, assetIntent, assetRole, assetSubject, assetWanted } = Astro.props;
 ---
 <section
   class="section band"
@@ -44,6 +59,11 @@ const { width = "normal", emphasis = "normal", surface = "plain", layout = "stac
   data-density={density}
   data-peak={peak !== "none" ? peak : undefined}
   data-role={role}
+  data-asset-source={assetSource}
+  data-asset-intent={assetIntent}
+  data-asset-role={assetRole}
+  data-asset-subject={assetSubject}
+  data-asset-wanted={assetWanted}
 >
   <div class="inner">
     {heading && <h2>{heading}</h2>}

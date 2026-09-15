@@ -13,6 +13,7 @@ import Present from "../components/Present.astro";
 import { analyze } from "../../../lib/design/analysis.ts";
 import { composePage } from "../../../lib/design/sections.ts";
 import { composeVisual } from "../../../lib/design/visual.ts";
+import { composeAssets } from "../../../lib/design/assets.ts";
 import { project, companyName, photosOf, narrowTo } from "../lib/site";
 import { theme } from "../lib/theme";
 import { hasDraft } from "../lib/draft";
@@ -20,16 +21,20 @@ import { hasDraft } from "../lib/draft";
 const analysis = analyze(project as any);
 /** 写真の帯が見るのは**外観**なので、材料もそれで数える */
 const source = narrowTo({ photos: photosOf("外観") });
-const sections = composeVisual(
-  composePage("company", source, analysis, { direction: theme.direction, hasProse: hasDraft("company") }),
-  source, analysis, { direction: theme.direction },
+const sections = composeAssets(
+  composeVisual(
+    composePage("company", source, analysis, { direction: theme.direction, hasProse: hasDraft("company") }),
+    source, analysis, { direction: theme.direction },
+  ),
+  source, analysis, { direction: theme.direction, page: "company" },
 );
 ---
 <Base title="会社概要" description={`${companyName}の会社概要・沿革`}>
   <div class="page-head"><div class="inner"><h1>会社概要</h1></div></div>
   {sections.map((sec) => (
     <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} motif={sec.motif} content={sec.content} presentation={sec.presentation}
-          decidedBy={sec.decidedBy} density={sec.visual?.density} peak={sec.visual?.peak} role={sec.visual?.role} layout={sec.visual?.layout ?? sec.layout} heading={sec.kind === "prose" ? undefined : sec.heading}>
+          decidedBy={sec.decidedBy} density={sec.visual?.density} peak={sec.visual?.peak} role={sec.visual?.role} layout={sec.visual?.layout ?? sec.layout}
+          assetSource={sec.asset?.source} assetIntent={sec.asset?.intent} assetRole={sec.asset?.role} assetSubject={sec.asset?.subject} assetWanted={sec.asset?.wanted?.category} heading={sec.kind === "prose" ? undefined : sec.heading}>
       <Present content={sec.content} presentation={sec.presentation} analysis={analysis} slug="company" />
     </Band>
   ))}

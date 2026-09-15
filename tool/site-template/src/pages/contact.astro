@@ -14,13 +14,17 @@ import Present from "../components/Present.astro";
 import { analyze } from "../../../lib/design/analysis.ts";
 import { composePage } from "../../../lib/design/sections.ts";
 import { composeVisual } from "../../../lib/design/visual.ts";
+import { composeAssets } from "../../../lib/design/assets.ts";
 import { project, companyName } from "../lib/site";
 import { theme } from "../lib/theme";
 
 const analysis = analyze(project as any);
-const sections = composeVisual(
-  composePage("contact", project as any, analysis, { direction: theme.direction }),
-  project as any, analysis, { direction: theme.direction },
+const sections = composeAssets(
+  composeVisual(
+    composePage("contact", project as any, analysis, { direction: theme.direction }),
+    project as any, analysis, { direction: theme.direction },
+  ),
+  project as any, analysis, { direction: theme.direction, page: "contact" },
 );
 ---
 <Base title="お問い合わせ" description={`${companyName}へのお問い合わせ。お電話・メールで承ります`}>
@@ -30,7 +34,8 @@ const sections = composeVisual(
   </div></div>
   {sections.map((sec) => (
     <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} motif={sec.motif} content={sec.content} presentation={sec.presentation}
-          decidedBy={sec.decidedBy} density={sec.visual?.density} peak={sec.visual?.peak} role={sec.visual?.role} layout={sec.visual?.layout ?? sec.layout} heading={sec.kind === "prose" ? undefined : sec.heading}>
+          decidedBy={sec.decidedBy} density={sec.visual?.density} peak={sec.visual?.peak} role={sec.visual?.role} layout={sec.visual?.layout ?? sec.layout}
+          assetSource={sec.asset?.source} assetIntent={sec.asset?.intent} assetRole={sec.asset?.role} assetSubject={sec.asset?.subject} assetWanted={sec.asset?.wanted?.category} heading={sec.kind === "prose" ? undefined : sec.heading}>
       <Present content={sec.content} presentation={sec.presentation} analysis={analysis} slug="contact" />
     </Band>
   ))}

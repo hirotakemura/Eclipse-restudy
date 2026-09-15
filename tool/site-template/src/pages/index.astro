@@ -16,6 +16,7 @@ import Figure from "../components/Figure.astro";
 import { analyze } from "../../../lib/design/analysis.ts";
 import { composeTop, resolveHero } from "../../../lib/design/sections.ts";
 import { composeVisual } from "../../../lib/design/visual.ts";
+import { composeAssets } from "../../../lib/design/assets.ts";
 /** **見出しの大きさは、中身の長さで決める**（D-277）。長文を巨大に組まない */
 import { fit } from "../../../lib/design/system/typography.ts";
 import { project, designBrief, companyName, cases, photoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen } from "../lib/site";
@@ -41,12 +42,15 @@ const hero = resolveHero(heroId, analysis, theme.direction);
  * **保存された Brief があれば、それに従う**（AI版）。
  * 無ければ規則版が決める。**ここでAIを呼ぶことはない。**
  */
-const sections = composeVisual(composeTop(project as any, analysis, {
-  hero,
-  direction: theme.direction,
-  hasProse: hasDraft("index"),
-  brief: designBrief,
-}), project as any, analysis, { direction: theme.direction });
+const sections = composeAssets(
+  composeVisual(composeTop(project as any, analysis, {
+    hero,
+    direction: theme.direction,
+    hasProse: hasDraft("index"),
+    brief: designBrief,
+  }), project as any, analysis, { direction: theme.direction }),
+  project as any, analysis, { direction: theme.direction, page: "index" },
+);
 
 /**
  * 10秒で「自分の用は足りるか」を判断してもらうための札。
@@ -131,6 +135,7 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
 
     return (
       <Band width={s.width} emphasis={s.emphasis} surface={s.surface} motif={s.motif} content={s.content} presentation={s.presentation} decidedBy={s.decidedBy} density={s.visual?.density} peak={s.visual?.peak} role={s.visual?.role} layout={s.visual?.layout ?? s.layout}
+            assetSource={s.asset?.source} assetIntent={s.asset?.intent} assetRole={s.asset?.role} assetSubject={s.asset?.subject} assetWanted={s.asset?.wanted?.category}
             heading={s.kind === "prose" ? undefined : s.heading}>
         <Present content={s.content} presentation={s.presentation} decidedBy={s.decidedBy} analysis={analysis} slug={s.slug} />
       </Band>

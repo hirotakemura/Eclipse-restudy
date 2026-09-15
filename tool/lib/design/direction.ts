@@ -15,7 +15,7 @@
  */
 
 import type { ShowBy } from "./analysis.ts";
-import type { SurfaceId, LayoutId, HeroId, MotifId, MotionId } from "./system/index.ts";
+import type { SurfaceId, LayoutId, HeroId, MotifId, MotionId, AssetSubject } from "./system/index.ts";
 
 /** 何を主役にするか */
 export type Tone = "spec" | "story" | "visual";
@@ -40,6 +40,16 @@ export interface Direction {
   heroes: HeroId[];
   /** モチーフの候補。**材料が無ければ none になる** */
   motifs: MotifId[];
+  /**
+   * 素材の主題の候補（docs/31）。**新しい辞書を別に作らないため、ここに持つ。**
+   *
+   * 「製造業だから歯車」をやらないための歯止めは `motifs` と同じで、
+   * **ここにあるのは雰囲気であって業種ではない。**
+   * 同じ型を選んでも、会社の材料・強み・写真が違えば出来上がりは変わる。
+   *
+   * 先頭が既定ではない。**帯の内容から決まる主題と突き合わせて使う**（`assets.ts`）。
+   */
+  assets: AssetSubject[];
   motion: MotionId;
   /**
    * この型を押したときに決まる9軸の既定。
@@ -62,6 +72,7 @@ export const MANUFACTURING_DIRECTIONS: Direction[] = [
     tone: "spec", favor: [], defer: [],
     surfaces: ["plain", "soft", "rule"], layouts: ["stack", "split"],
     heroes: ["headline", "spec", "type"], motifs: ["none"],
+    assets: [],
     axes: { palette: "ai", font: "gothic", mood: "futsu", textSize: "normal", nav: "standard", sections: "line", headings: "plain", tables: "all" },
     motion: "subtle", plan: "manufacturing",
   },
@@ -70,6 +81,7 @@ export const MANUFACTURING_DIRECTIONS: Direction[] = [
     tone: "spec", favor: ["numbers", "materials", "equipment"], defer: ["history", "people"],
     surfaces: ["rule", "grid", "plain", "soft"], layouts: ["split", "stack", "offset"],
     heroes: ["figure", "spec", "motif", "headline"], motifs: ["dimension", "grid", "none"],
+    assets: ["dimension", "grid", "workpiece"],
     axes: { palette: "hagane", font: "mixed", mood: "katai", textSize: "normal", nav: "sidebar", sections: "line", headings: "rule", tables: "stripe" },
     motion: "standard", plan: "manufacturing",
   },
@@ -78,6 +90,7 @@ export const MANUFACTURING_DIRECTIONS: Direction[] = [
     tone: "story", favor: ["history", "people", "technique"], defer: ["numbers"],
     surfaces: ["paper", "plain", "soft"], layouts: ["editorial", "stack", "offset"],
     heroes: ["type", "headline", "photo"], motifs: ["grain", "none"],
+    assets: ["texture", "person", "workplace"],
     axes: { palette: "enji", font: "mincho", mood: "futsu", textSize: "normal", nav: "standard", sections: "space", headings: "underline", tables: "horizontal" },
     motion: "subtle", plan: "manufacturing",
   },
@@ -86,6 +99,7 @@ export const MANUFACTURING_DIRECTIONS: Direction[] = [
     tone: "spec", favor: ["technique", "declined", "numbers"], defer: ["photos"],
     surfaces: ["grid", "plain", "rule"], layouts: ["offset", "split", "stack"],
     heroes: ["motif", "figure", "spec"], motifs: ["grid", "section", "process", "none"],
+    assets: ["grid", "dimension", "facility"],
     axes: { palette: "sumi", font: "mixed", mood: "katai", textSize: "normal", nav: "sidebar", sections: "line", headings: "rule", tables: "stripe" },
     motion: "standard", plan: "manufacturing",
   },
@@ -95,6 +109,7 @@ export const MANUFACTURING_DIRECTIONS: Direction[] = [
     // **暗い面は量産・設備でいちばん効く**（D-230）。設備と数を、締まった地で見せる
     surfaces: ["dark", "soft", "plain"], layouts: ["fullbleed", "split", "stack"],
     heroes: ["spec", "photo", "figure"], motifs: ["process", "grid", "none"],
+    assets: ["facility", "grid", "light"],
     axes: { palette: "fukamidori", font: "gothic", mood: "futsu", textSize: "normal", nav: "standard", sections: "alternate", headings: "band", tables: "all" },
     motion: "subtle", plan: "manufacturing",
   },
@@ -103,6 +118,7 @@ export const MANUFACTURING_DIRECTIONS: Direction[] = [
     tone: "visual", favor: ["technique", "materials", "photos"], defer: ["equipment"],
     surfaces: ["plain", "dark", "soft"], layouts: ["editorial", "offset", "fullbleed"],
     heroes: ["type", "photo", "headline"], motifs: ["section", "grain", "none"],
+    assets: ["product", "light", "texture"],
     axes: { palette: "ai", font: "mixed", mood: "yawaraka", textSize: "normal", nav: "standard", sections: "space", headings: "underline", tables: "horizontal" },
     motion: "standard", plan: "manufacturing",
   },
@@ -120,6 +136,7 @@ export const GENERAL_DIRECTIONS: Direction[] = [
     tone: "visual", favor: ["photos", "people"], defer: ["equipment", "materials"],
     surfaces: ["soft", "plain", "paper"], layouts: ["stack", "split"],
     heroes: ["headline", "photo", "type"], motifs: ["none"],
+    assets: ["person", "workplace", "light"],
     axes: { palette: "kohaku", font: "maru", mood: "yawaraka", textSize: "normal", nav: "standard", sections: "alternate", headings: "underline", tables: "horizontal" },
     motion: "subtle", plan: "general",
   },
@@ -128,6 +145,7 @@ export const GENERAL_DIRECTIONS: Direction[] = [
     tone: "spec", favor: ["numbers", "technique"], defer: ["history"],
     surfaces: ["plain", "soft", "accent"], layouts: ["stack", "split"],
     heroes: ["spec", "headline"], motifs: ["none"],
+    assets: ["product", "geometry"],
     axes: { palette: "fukamidori", font: "gothic", mood: "futsu", textSize: "normal", nav: "standard", sections: "line", headings: "plain", tables: "all" },
     motion: "subtle", plan: "general",
   },
@@ -136,6 +154,7 @@ export const GENERAL_DIRECTIONS: Direction[] = [
     tone: "spec", favor: [], defer: [],
     surfaces: ["plain", "soft"], layouts: ["stack"],
     heroes: ["headline", "spec"], motifs: ["none"],
+    assets: [],
     axes: { palette: "ai", font: "gothic", mood: "futsu", textSize: "normal", nav: "standard", sections: "line", headings: "plain", tables: "all" },
     motion: "subtle", plan: "general",
   },
@@ -164,6 +183,7 @@ export const GENERAL_DIRECTIONS_V2: Direction[] = [
     tone: "story", favor: ["declined", "technique"], defer: [],
     surfaces: ["plain", "soft", "paper"], layouts: ["editorial", "offset", "stack"],
     heroes: ["type", "headline"], motifs: ["none"],
+    assets: ["texture", "light"],
     axes: { palette: "sumi", font: "mixed", mood: "futsu", textSize: "normal", nav: "standard", sections: "space", headings: "underline", tables: "horizontal" },
     motion: "subtle", plan: "general",
   },
@@ -173,6 +193,7 @@ export const GENERAL_DIRECTIONS_V2: Direction[] = [
     tone: "story", favor: ["offerings"], defer: ["history"],
     surfaces: ["plain", "paper"], layouts: ["editorial", "offset"],
     heroes: ["type"], motifs: ["none"],
+    assets: ["texture", "light"],
     axes: { palette: "sumi", font: "mincho", mood: "yawaraka", textSize: "large", nav: "standard", sections: "space", headings: "plain", tables: "horizontal" },
     motion: "subtle", plan: "general",
   },
@@ -181,6 +202,7 @@ export const GENERAL_DIRECTIONS_V2: Direction[] = [
     tone: "spec", favor: ["offerings", "technique"], defer: ["history"],
     surfaces: ["plain", "soft", "dark"], layouts: ["split", "stack", "offset"],
     heroes: ["type", "spec"], motifs: ["grid", "none"],
+    assets: ["grid", "geometry"],
     axes: { palette: "hagane", font: "gothic", mood: "katai", textSize: "normal", nav: "standard", sections: "line", headings: "plain", tables: "horizontal" },
     motion: "standard", plan: "general",
   },
@@ -189,6 +211,7 @@ export const GENERAL_DIRECTIONS_V2: Direction[] = [
     tone: "visual", favor: ["people", "photos", "voice"], defer: [],
     surfaces: ["soft", "plain", "paper"], layouts: ["stack", "split", "fullbleed"],
     heroes: ["photo", "headline"], motifs: ["none"],
+    assets: ["person", "workplace", "light"],
     axes: { palette: "kohaku", font: "maru", mood: "yawaraka", textSize: "large", nav: "standard", sections: "alternate", headings: "plain", tables: "horizontal" },
     motion: "subtle", plan: "general",
   },
@@ -197,6 +220,7 @@ export const GENERAL_DIRECTIONS_V2: Direction[] = [
     tone: "visual", favor: ["declined", "offerings"], defer: ["history"],
     surfaces: ["dark", "accent", "plain"], layouts: ["offset", "fullbleed", "split"],
     heroes: ["type", "photo"], motifs: ["none"],
+    assets: ["geometry", "light"],
     axes: { palette: "ai", font: "gothic", mood: "katai", textSize: "normal", nav: "standard", sections: "alternate", headings: "band", tables: "all" },
     motion: "standard", plan: "general",
   },
@@ -205,6 +229,7 @@ export const GENERAL_DIRECTIONS_V2: Direction[] = [
     tone: "story", favor: ["history", "people"], defer: [],
     surfaces: ["paper", "plain", "soft"], layouts: ["editorial", "stack"],
     heroes: ["headline", "type"], motifs: ["grain", "none"],
+    assets: ["texture"],
     axes: { palette: "enji", font: "mincho", mood: "futsu", textSize: "large", nav: "standard", sections: "space", headings: "underline", tables: "horizontal" },
     motion: "none", plan: "general",
   },
