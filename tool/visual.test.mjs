@@ -18,6 +18,7 @@ import { COMPATIBLE as _C } from "./lib/design/system/index.ts";
 const COMPAT_OK = (c, ps) => ps.every((p) => (_C[c] ?? []).includes(p));
 import {
   TYPE_ROLES, getTypeRole, sizeAt, clampOf, fit,
+  WIDTH_FOR, WIDTHS, PRESENTATIONS,
   DENSITIES, getDensity, paddingOf,
   PEAKS, getPeak, canPeak,
   CTAS, getCta, canCta,
@@ -600,6 +601,73 @@ console.log("\n━━━ 動きの安全装置（ご指示§16）━━━");
   }
   check("謳っていない動きを、こっそり実装していない",
     !/countUp|parallax/i.test(css));
+}
+
+console.log("\n━━━ 帯の幅（第7段階②）━━━");
+{
+  /**
+   * **4段あるのに、画面では2段しか出ていなかった**（実測：narrow 81本／normal 1本／
+   * wide 80本／full 6本、しかも normal・wide・full は同じ 1070px に潰れていた）。
+   * 幅は**見せ方から決める**ようにしたので、ここで3つを見る。
+   *   ① 表と実寸が食い違っていないか（D-197。余白で3度やった）
+   *   ② 4段が本当に4つの別の幅になるか
+   *   ③ 同じ見せ方が、いつでも同じ幅になるか
+   */
+  const css7 = fs.readFileSync("site-template/src/styles/site.css", "utf8");
+  const { analyze: an7, PRIMARY_STRENGTHS: PS7 } = await import("./lib/design/analysis.ts");
+  const { composeTop: top7, composePage: page7 } = await import("./lib/design/sections.ts");
+  const { sanitizeProject: san7 } = await import("./lib/sanitize.ts");
+  const FIX7 = [
+    ["design-diversity", "a-precision.json"], ["design-diversity", "b-difficulty.json"],
+    ["design-diversity", "c-speed.json"], ["visual-general", "g-a-service.json"],
+    ["visual-general", "g-b-brand.json"], ["visual-general", "g-c-people.json"],
+  ];
+  const PG7 = ["strengths", "capability", "equipment", "cases", "case", "company", "message", "recruit", "contact"];
+  const bare = css7.replace(/\/\*[\s\S]*?\*\//g, "");
+  /** **スマホの規則も同じ形で書いてある**ので、全部拾ってつなぐ（最初の1件だけ見ない） */
+  const cap = (w) => [...bare.matchAll(new RegExp(`\\.band\\[data-width="${w}"\\]\\s*>\\s*\\.inner\\s*\\{([^}]*)\\}`, "g"))].map((m) => m[1]).join(" ");
+  const px = (w) => { const m = /max-width:\s*(\d+)px/.exec(cap(w)); return m ? Number(m[1]) : 0; };
+  check("すべての見せ方に幅が決まっている",
+    PRESENTATIONS.every((p) => WIDTHS.includes(WIDTH_FOR[p.id])),
+    PRESENTATIONS.filter((p) => !WIDTHS.includes(WIDTH_FOR[p.id])).map((p) => p.id).join(" "));
+  /** 上限が**使える幅の内側**にあること。外にあると、段として効かない */
+  check("「狭い」と「標準」の上限が、使える幅の内側にある",
+    px("narrow") > 0 && px("normal") > 0 && px("narrow") < px("normal") && px("normal") < 1070,
+    `narrow ${px("narrow")} / normal ${px("normal")}`);
+  /** `full` は上限ではなく、**左右の余白を捨てて帯の端まで届く** */
+  check("「全幅」は左右の余白を捨てている",
+    /max-width:\s*none/.test(cap("full")) && /padding-left:\s*0/.test(cap("full")), cap("full").trim());
+  check("「広い」に上限を書いていない（既定が使える幅いっぱい）", cap("wide") === "", cap("wide"));
+
+  /**
+   * **同じ見せ方なら、いつでも同じ幅。**
+   * 6社 × 全15勝ち筋で組み直して、見せ方ごとに幅が1種類であることを見る。
+   */
+  const seen = new Map();
+  for (const [d, f] of FIX7) {
+    const pj = san7(JSON.parse(fs.readFileSync(path.join("fixtures", d, f), "utf8")));
+    const a0 = an7(pj);
+    for (const st of PS7) {
+      const a = { ...a0, primaryStrength: st };
+      for (const secs of [top7(pj, a), ...PG7.map((pg) => { try { return page7(pg, pj, a); } catch { return []; } })]) {
+        for (const x of secs) {
+          if (x.kind === "hero") continue;
+          (seen.get(x.presentation) ?? seen.set(x.presentation, new Set()).get(x.presentation)).add(x.width);
+        }
+      }
+    }
+  }
+  const mixed = [...seen.entries()].filter(([, v]) => v.size > 1);
+  check("同じ見せ方は、いつでも同じ幅（6社 × 全15勝ち筋）", mixed.length === 0,
+    mixed.map(([k, v]) => `${k}:${[...v].join("/")}`).join(" "));
+  /** 表のとおりに出ているか */
+  const wrong = [...seen.entries()].filter(([k, v]) => ![...v][0] || [...v][0] !== WIDTH_FOR[k]);
+  check("出てくる幅が、表のとおりである", wrong.length === 0,
+    wrong.map(([k, v]) => `${k}: ${[...v].join("/")} ≠ ${WIDTH_FOR[k]}`).join(" "));
+  /** **4段とも実際に使われているか。** 定義しただけで使われない段は、無いのと同じ */
+  const used = new Set([...seen.values()].flatMap((v) => [...v]));
+  check("4段とも実際に使われている", WIDTHS.every((w) => used.has(w)),
+    WIDTHS.filter((w) => !used.has(w)).join(" ") || [...used].join(","));
 }
 
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);

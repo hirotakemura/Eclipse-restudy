@@ -204,8 +204,17 @@ export function composeVisual(
     }
     return s.layout;
   });
-  /** **同じ組み方が3つ続いたら、3つ目を型の別の候補へ。** 余白と同じ考え方 */
+  /**
+   * **同じ組み方が3つ続いたら、3つ目を型の別の候補へ。** 余白と同じ考え方。
+   *
+   * **ただし「縦に読む帯」は動かさない**（第7段階②）。
+   * 幅を見せ方から引き直したら narrow の帯が増え、この規則が
+   * **2段落の説明文を横置きに移した**——見出しが 33px から 14px の項目名に落ち、
+   * **読ませたい帯の見出しが、いちばん小さい文字になった。**
+   * 単調さを避けるのは、**読み方を壊さない範囲で**である。
+   */
   for (let i = 2; i < layout.length; i++) {
+    if (body[i]!.width === "narrow") continue;
     if (layout[i] === layout[i - 1] && layout[i - 1] === layout[i - 2] && i !== peakAt) {
       const other = d.layouts.find((l) => l !== layout[i] && (l !== "fullbleed" || a.hasRealPhotos));
       if (other) layout[i] = other;

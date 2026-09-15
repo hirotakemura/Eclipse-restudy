@@ -268,6 +268,8 @@ thead th { width: auto; }
   .tel { text-align: left; }
   .tel-num { font-size: 19px; }
   .inner { padding: 0 16px; }
+  /** **スマホでは4段が1段になる**（画面幅いっぱいが既定）。差が出るのは `full` だけ */
+  .band[data-width="full"] > .inner { padding-left: 0; padding-right: 0; }
   /* 見出しの大きさは clamp() が画面幅から決める（D-239）。ここでは指定しない */
   .section { padding: 40px 0; }
   /* 表は横スクロールさせず、縦積みにする。指で横に動かす表は読まれない */
@@ -421,9 +423,25 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
  * 読みやすさの下限そのものだから（読み手は60代前後・docs/06）。
  * 広げるのは、表・カード・写真が入る帯だけ。
  */
-.band[data-width="narrow"] > .inner { max-width: 760px; }
-.band[data-width="wide"] > .inner { max-width: 1440px; }
-.band[data-width="full"] > .inner { max-width: 1680px; }
+/**
+ * ── 4段を、実際に4段として描く（第7段階）──────────────
+ *
+ * 【実測】前は `narrow 760` 以外の3段が**すべて同じ1070pxに潰れていた。**
+ * `wide` の 1440px も `full` の 1680px も、**使える幅（1070px）より大きい**ので、
+ * 上限として一度も効いていなかった。**語彙は4段、画面は2段**という状態である。
+ *
+ * 上限を使える幅の内側に置き直す。**1280pxの画面で 680 / 860 / 1030 / 1070**。
+ *
+ *   narrow … 読む幅。`--measure`（40em）とほぼ同じで、**文章の端と帯の端が揃う**
+ *   normal … 読む＋見る。箇条書き・札・工程
+ *   wide   … 突き合わせて読む。表・カード
+ *   full   … 見る。写真・大きな数字。**左右の余白を捨てて帯の端まで届く**
+ *
+ * `wide` に上限を書かないのは、既定（`--max`）がそのまま「使える幅いっぱい」だからである。
+ */
+.band[data-width="narrow"] > .inner { max-width: 720px; }
+.band[data-width="normal"] > .inner { max-width: 900px; }
+.band[data-width="full"] > .inner { max-width: none; padding-left: 0; padding-right: 0; }
 
 /* 強さ。**重要情報と補助情報を同じ大きさで出さない** */
 .band[data-emphasis="lead"] > .inner > h2 { font-size: clamp(24px, 2.4vw, 38px); }
@@ -608,8 +626,16 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
  * 見出しを左、中身を右に置く組み方。
  * **見出しの列は細くする**（D-239）。太いと、見出し1行の下がまるごと空白になる。
  */
+/**
+ * 横置き。**左に項目名、右に中身。**
+ *
+ * 【実測】左の列が 274px あり、**項目名と中身が 244〜376px 離れていた。**
+ * 第7段階①で項目名を 14px にしたので、274pxの列は**中身の8割が空**になり、
+ * 項目名が「軸線」ではなく「置き去り」に見えていた。
+ * 列を細くして、**項目名を中身の肩に置く。**
+ */
 .band[data-layout="split"] > .inner {
-  display: grid; grid-template-columns: minmax(200px, 1fr) 2.6fr; gap: 28px 44px; align-items: start;
+  display: grid; grid-template-columns: minmax(110px, 170px) 1fr; gap: 24px 32px; align-items: start;
 }
 /**
  * **横に置く見出しは、大きくしない**（D-239）。
@@ -617,7 +643,7 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
  * 大きくすると列に収まらず、「対応できる条／件」のように**語の途中で折れた**。
  * 日本語は語の切れ目が無いので、ブラウザはどこでも折る。収まる大きさにしておく。
  */
-.band[data-layout="split"] > .inner > h2 { grid-column: 1; margin: 0; font-size: clamp(19px, 1.6vw, 24px); }
+.band[data-layout="split"] > .inner > h2 { grid-column: 1; margin: 0; }
 .band[data-layout="split"] > .inner > .band-body { grid-column: 2; }
 
 /* 非対称。**片側に寄せて、反対側に余白を取る** */

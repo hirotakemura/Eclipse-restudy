@@ -16,6 +16,7 @@ export * from "./page.ts";
 export * from "./motion.ts";
 export * from "./content.ts";
 export * from "./presentation.ts";
+export * from "./width.ts";
 export * from "./compat.ts";
 /**
  * **Visual Composition の語彙**（Phase 2）。

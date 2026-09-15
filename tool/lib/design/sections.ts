@@ -21,17 +21,18 @@ import type { Analysis, ShowBy, Strand } from "./analysis.ts";
 import { getDirection, type Tone } from "./direction.ts";
 import type { SurfaceId, LayoutId, MotifId, MediaId, ContentId, PresentationId } from "./system/index.ts";
 import { MOTIFS } from "./system/index.ts";
-import { canPresent, hasMaterial, keepsAll } from "./system/index.ts";
+import { canPresent, hasMaterial, keepsAll, widthFor } from "./system/index.ts";
+import type { WidthId } from "./system/index.ts";
 import { choosePresentation, PLAYBOOK, LABEL } from "./playbook.ts";
 import { materialsOf } from "./materials.ts";
 import type { BriefSource, BriefTrace, DesignBrief, Emphasis, StoredBrief } from "./brief.ts";
 
 /** セクションの幅。**全部同じ幅にしない**のが今回の主眼 */
-export type Width =
-  | "narrow" // 散文。1行が長くなりすぎないように
-  | "normal" // 既定
-  | "wide" // 表・カード・設備
-  | "full"; // 写真・大きな数字。画面いっぱい
+/**
+ * 帯の幅。**語彙は `system/width.ts` が単一の正**（第7段階）。
+ * ここは名前を変えずに受けるだけ（既存の読み手を壊さないため）。
+ */
+export type Width = WidthId;
 
 /**
  * 強さ。**重要情報と補助情報を同じ大きさで出さない**
@@ -378,7 +379,7 @@ function repress(
   if (sec.form && canPresent(sec.content, sec.form) && rowsOf(m) >= 1) {
     (used.get(sec.content) ?? used.set(sec.content, new Set()).get(sec.content)!).add(sec.form);
     const fixed = {
-      ...sec, presentation: sec.form, decidedBy: "rules" as BriefSource,
+      ...sec, presentation: sec.form, width: widthFor(sec.form), decidedBy: "rules" as BriefSource,
       ruleChoice: { presentation: sec.form, emphasis: sec.emphasis },
     };
     return { sec: fixed, note: sec.form === sec.presentation ? "" : `／突き合わせて読む表なので「${sec.form}」で見せる` };
@@ -420,8 +421,15 @@ function repress(
 
   (used.get(sec.content) ?? used.set(sec.content, new Set()).get(sec.content)!).add(presentation);
 
+  /**
+   * **幅は見せ方から決まる**（第7段階・`system/width.ts`）。
+   *
+   * 帯の種類ごとに手で書いていたため、**同じ見せ方なのに帯によって幅が違い**、
+   * しかも4段のうち `normal` は168帯中1帯しか使われていなかった。
+   * ここで見せ方から引き直すと、**同じ見せ方は必ず同じ幅**になる。
+   */
   const next = {
-    ...sec, presentation, emphasis, decidedBy,
+    ...sec, presentation, emphasis, decidedBy, width: widthFor(presentation),
     ruleChoice: { presentation: rules.presentation, emphasis: rulesEmphasis },
   };
   if (presentation === sec.presentation && emphasis === sec.emphasis) return { sec: next, note: "" };
