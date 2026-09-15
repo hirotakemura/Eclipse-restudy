@@ -19,7 +19,7 @@ import { composeVisual } from "../../../lib/design/visual.ts";
 import { composeAssets, willDraw } from "../../../lib/design/assets.ts";
 /** **見出しの大きさは、中身の長さで決める**（D-277）。長文を巨大に組まない */
 import { fit } from "../../../lib/design/system/typography.ts";
-import { project, designBrief, companyName, cases, photoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen } from "../lib/site";
+import { project, designBrief, companyName, cases, photoOf, realPhotoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen } from "../lib/site";
 import { heroId, theme } from "../lib/theme";
 import { hasDraft } from "../lib/draft";
 
@@ -128,7 +128,12 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
               )}
             </>
           )}
-          <Figure photo={photoOf("外観")} className="hero-photo" eager={true} />
+          {/*
+            **最初の画面には、実写だけを置く**（第7段階）。
+            仮の画像を置くと、写真0枚の会社では**それがページ最大の視覚物**になる。
+            仮の画像は写真の帯にはこれまでどおり出る（D-242）。
+          */}
+          <Figure photo={realPhotoOf("外観")} className="hero-photo" eager={true} />
         </div>
       </section>
     );

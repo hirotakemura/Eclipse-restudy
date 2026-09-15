@@ -58,14 +58,27 @@ export interface Density {
 }
 
 export const DENSITIES: Density[] = [
-  { id: "tight",  label: "詰める", note: "補助の帯。前の帯に続けて読ませる", scale: 0.6, mobileScale: 0.7 },
+  /**
+   * ── 比を広げた（第7段階）─────────────────────────
+   *
+   * **実測：`normal 88px` と `loose 106px` の差は18pxで、画面では差として読めなかった。**
+   * 5帯のうち3帯が同じ 88px になり、**「余白が全部同じ」に見えていた。**
+   *
+   * 余白を増やしたのではない。**差を広げた。**
+   * `tight` は前より詰め、`vast` は前より空ける。**`normal` は動かしていない**ので、
+   * 大半の帯の見え方は変わらない——変わるのは「続けて読ませる帯」と「山の前後」だけである。
+   *
+   *   前 0.6 : 1.0 : 1.2 : 1.6　（いちばん詰めた帯といちばん空けた帯の比 2.7倍）
+   *   後 0.5 : 1.0 : 1.5 : 2.2　（同 4.4倍）
+   */
+  { id: "tight",  label: "詰める", note: "補助の帯。前の帯に続けて読ませる", scale: 0.5, mobileScale: 0.6 },
   { id: "normal", label: "標準",   note: "既定。いまの見え方と同じ",       scale: 1.0, mobileScale: 1.0 },
-  { id: "loose",  label: "ゆるめる", note: "読ませる帯。文章が主役のとき",   scale: 1.2, mobileScale: 1.15 },
+  { id: "loose",  label: "ゆるめる", note: "読ませる帯。文章が主役のとき",   scale: 1.5, mobileScale: 1.3 },
   /**
    * **余白そのものを見せる。** 山の前後に置く。
    * 1ページに1〜2回まで。連続して使うと、ただ長いページになる。
    */
-  { id: "vast",   label: "大きく空ける", note: "山の前後。**1ページに1〜2回まで**", scale: 1.6, mobileScale: 1.4 },
+  { id: "vast",   label: "大きく空ける", note: "山の前後。**1ページに1〜2回まで**", scale: 2.2, mobileScale: 1.7 },
 ];
 
 export const getDensity = (id: string | undefined): Density =>

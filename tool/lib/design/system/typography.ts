@@ -78,12 +78,31 @@ export const TYPE_ROLES: TypeRole[] = [
     min: 28, vw: 4.4, max: 56,  weight: 700, leading: 1.15, tracking: "0",      head: true,  maxChars: 14 },
   { id: "statement",    label: "一言",       note: "会社を一言で言う文。**写真0枚の案件では、これが山になる**",
     min: 24, vw: 3.4, max: 44,  weight: 700, leading: 1.45, tracking: ".01em",  head: true,  maxChars: 60 },
+  /**
+   * **実測：帯の見出し 28px ÷ 本文 17px ＝ 1.65倍、横置きの帯では 1.18倍**だった（第7段階）。
+   * 11の役割を持っているのに、**画面に出ていた段は実質3つ**で、
+   * 「見出し → 本文」がほとんど同じ大きさに見えていた。段を1つ上げる。
+   *
+   * 【スマホは上げられなかった】★
+   * **`min` はスマホでの実寸である**（390pxでは `vw` が効かず `min` に張り付く）。
+   * PCが 1.65 → 1.94 になったのに対し、スマホは **1.31 → 1.38 にしか動かない。**
+   * そこで `min` を 24 に上げたら、**試験が落ちた**——
+   * スマホの段は `display 40 / heroTitle 30 / numeric 28 / statement 24` と詰まっていて、
+   * **24 にすると「山（statement）」と「章の見出し」が同じ大きさになる。**
+   * 山を上げて逃げる道は取らない（「全部大きくする」になる）。
+   * **スマホの段には、いま空きが無い。** ここは別に手当てが要る宿題として残す。
+   */
   { id: "sectionTitle", label: "帯の見出し",  note: "帯の見出し。いまの h2 にあたる",
-    min: 21, vw: 2.2, max: 34,  weight: 700, leading: 1.45, tracking: ".01em",  head: true,  maxChars: 0 },
+    min: 22, vw: 2.6, max: 38,  weight: 700, leading: 1.4,  tracking: ".01em",  head: true,  maxChars: 0 },
   { id: "quote",        label: "引用",       note: "人の言葉。本文より大きく、見出しより小さく",
     min: 19, vw: 1.9, max: 26,  weight: 600, leading: 1.75, tracking: ".01em",  head: false, maxChars: 0 },
-  { id: "lead",         label: "導入",       note: "帯の頭に置く一文。本文よりわずかに大きい",
-    min: 18, vw: 1.4, max: 22,  weight: 400, leading: 1.8,  tracking: ".01em",  head: false, maxChars: 0 },
+  /**
+   * **実測：導入が 17〜19px で、本文（17px）と見分けがつかなかった**（第7段階）。
+   * しかも色が `--ink-soft`（6.0:1）で、**ページでいちばん薄い文字**だった。
+   * 導入はページの2文目で、**本文より重い。** 大きさで段を作り、色は本文へ戻す。
+   */
+  { id: "lead",         label: "導入",       note: "帯の頭に置く一文。本文よりはっきり大きい",
+    min: 18, vw: 1.7, max: 25,  weight: 400, leading: 1.75, tracking: ".01em",  head: false, maxChars: 0 },
   { id: "body",         label: "本文",       note: "既定。案件ごとの文字サイズ（17/18/20px）がそのまま効く",
     min: 16, vw: 1.2, max: 17,  weight: 400, leading: 1.85, tracking: ".01em",  head: false, maxChars: 0 },
   /**

@@ -112,7 +112,18 @@ h1 { font-size: clamp(25px, 2.6vw, 40px); line-height: 1.35; margin: 0 0 22px; l
 h2 { font-size: clamp(21px, 1.9vw, 30px); line-height: 1.45; margin: 0 0 20px; font-family: var(--font-head); letter-spacing: var(--tracking); }
 h3 { font-size: 19px; margin: 30px 0 8px; font-family: var(--font-head); }
 p { margin: 0 0 16px; }
-.lead { font-size: 19px; color: var(--ink-soft); margin-bottom: 28px; max-width: var(--measure); }
+/**
+ * 導入（ページの2文目）。**大きさで段を作る。色は本文と同じ**（第7段階）。
+ *
+ * 【実測】19px（本文17px の1.1倍）で、色は `--ink-soft`（6.0:1）。
+ * **ページでいちばん重要度の高い文のひとつが、いちばん薄い文字だった。**
+ * 薄さは「控えめ」ではなく「読みにくい」として届く。
+ *
+ * 薄い文字を一律に濃くしたのではない。**重要度の順に並べ直した**——
+ * 見出し・導入・本文は `--ink`、項目名・注記・説明（`dt` / `figcaption` /
+ * `hero-kicker` など）は `--ink-soft` のまま。
+ */
+.lead { font-size: var(--t-lead); line-height: var(--tl-lead); color: var(--ink); margin-bottom: 28px; max-width: var(--measure); }
 
 /*
   **散文の1行を長くしすぎない。**
@@ -396,7 +407,8 @@ html[data-tables="stripe"] thead th { border-bottom: 2px solid var(--accent); }
 .spec-first div { background: var(--bg); padding: 14px 16px; }
 .spec-first dt { font-size: 13px; color: var(--ink-soft); margin-bottom: 3px; }
 .spec-first dd { margin: 0; font-weight: 600; font-size: 17px; line-height: 1.6; }
-html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
+/** 仕様ヒーローは下に条件の表が来るので、導入は**一段だけ**抑える（本文と同寸には落とさない） */
+html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px; }
 
 /* ── セクションの幅と強さ（段階1・D-180）──────────────
    **全セクションを同じ幅にしない。** 直す前は全13ページ・全セクションが
@@ -458,7 +470,8 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
   width: 9px; height: 9px; border-radius: 50%; background: var(--accent);
 }
 .timeline dt { font-weight: 700; font-family: var(--font-head); }
-.timeline dd { margin: 4px 0 0; color: var(--ink-soft); max-width: var(--measure); }
+/** 沿革の出来事は**内容そのもの**。控えめにするのは年（dt）のほうだけ（第7段階） */
+.timeline dd { margin: 4px 0 0; color: var(--ink); max-width: var(--measure); }
 
 /* 強みの塊（段階2・D-188）。**同じ見出しの繰り返しにしない** */
 .points { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 22px; }
@@ -1047,10 +1060,16 @@ html[data-hero="motif"] .hero {
    **ここの倍率は density.ts と一致していなければならない。**
    語彙（density.ts）から計算する Visual QA と、画面（このCSS）がずれると、
    **検査は緑のまま画面だけが壊れる。** `test:visual` が突き合わせている。 */
-.band[data-density="tight"] { padding: calc(var(--section) * 0.6) 0; }
+/**
+ * **倍率は `lib/design/system/density.ts` が単一の正**（D-197）。
+ * ここに書き写してあるので、`visual.test.mjs` が突き合わせている。
+ * 書き写した表は必ずいつかずれる——実際、第7段階で `density.ts` だけ直したとき、
+ * **画面の余白は1pxも変わらなかった。**
+ */
+.band[data-density="tight"] { padding: calc(var(--section) * 0.5) 0; }
 .band[data-density="normal"] { padding: var(--section) 0; }
-.band[data-density="loose"] { padding: calc(var(--section) * 1.2) 0; }
-.band[data-density="vast"] { padding: calc(var(--section) * 1.6) 0; }
+.band[data-density="loose"] { padding: calc(var(--section) * 1.5) 0; }
+.band[data-density="vast"] { padding: calc(var(--section) * 2.2) 0; }
 
 /* ── 見出しの文字（語彙の段をそのまま使う）───── */
 .band[data-role] > .inner > h2 {
@@ -1079,7 +1098,36 @@ html[data-hero="motif"] .hero {
  * 大きくすると列に収まらず、「対応できる条／件」のように語の途中で折れる。
  * 山が `split` に当たることは `visual.ts` の側で避けているが、**片方だけに頼らない。**
  */
-.band[data-layout="split"] > .inner > h2 { font-size: clamp(19px, 1.6vw, 24px) !important; }
+/**
+ * **横置きの見出しは、小さな見出しではなく「項目名」として組む**（第7段階）。
+ *
+ * 【実測】一覧の帯は既定で `split` になるため、**見出しが軒並み 20px**（本文の1.18倍）
+ * だった。大きくすれば直る、ではない——狭い左列で大きな見出しは
+ * 「対応できる条／件」のように語の途中で折れる（D-239。この判断は変えない）。
+ *
+ * 直すのは**役割のほう**である。1.18倍の見出しは「小さい見出し」に見えるが、
+ * 字間を空けた項目名にすると、**そういうものとして読める。**
+ * 語彙は増やしていない——`label`（項目名）は前からある役割で、
+ * 値の上に置く項目名と同じ組み方をここでも使うだけである。
+ *
+ * 見出しの飾り（左罫・下線・帯）は、項目名には重すぎるので外す。
+ */
+.band[data-layout="split"] > .inner > h2 {
+  font-size: var(--t-caption) !important;
+  font-weight: var(--tw-label);
+  letter-spacing: var(--tt-label);
+  line-height: var(--tl-label);
+  /**
+   * **濃さは重要度で決める。** これは帯の名前なので、注記ではなく見出しの側である。
+   * 実測：`--ink-soft`（6.16:1）で 12px にしたら、
+   * **中身との間が318px空いているぶん、見出しではなく「余りもの」に見えた。**
+   * 小さくするのはよいが、薄くするのは別の話だった。
+   */
+  color: var(--ink);
+}
+html:is([data-headings="rule"],[data-headings="underline"],[data-headings="band"]) .band[data-layout="split"] > .inner > h2 {
+  border: 0; background: 0 0; padding: 0; color: var(--ink);
+}
 
 /* ── 山（このページで最も記憶に残る画面）──────
    **中身のほうを大きくする。** 見出しだけ大きくしても、山にはならない。 */
@@ -1139,9 +1187,9 @@ html[data-hero="motif"] .hero {
     width: 200px; height: 200px;
   }
   .band[data-asset-source="graphic"][data-asset-subject="geometry"]:not([data-motif])::after { display: none; }
-  .band[data-density="tight"] { padding: calc(var(--section) * 0.7) 0; }
-  .band[data-density="loose"] { padding: calc(var(--section) * 1.15) 0; }
-  .band[data-density="vast"] { padding: calc(var(--section) * 1.4) 0; }
+  .band[data-density="tight"] { padding: calc(var(--section) * 0.6) 0; }
+  .band[data-density="loose"] { padding: calc(var(--section) * 1.3) 0; }
+  .band[data-density="vast"] { padding: calc(var(--section) * 1.7) 0; }
   .band[data-peak="number"] .figures > div { padding: 22px 0; }
   .band[data-peak="process"] .process > li { padding-left: 46px; }
   .band[data-peak="process"] .process > li::before { width: 28px; height: 28px; left: -15px; font-size: 14px; }

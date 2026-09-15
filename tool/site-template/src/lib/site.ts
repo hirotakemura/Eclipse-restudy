@@ -154,6 +154,19 @@ export const photoSrc = (p: Photo) => `/photos/${p.file}`;
 
 export const photosOf = (category: string) => allPhotos.filter((p) => p.category === category);
 export const photoOf = (category: string) => photosOf(category)[0] ?? null;
+/**
+ * **実写だけ**（第7段階）。仮の画像（SVG）は返さない。
+ *
+ * 【実測】写真0枚の会社のトップページで、**画面で最も大きい視覚物が
+ * 1030×580 の灰色の仮画像**で、そこに「差し替え前提」と書いてあった。
+ * **写真が無い会社ほど、ページの主役が「無い写真」になっていた。**
+ *
+ * 仮の画像そのものは消さない（D-242。お客様に「ここに写真が入る」と見てもらうため）。
+ * 消すのは**最初の画面に置くこと**だけで、写真の帯にはこれまでどおり出る。
+ * 判定は `analysis.hasRealPhotos` と同じ規則（D-174）。
+ */
+export const realPhotoOf = (category: string) =>
+  photosOf(category).find((p) => p.file && !/\.svg$/i.test(String(p.file))) ?? null;
 /** 事例の写真。何件目かで絞る（1始まり） */
 export const photosOfCase = (n: number) => photosOf("加工事例").filter((p) => p.caseNo === n);
 
