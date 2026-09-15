@@ -612,66 +612,111 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
 
 /* ── 動き ───────────────────────────────── */
 /*
-  **素のHTMLは最初から見えている**（ご指示③）。
+  **素のHTMLは最初から見えている**（ご指示§16）。
   隠すのは「動きを許している環境」の中だけ。JSは使わない。
   印刷・JS無効・クロールで本文が消えないこと。
+
+  【`animation` の一括指定を使わない】★D-295
+  **圧縮が `animation-timeline` を一括指定に畳み、ブラウザが丸ごと捨てていた。**
+
+    書いたもの　： animation: kobo-rise .5s ease-out both;
+    　　　　　　　 animation-timeline: view();
+    出荷されたもの： animation: .5s ease-out both kobo-rise view();
+    ブラウザの解釈： animation-name: none（**declaration ごと無効**）
+
+  実測（Chromium）で、畳まれた形は `animation-name` が `none` になる。
+  つまり**謳っている動きが、書き出したサイトでは1つも動いていなかった。**
+  個別指定（longhand）で書けば、畳む相手がないので起きない。
+
+  【対応していないブラウザ】
+  `@supports` で囲う。囲わないと `animation-timeline` だけが無視され、
+  **ページを開いた瞬間に全部の帯が一斉に1回だけ動く。**
+  動きは補助なので、**効かない環境では何も起きないのが正しい。**
 */
 @media (prefers-reduced-motion: no-preference) {
-  html[data-motion="subtle"] .band,
-  html[data-motion="standard"] .band {
-    animation: kobo-rise .5s ease-out both;
-    animation-timeline: view();
-    animation-range: entry 0% entry 40%;
-  }
+  @supports (animation-timeline: view()) {
+    html[data-motion="subtle"] .band,
+    html[data-motion="standard"] .band {
+      animation-name: kobo-rise; animation-duration: .5s;
+      animation-timing-function: ease-out; animation-fill-mode: both;
+      animation-timeline: view(); animation-range: entry 0% entry 40%;
+    }
 
-  html[data-motion="standard"] .figures dd { animation: kobo-rise .6s ease-out both; animation-timeline: view(); }
+    html[data-motion="standard"] .figures dd {
+      animation-name: kobo-rise; animation-duration: .6s;
+      animation-timing-function: ease-out; animation-fill-mode: both;
+      animation-timeline: view();
+    }
 
-  /**
-   * **並んだものは、少しずつ遅れて現れる**（D-240）。
-   *
-   * 帯ごと一斉に現れると、動いていることに気づかない。
-   * カード・札・工程のように**並んでいるもの**だけ、順にずらす。
-   * ずらすのは JS ではなく `animation-range`（スクロール位置）で、
-   * **見えている範囲のどこまで来たか**で決まる。時間では決めない。
-   */
-  html[data-motion="standard"] :is(.cards, .machines, .points, .chips, .process, .gallery) > * {
-    animation: kobo-rise .5s ease-out both;
-    animation-timeline: view();
-    animation-range: entry 0% entry 35%;
-  }
-  html[data-motion="standard"] :is(.cards, .machines, .points, .chips, .process, .gallery) > *:nth-child(2) {
-    animation-range: entry 0% entry 46%;
-  }
-  html[data-motion="standard"] :is(.cards, .machines, .points, .chips, .process, .gallery) > *:nth-child(3) {
-    animation-range: entry 0% entry 57%;
-  }
-  html[data-motion="standard"] :is(.cards, .machines, .points, .chips, .process, .gallery) > *:nth-child(n+4) {
-    animation-range: entry 0% entry 68%;
-  }
+    /**
+     * **並んだものは、少しずつ遅れて現れる**（D-240）。
+     *
+     * 帯ごと一斉に現れると、動いていることに気づかない。
+     * カード・札・工程のように**並んでいるもの**だけ、順にずらす。
+     * ずらすのは JS ではなく `animation-range`（スクロール位置）で、
+     * **見えている範囲のどこまで来たか**で決まる。時間では決めない。
+     */
+    html[data-motion="standard"] :is(.cards, .machines, .points, .chips, .process, .gallery, .offer-list) > * {
+      animation-name: kobo-rise; animation-duration: .5s;
+      animation-timing-function: ease-out; animation-fill-mode: both;
+      animation-timeline: view(); animation-range: entry 0% entry 35%;
+    }
+    html[data-motion="standard"] :is(.cards, .machines, .points, .chips, .process, .gallery, .offer-list) > *:nth-child(2) {
+      animation-range: entry 0% entry 46%;
+    }
+    html[data-motion="standard"] :is(.cards, .machines, .points, .chips, .process, .gallery, .offer-list) > *:nth-child(3) {
+      animation-range: entry 0% entry 57%;
+    }
+    html[data-motion="standard"] :is(.cards, .machines, .points, .chips, .process, .gallery, .offer-list) > *:nth-child(n+4) {
+      animation-range: entry 0% entry 68%;
+    }
 
-  /**
-   * **工程の線が伸びる**（D-240）。
-   *
-   * `lib/design/system/motion.ts` の「標準」は、前から
-   * 「数字が数え上がる・工程の線が伸びる」と**謳っていたのに、実装が無かった。**
-   * 書いてあることと動くものが違うのは、いちばん質が悪い。
-   *
-   * 数え上がるほうは**入れない。** 我々が大きく出す値は「±0.005mm」「標準7日」
-   * のような**文字列**で、数として数え上げられない。数えられる形に言い直すのは
-   * **こちらが値を作ること**になる（D-181）。謳い文句のほうを直した。
-   */
-  html[data-motion="standard"] .band[data-motif="process"] > .inner > .band-body::before {
-    animation: kobo-grow .6s ease-out both;
-    animation-timeline: view();
-    animation-range: entry 0% entry 50%;
-    transform-origin: top;
+    /**
+     * **工程の線が伸びる**（D-240）。
+     *
+     * `lib/design/system/motion.ts` の「標準」は、前から
+     * 「工程の線が伸びる」と謳っている。謳い文句と動くものを揃える。
+     *
+     * 数え上がるほうは**入れない。** 我々が大きく出す値は「±0.005mm」「標準7日」
+     * のような**文字列**で、数として数え上げられない。数えられる形に言い直すのは
+     * **こちらが値を作ること**になる（D-181）。
+     */
+    html[data-motion="standard"] .band[data-motif="process"] > .inner > .band-body::before {
+      animation-name: kobo-grow; animation-duration: .6s;
+      animation-timing-function: ease-out; animation-fill-mode: both;
+      animation-timeline: view(); animation-range: entry 0% entry 50%;
+      transform-origin: top;
+    }
+
+    /**
+     * **写真は、明るくなるのではなく、現れる**（D-296）。
+     *
+     * 写真を透明度で出すと、**白っぽい板が濃くなるだけ**に見える。
+     * 上から下へ覆いが外れる形にすると、**写真そのものが出てきたように見える。**
+     * 骨格は変わらない。**写真が無ければ、この指定は誰にも当たらない。**
+     */
+    html[data-motion="standard"] :is(.gallery, .hero-photo, .photo) img {
+      animation-name: kobo-reveal; animation-duration: .7s;
+      animation-timing-function: ease-out; animation-fill-mode: both;
+      animation-timeline: view(); animation-range: entry 0% entry 45%;
+    }
+
+    /**
+     * **画面の山だけ、少し長く現れる**（D-296）。
+     * 山はそのページで最も見てほしい場所なので、ほかの帯と同じ速さで通り過ぎさせない。
+     * **新しい動きは足していない。** 同じ `kobo-rise` を、長い範囲で使うだけ。
+     */
+    html[data-motion="standard"] .band[data-peak] {
+      animation-duration: .7s; animation-range: entry 0% entry 55%;
+    }
   }
 
   /**
    * 指を乗せたときだけ、わずかに浮く。
    * **動きを減らす設定の人には、色の変化だけが残る**（下の hover は外にある）。
+   * ここは `animation-timeline` を使わないので `@supports` の外に置く。
    */
-  .case-card, .machine { transition: transform .18s ease-out, background .18s ease-out; }
+  .case-card, .machine, .offer { transition: transform .18s ease-out, background .18s ease-out; }
   .case-card:hover, .machine:hover { transform: translateY(-2px); }
 }
 @keyframes kobo-grow {
@@ -681,6 +726,14 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
 @keyframes kobo-rise {
   from { opacity: .35; transform: translateY(10px); }
   to { opacity: 1; transform: none; }
+}
+/**
+ * 写真の覆いが外れる。**透明度は動かさない。**
+ * 動かすと、効かない環境で薄いままになる恐れがある（`clip-path` なら全部見える）。
+ */
+@keyframes kobo-reveal {
+  from { clip-path: inset(0 0 12% 0); transform: scale(1.02); }
+  to { clip-path: inset(0 0 0 0); transform: none; }
 }
 @media print {
   .band,

@@ -178,7 +178,15 @@ check("型番の分かる設備が無ければ、その帯を作らない",
 console.log("\n━━━ 動きの原則 ━━━");
 {
   const fs = await import("node:fs");
-  const css = fs.readFileSync("site-template/src/styles/site.css", "utf8");
+  /**
+   * **コメントを先に落とす。**
+   * この検査はCSSの指定を見るためのもので、説明文を読むためのものではない。
+   * 実際、動きの説明に `animation-timeline: view();` を例として書いたとたん、
+   * **「外側に animation-timeline があります」と落ちた**（D-295の説明文）。
+   * 検査が説明文に反応するなら、**説明を書けなくなる。**
+   */
+  const css = fs.readFileSync("site-template/src/styles/site.css", "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
 
   /** `@media (prefers-reduced-motion: no-preference) { … }` の中身を取り出す */
   const start = css.indexOf("@media (prefers-reduced-motion: no-preference)");

@@ -210,6 +210,34 @@ for (const [i, r] of results.entries()) {
   }
 }
 
+/**
+ * ── 動きが、書き出したサイトで生きているか（D-295）───────
+ *
+ * **源のCSSを見る試験では、この壊れ方は捕まえられなかった。**
+ * 圧縮が `animation-timeline` を一括指定に畳み、
+ * ブラウザが declaration ごと捨てていた（実測：`animation-name` が `none` になる）。
+ * **書いたものが出荷されていない**、という最も質の悪い壊れ方である。
+ * だから**書き出したHTMLのほうを見る。**
+ */
+console.log("\n━━━ 動きが、書き出したサイトで生きているか ━━━\n");
+for (const r of results) {
+  const dir = path.join("projects", r.id);
+  const root = fs.existsSync(path.join(dir, "site")) ? path.join(dir, "site") : path.join(dir, "site-draft");
+  const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+  const level = (/data-motion="([a-z]+)"/.exec(html) ?? [, "-"])[1];
+  const folded = /animation:[^;}]*view\(\)/.test(html);          // 畳まれた形＝死んでいる
+  const alive = /animation-name:\s*kobo-/.test(html) && /animation-timeline:\s*view\(\)/.test(html);
+  const guarded = /@supports\s*\(animation-timeline/.test(html);
+  const reduced = /prefers-reduced-motion:\s*no-preference/.test(html);
+  const ok = level === "none" || (alive && !folded && guarded && reduced);
+  if (!ok) ng++;
+  console.log(`  ${r.label.padEnd(16)} ${ok ? "○" : "✗"} 動き=${level.padEnd(9)}`
+    + `${folded ? " **一括指定に畳まれている（死んでいる）**" : ""}`
+    + `${!alive && level !== "none" ? " 指定が見当たらない" : ""}`
+    + `${!guarded && level !== "none" ? " @supports が無い" : ""}`
+    + `${!reduced && level !== "none" ? " 動きを減らす設定に未対応" : ""}`);
+}
+
 console.log(`\n━━━ まとめ ━━━`);
 console.log(`  ${ng ? `✗ ${ng}件が基準に届いていません` : "○ すべて基準を満たしています"}`);
 console.log(`

@@ -531,5 +531,55 @@ console.log("\n━━━ 商品ごとの言い換えに、漏れがないか（D
   }
 }
 
+
+/**
+ * ── Phase 7 ───────────────────────────────────────────
+ *
+ * **動きは補助。情報を見せるための必須機能にしない**（ご指示§16）。
+ *
+ * ここで確かめたいのは「動くこと」ではなく、**動かなくても壊れないこと**である。
+ * それと、**書いたものが出荷されているか**（D-295で、圧縮に畳まれて死んでいた）。
+ */
+console.log("\n━━━ 動きの安全装置（ご指示§16）━━━");
+{
+  const css = fs.readFileSync("site-template/src/styles/site.css", "utf8");
+  const motion = css.slice(css.indexOf("/* ── 動き ──"), css.indexOf("/* ── 最初の画面の型"));
+
+  check("動きは「動きを許している環境」の中だけに書いてある",
+    /@media \(prefers-reduced-motion: no-preference\)/.test(motion));
+  check("対応していないブラウザでは何も起きない（@supports で囲ってある）",
+    /@supports \(animation-timeline: view\(\)\)/.test(motion));
+  /** **初期状態で本文を隠さない。** `opacity: 0` から始めると、動かない環境で本文が消える */
+  check("透明度0から始める指定が無い", !/opacity:\s*0\s*[;}]/.test(motion),
+    (motion.match(/opacity:\s*0\s*[;}]/g) ?? []).join(" "));
+  check("現れる動きは、見える濃さから始まる", /from\s*\{[^}]*opacity:\s*\.\d/.test(css));
+  check("写真の動きは透明度を触らない（効かない環境で薄いままにしない）",
+    /@keyframes kobo-reveal\s*\{[^}]*\}[^}]*\}/.test(css) && !/kobo-reveal[\s\S]{0,200}opacity/.test(css));
+  check("印刷では動きを止め、必ず見えるようにしてある",
+    /@media print[\s\S]{0,200}animation:\s*none[\s\S]{0,80}opacity:\s*1/.test(css));
+  check("JavaScriptを使っていない", !/IntersectionObserver|addEventListener\(["\x27]scroll/.test(motion));
+
+  /**
+   * **`animation` の一括指定を、`animation-timeline` と並べない**（D-295）。
+   *
+   * 圧縮が1行に畳み、ブラウザが declaration ごと捨てる。
+   * 実測（Chromium）：畳まれた形は `animation-name` が `none` になる。
+   * **書いたものが出荷されていない**、という最も質の悪い壊れ方だった。
+   */
+  check("一括指定（animation:）を使っていない",
+    !/\n\s*animation:\s/.test(motion.replace(/@media print[\s\S]*/, "")),
+    (motion.match(/animation:\s[^;]*/g) ?? []).join(" / "));
+  check("個別指定で書いてある", /animation-name:\s*kobo-/.test(motion));
+
+  /** **謳い文句と実装を揃える**（D-240） */
+  const { getMotion } = await import("./lib/design/system/index.ts");
+  const note = getMotion("standard").note;
+  for (const [word, impl] of [["遅れて現れる", /nth-child\(2\)/], ["線が伸びる", /kobo-grow/], ["覆いが外れる", /kobo-reveal/]]) {
+    check(`「${word}」と謳っているなら、実装がある`, !note.includes(word) || impl.test(css), word);
+  }
+  check("謳っていない動きを、こっそり実装していない",
+    !/countUp|parallax/i.test(css));
+}
+
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);
 process.exit(ng ? 1 : 0);
