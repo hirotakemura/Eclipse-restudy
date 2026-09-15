@@ -712,9 +712,21 @@ export function composePage(
    * 確かめてもらうための控えめな帯で、対応可能範囲のページでは主役）。
    * **内容ごとに1つの値しか持たない Brief を下層にも当てると、その筋が壊れる。**
    */
-  opts: { direction?: string; hasProse?: boolean } = {},
+  opts: {
+    direction?: string; hasProse?: boolean;
+    /**
+     * **厚くするか**（第6段階・`composeSite`）。
+     *
+     * `thick` は「新しい内容を作る」ではない。
+     * **この会社がすでに持っている材料を、このページにも降ろす**だけである。
+     * 材料が無ければ何も足さないので、**水増しにならない。**
+     * 勝ち筋のページだけが厚くなる（難加工なら事例、短納期なら設備）。
+     */
+    depth?: "standard" | "thick";
+  } = {},
 ): Section[] {
-  const { direction, hasProse = false } = opts;
+  const { direction, hasProse = false, depth = "standard" } = opts;
+  const thick = depth === "thick";
   const tone = getDirection(direction).tone;
   const p = project as any;
   const cap = p.capability ?? {};
@@ -766,6 +778,14 @@ export function composePage(
       add({ kind: "materials", width: "wide", emphasis: "normal", heading: "対応できる材質・加工法" }, "検索される語そのもの");
     }
     add({ kind: "specTable", width: "wide", emphasis: "normal", heading: "仕様", form: "spec" }, "数字で確かめてもらう部分");
+    /**
+     * **厚くするとき**（精度・対応範囲が強み／来てほしくない問い合わせがある会社）。
+     * 条件の表だけを見せて終わると、「なぜその条件で受けられるのか」が無い。
+     * **取材の追い質問で出てきた工程の工夫**を、ここにも降ろす。
+     */
+    if (thick && has(st.followUpFindings)) {
+      add({ kind: "technique", width: "narrow", emphasis: "normal", heading: "どうやって受けているか" }, "受けられる条件の裏づけ（このページを厚くする）");
+    }
   }
 
   if (slug === "equipment") {
@@ -789,6 +809,14 @@ export function composePage(
      */
     add({ kind: "equipmentTable", width: "wide", emphasis: named.length >= 2 ? "quiet" : "normal", heading: "保有設備一覧", form: "spec" }, "全設備の一覧");
     add({ kind: "gallery", width: "full", emphasis: "normal", heading: "工場・設備" }, "設備は写真があると伝わる");
+    /**
+     * **厚くするとき**（短納期・設備が強みの会社）。
+     * 短納期で選ばれる会社に効くのは「何があるか」より「どれだけ回せるか」なので、
+     * **ロット・納期の数字**をこのページにも降ろす。
+     */
+    if (thick && a.figures.length) {
+      add({ kind: "figures", width: "full", emphasis: "normal", heading: "対応できる条件" }, "どれだけ回せるかを数字で見せる（このページを厚くする）");
+    }
   }
 
   /**
@@ -802,6 +830,13 @@ export function composePage(
     }
     add({ kind: "cases", width: "wide", emphasis: "normal", heading: isGeneral ? "実績" : "加工事例" }, "一覧");
     add({ kind: "gallery", width: "full", emphasis: "quiet", heading: "加工したもの" }, "加工品の写真がいちばん問い合わせに繋がる");
+    /**
+     * **厚くするとき**（難加工・設計・職人・実績が強みの会社）。
+     * 一覧を見たあとに残る問いは「なぜ受けられるのか」である。
+     */
+    if (thick && has(st.followUpFindings)) {
+      add({ kind: "technique", width: "narrow", emphasis: "normal", heading: "どうやって受けているか" }, "事例を読んだあとの「なぜ受けられるのか」（このページを厚くする）");
+    }
   }
 
   /**

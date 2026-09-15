@@ -12,7 +12,7 @@ import { analyze } from "../../../../lib/design/analysis.ts";
 import { composePage } from "../../../../lib/design/sections.ts";
 import { composeVisual } from "../../../../lib/design/visual.ts";
 import { composeAssets, willDraw } from "../../../../lib/design/assets.ts";
-import { project, companyName, isGeneral, photosOf, narrowTo } from "../../lib/site";
+import { project, companyName, isGeneral, photosOf, narrowTo, depthOf, descriptionOf } from "../../lib/site";
 import { theme } from "../../lib/theme";
 
 const analysis = analyze(project as any);
@@ -20,14 +20,14 @@ const analysis = analyze(project as any);
 const source = narrowTo({ photos: photosOf("加工事例") });
 const sections = composeAssets(
   composeVisual(
-    composePage("cases", source, analysis, { direction: theme.direction }),
+    composePage("cases", source, analysis, { direction: theme.direction, depth: depthOf("cases") }),
     source, analysis, { direction: theme.direction },
   ),
   source, analysis, { direction: theme.direction, page: "cases" },
 ).filter((s) => willDraw(s, source, "cases"));
 const title = isGeneral ? "実績" : "加工事例";
 ---
-<Base title={title} description={`${companyName}の${title}`}>
+<Base title={title} description={descriptionOf("cases")}>
   <div class="page-head"><div class="inner">
     <h1>{title}</h1>
     <p>お客様の社名は伏せております。</p>

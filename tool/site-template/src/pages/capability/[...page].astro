@@ -21,7 +21,7 @@ import { analyze } from "../../../../lib/design/analysis.ts";
 import { composePage } from "../../../../lib/design/sections.ts";
 import { composeVisual } from "../../../../lib/design/visual.ts";
 import { composeAssets, willDraw } from "../../../../lib/design/assets.ts";
-import { project, rows, companyName, isGeneral, buildsPage } from "../../lib/site";
+import { project, rows, companyName, isGeneral, buildsPage, depthOf, descriptionOf } from "../../lib/site";
 import { theme } from "../../lib/theme";
 import { hasDraft } from "../../lib/draft";
 
@@ -44,6 +44,7 @@ const sections = composeAssets(
   composeVisual(composePage("capability", project as any, analysis, {
     direction: theme.direction,
     hasProse: hasDraft("capability"),
+    depth: depthOf("capability"),
   }), project as any, analysis, { direction: theme.direction }),
   project as any, analysis, { direction: theme.direction, page: "capability" },
 ).filter((s) => willDraw(s, project as any, "capability"));
@@ -56,7 +57,7 @@ export function getStaticPaths() {
   return buildsPage("capability") ? [{ params: { page: undefined } }] : [];
 }
 ---
-<Base title="対応可能範囲" description={`${companyName}の対応材質・加工法・精度・ロット・納期の一覧`}>
+<Base title="対応可能範囲" description={descriptionOf("capability")}>
   <div class="page-head"><div class="inner">
     <h1>対応可能範囲</h1>
     <p>材質・加工法・サイズ・精度・ロット・納期の一覧です。</p>

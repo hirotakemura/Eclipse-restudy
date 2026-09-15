@@ -45,7 +45,15 @@ export type PageRole =
   | "capacity" // 受けられるか（条件・設備・取り扱い）
   | "proof"    // 受けられる証拠（事例・技術・お客様の言葉）
   | "trust"    // 会社そのものの信用（所在・沿革）
-  | "people"   // 人（代表・働く人）
+  | "people"   // 人（代表）
+  /**
+   * 求職者向け（採用情報）。
+   *
+   * **読む人が違うので、役割を分ける。**
+   * 代表挨拶と同じ「人」の群に入れていたため、職人・人で選ばれる会社の並べ替えで
+   * **採用情報が加工事例より前に出る**という、顧客にとって意味のない導線ができていた。
+   */
+  | "hiring"
   | "action";  // 行動（問い合わせ）
 
 export const ROLE_OF: Record<PageId, PageRole> = {
@@ -59,18 +67,22 @@ export const ROLE_OF: Record<PageId, PageRole> = {
   company: "trust",
   /** **代表挨拶は「人」である。** 会社の信用（所在・沿革）とは別の渡し方をする */
   message: "people",
-  recruit: "people",
+  recruit: "hiring",
   contact: "action",
 };
 
 /**
  * **既定の並び。**
  *
- * この並びは、いま実際に出ているメニューの順とまったく同じである
- * （`index → capability → equipment → strengths → cases → company → recruit → message → contact`）。
- * **根拠のない会社（`unknown`）は、この並びのまま**にする（D-205）。
+ * 会社の見立てに根拠が無いとき（`unknown`）は、**この並びのまま**にする（D-205）。
+ * 推測で並べ替えない。
+ *
+ * **`entry` は必ず先頭、`action` は必ず末尾。** どの勝ち筋でも動かさない。
+ * 入口と問い合わせの位置が会社ごとに変わると、**使い方そのものが分からなくなる。**
  */
-export const DEFAULT_ROLE_ORDER: PageRole[] = ["entry", "capacity", "proof", "trust", "people", "action"];
+export const ROLES: PageRole[] = ["entry", "capacity", "proof", "trust", "people", "hiring", "action"];
+
+export const DEFAULT_ROLE_ORDER: PageRole[] = ["entry", "capacity", "proof", "trust", "people", "hiring", "action"];
 
 /**
  * 同じ役割の中での並び。**役割を並べ替えても、中の順は動かさない。**
@@ -81,7 +93,7 @@ export const WITHIN_ROLE: PageId[] = [
   "capability", "equipment", "services",
   "strengths", "cases", "case",
   "company",
-  "recruit", "message",
+  "message", "recruit",
   "contact",
 ];
 

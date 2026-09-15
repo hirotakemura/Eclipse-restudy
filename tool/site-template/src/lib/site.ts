@@ -14,7 +14,7 @@ import raw from "../site-data/project.json";
 import { sanitizeProject } from "../../../lib/sanitize.ts";
 import type { StoredBrief } from "../../../lib/design/brief.ts";
 import { analyze } from "../../../lib/design/analysis.ts";
-import { composeSite, navOf, hasPage } from "../../../lib/design/architecture.ts";
+import { composeSite, navOf, hasPage, pageOf } from "../../../lib/design/architecture.ts";
 import type { PageId } from "../../../lib/design/system/index.ts";
 
 /**
@@ -99,6 +99,15 @@ export const nav: NavItem[] = navOf(sitePlan).map((p) => ({ href: p.href, label:
  * **条件が散ると、メニューには出ているのにページが無い、が起きる。**
  */
 export const buildsPage = (id: PageId): boolean => hasPage(sitePlan, id);
+/**
+ * **そのページを厚くするか**（第6段階）。
+ *
+ * 厚くする＝新しい内容を作る、ではない。
+ * **この会社がすでに持っている材料を、そのページにも降ろす**だけで、
+ * 材料が無ければ `composePage` が何も足さない。
+ */
+export const depthOf = (id: PageId) => pageOf(sitePlan, id)?.depth ?? "standard";
+
 /** 事例の個別ページ。**件数も骨格が持っている** */
 export const casePages = sitePlan.pages.filter((p) => p.id === "case");
 
@@ -159,6 +168,59 @@ export const photosOfCase = (n: number) => photosOf("加工事例").filter((p) =
  * ここで絞るのは材料の数え方だけである。
  */
 export const narrowTo = (over: Record<string, unknown>) => ({ ...(project as any), ...over });
+
+/**
+ * ページの説明文（`<meta name="description">`）。
+ *
+ * **ここが全社同じ雛形だった**（`${会社名}の${ページ名}`）。
+ * 中身がどれだけ会社ごとに違っても、**検索結果に出る一行が全社同じ**なら、
+ * 検索する人から見れば同じサイトである。
+ *
+ * **創作しない。** 使うのは聞き取った事実だけで、材料が無ければ短いまま出す。
+ * 長さは120字前後に収める（それ以上は検索結果で切られる）。
+ */
+const listOf = (v: unknown, n: number): string =>
+  (Array.isArray(v) ? v : []).filter(Boolean).slice(0, n).map(String).join("・");
+
+export function descriptionOf(id: PageId): string {
+  const p = project as any;
+  const cap = p.capability ?? {};
+  const where = project.basics?.address ?? "";
+  const trim = (s: string) => (s.length > 120 ? `${s.slice(0, 119)}…` : s);
+  switch (id) {
+    case "capability": {
+      const m = listOf(cap.materials, 4);
+      const ways = listOf(cap.processes, 3);
+      const cond = [m && `対応材質は${m}`, ways && `加工法は${ways}`, cap.tolerance && `精度は${cap.tolerance}`, cap.leadTime && `納期は${cap.leadTime}`]
+        .filter(Boolean).join("、");
+      return trim(cond ? `${companyName}（${where}）の対応可能範囲。${cond}。` : `${companyName}の対応材質・加工法・精度・ロット・納期の一覧`);
+    }
+    case "equipment": {
+      const eq = (cap.equipment ?? []).filter((e: any) => e?.maker || e?.model);
+      const names = eq.slice(0, 3).map((e: any) => [e.maker, e.model].filter(Boolean).join(" ")).join("・");
+      return trim(names ? `${companyName}の保有設備一覧。${names}ほか、全${eq.length}機種のメーカー・型番・台数を掲載しています。` : `${companyName}の保有設備一覧（メーカー・型番・台数）`);
+    }
+    case "strengths": {
+      const st = p.strengths ?? {};
+      const one = String(st.wonAfterOthersDeclined ?? st.followUpFindings ?? "").trim();
+      return trim(one ? `${companyName}が選ばれている理由。${one}` : `${companyName}が選ばれている理由`);
+    }
+    case "cases": {
+      const titles = (p.cases ?? []).slice(0, 3).map((c: any) => String(c?.title ?? "")).filter(Boolean).join("・");
+      return trim(titles ? `${companyName}の${isGeneral ? "実績" : "加工事例"}。${titles}など。` : `${companyName}の${isGeneral ? "実績" : "加工事例"}`);
+    }
+    case "company":
+      return trim([`${companyName}の会社概要`, where && `所在地は${where}`, project.basics?.founded && `創業${project.basics.founded}`].filter(Boolean).join("。") + "。");
+    case "recruit":
+      return trim(`${companyName}の採用情報。${where}で一緒に働く方を募集しています。`);
+    case "message":
+      return trim(`${companyName}代表${project.executive?.name ? ` ${project.executive.name}` : ""}からのご挨拶。`);
+    case "contact":
+      return `${companyName}へのお問い合わせ。お電話・メールで承ります`;
+    default:
+      return "";
+  }
+}
 
 /** 事例ページのURL。1始まりで、生成した原稿の slug と合わせる */
 export const caseHref = (i: number) => `/cases/${i + 1}/`;

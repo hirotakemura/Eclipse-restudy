@@ -25,6 +25,7 @@ import { hasCaseMaterial } from "./lib/generate/pages.ts";
 import { NEEDS_REVIEW_MARKER } from "./lib/schema.ts";
 import { analyze } from "./lib/design/analysis.ts";
 import { photoRequestsFor } from "./lib/design/assets.ts";
+import { composeSite } from "./lib/design/architecture.ts";
 import { sanitizeProject } from "./lib/sanitize.ts";
 
 const args = process.argv.slice(2);
@@ -243,6 +244,25 @@ for (const [rank, title] of RANKS) {
 {
   /** **判定は Asset層がする。ここは人が読む形に並べ替えるだけ** */
   const p = sanitizeProject(project);
+
+  /**
+   * ── この会社のサイトの骨格 ────────────────────────
+   *
+   * **社長が「なぜこの順番か」を説明できるようにする**（第6段階）。
+   * 骨格は規則で決まっていて、AIも乱数も使っていないので、
+   * ここに出した理由がそのまま**お客様への説明**になる。
+   */
+  const sitePlan = composeSite(p, analyze(p));
+  out("---");
+  out("");
+  out("# このサイトの骨格");
+  out("");
+  out(`**${sitePlan.pages.filter((x) => x.inNav).map((x) => x.label + (x.depth === "thick" ? "（厚く）" : "")).join(" → ")}**`);
+  out("");
+  out("なぜこの並びか：");
+  for (const why of sitePlan.why.split("／")) out(`- ${why}`);
+  out("");
+
   const requests = photoRequestsFor(p, analyze(p));
   if (requests.length) {
     out("---");

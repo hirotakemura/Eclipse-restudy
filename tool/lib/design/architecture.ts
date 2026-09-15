@@ -35,6 +35,7 @@
 
 import type { Project } from "../schema.ts";
 import type { Analysis } from "./analysis.ts";
+import { ARCHITECTURE } from "./playbook.ts";
 import {
   CORE, DEFAULT_ROLE_ORDER, HREF_OF, ROLE_OF, WITHIN_ROLE, isCore, labelOf,
   type PageId, type PageRole,
@@ -61,6 +62,23 @@ export interface PageSpec {
    */
   order: number;
   role: PageRole;
+  /**
+   * **厚くするページか。**
+   *
+   * `thick` は「新しい内容を作る」ではない。
+   * **すでにこの会社が持っている材料を、そのページにも降ろす**だけである。
+   * 材料が無ければ `composePage` が何も足さないので、水増しにならない。
+   */
+  depth: "standard" | "thick";
+  /**
+   * 検索での重み（`sitemap.xml` の priority）。**`order` とは別物である**（ご指示）。
+   *
+   * 1つの数値に「メニューの順番」と「検索での重要度」を持たせると、
+   * **片方を直したときにもう片方が黙って動く。**
+   * 導線は人が読む順、こちらは検索エンジンに伝える重みで、一致しないことがある
+   * （例：問い合わせページは導線の最後だが、検索では拾われてよい）。
+   */
+  searchWeight: number;
   /** メニューに出すか。事例の個別ページのように、出さないページがある */
   inNav: boolean;
   /** なぜそうなったか。**社長に説明できない構成は出さない** */
@@ -121,7 +139,8 @@ export function composeSite(project: Project, a: Analysis): SitePlan {
     ["contact", true, "連絡先"],
   ];
 
-  const specs: Omit<PageSpec, "order">[] = [];
+  type Draft = Omit<PageSpec, "order" | "depth" | "searchWeight">;
+  const specs: Draft[] = [];
   for (const [id, ok, why] of want) {
     const core = isCore(id, formSet);
     if (!core && !ok) continue;
@@ -148,22 +167,158 @@ export function composeSite(project: Project, a: Analysis): SitePlan {
     });
   }
 
-  /** ② どの順で読ませるか。**いまは既定の並びだけ**（順序の変化は次の段で入れる） */
-  const roleOrder = DEFAULT_ROLE_ORDER;
-  const rank = (s: Omit<PageSpec, "order">): [number, number, number] => {
+  /**
+   * ② どの順で読ませるか。
+   *
+   *   勝ち筋（`ARCHITECTURE`）で役割を並べ替える
+   *     → サイトの目的（`inquiry.goals`）で、1つずつ前後させる
+   *     → 入口は先頭、問い合わせは末尾に戻す
+   */
+  const arch = ARCHITECTURE[a.primaryStrength];
+  const why: string[] = [arch.why];
+  let roleOrder = [...(arch.roles ?? DEFAULT_ROLE_ORDER)];
+
+  /**
+   * **サイトの目的を、読ませる順に効かせる**（ご指示）。
+   *
+   * これまで `inquiry.goals` は、採用ページと代表挨拶を作るかどうかにしか使っていなかった。
+   * しかし**「集客」の会社と「選別」の会社では、同じ情報でも読ませる順が違う。**
+   * 集客は「こんな仕事をしています」で引き、選別は「ここまでが受けられます」で絞る。
+   *
+   * **一段ずつしか動かさない。** 目的で先頭まで持ち上げると、勝ち筋の判断が消える。
+   * 順番は目的の書かれ方（データの順）ではなく**この表の順**で当てる——
+   * 同じ会社から必ず同じ骨格が出るようにするため。
+   */
+  interface GoalEffect { role: PageRole; first: PageId[]; thicken: PageId[]; note: string }
+  const GOAL_EFFECT: [string, GoalEffect][] = [
+    ["集客", { role: "proof", first: ["cases"], thicken: ["cases"],
+      note: "問い合わせの数を増やしたいので、受けた仕事そのものを先に・厚く見せる" }],
+    ["選別", { role: "capacity", first: ["capability"], thicken: ["capability"],
+      note: "割に合う仕事だけを呼びたいので、受けられる条件を先に・厚く見せる" }],
+    ["信用構築", { role: "trust", first: ["company"], thicken: [],
+      note: "会社を調べられたときに効かせたいので、会社そのものを前に出す" }],
+    ["採用", { role: "hiring", first: ["recruit"], thicken: [],
+      note: "求職者に届けたいので、採用情報を前に出す" }],
+  ];
+
+  /**
+   * **効かせるのは1つだけ。**
+   *
+   * 最初は目的の数だけ順に前後させていたが、実測で**勝ち筋の判断が消えた。**
+   * 難加工の会社（B）は「事例を先に読ませる」はずが、
+   * 選別・信用構築・採用の3つを順に当てた結果
+   * **「対応可能範囲 → 会社概要 → 加工事例」**になり、事例が4番目まで落ちていた。
+   * 目的で全部動かすなら、勝ち筋の表は要らなくなる。
+   *
+   * **どれを当てるかは、目的の書かれ方（データの順）ではなくこの表の順で決める**——
+   * 同じ会社から必ず同じ骨格が出るようにするため。
+   */
+  const goalFirst: PageId[] = [];
+  const goalThick: PageId[] = [];
+  const goal = GOAL_EFFECT.find(([g]) => goals.has(g));
+  if (goal) {
+    const [, e] = goal;
+    /**
+     * **先頭は勝ち筋のもの。** 目的が動かせるのは2番目からである。
+     * ここを1番目まで許すと、目的が勝ち筋を上書きしてしまう（上の実測）。
+     */
+    const i = roleOrder.indexOf(e.role);
+    if (i > 2) { roleOrder.splice(i, 1); roleOrder.splice(2, 0, e.role); }
+    /**
+     * **役割の順が動かなくても、目的は効く。**
+     * 同じ役割の中で先に出すページと、厚くするページが変わる。
+     * 集客の会社は「こんな仕事をしています」、選別の会社は「ここまでが受けられます」——
+     * **同じ情報でも、読ませる順が違う。**
+     */
+    goalFirst.push(...e.first);
+    goalThick.push(...e.thicken);
+    why.push(e.note);
+  }
+
+  /**
+   * **来てほしくない問い合わせがある会社**（`inquiry.wantLessOf`）。
+   *
+   * ここを「その仕事の話を消す」に使わない（ご指示）。**情報を減らす方向は取らない。**
+   * 取るのは逆で、**受けられる条件を先に・厚く読ませる**。
+   * 読んだ人が問い合わせる前に自分で判断できれば、断る手間も、
+   * 断られる側の落胆も起きない。**選別は、書かないことではなく、書くことで起きる。**
+   */
+  const avoiding = String(p.inquiry?.wantLessOf ?? "").trim();
+  if (avoiding) {
+    goalFirst.push(isGeneral ? "services" : "capability");
+    goalThick.push(isGeneral ? "services" : "capability");
+    why.push("来てほしくない問い合わせがあるので、受けられる条件を前に出して、問い合わせる前に判断できるようにする");
+  }
+
+  /** 入口は先頭、問い合わせは末尾。**どの会社でも動かさない** */
+  roleOrder = ["entry", ...roleOrder.filter((r) => r !== "entry" && r !== "action"), "action"];
+
+  /**
+   * ③ 同じ役割の中の並び。
+   * **もっと受けたい仕事がある会社**（`inquiry.wantMoreOf`）は、事例を先に出す。
+   */
+  const seeking = String(p.inquiry?.wantMoreOf ?? "").trim();
+  const first = [...(arch.first ?? [])];
+  if (seeking) { first.push("cases"); why.push("もっと受けたい仕事があるので、実際に受けた仕事を先に見せる"); }
+  /** **勝ち筋の指定を先に置く。** 目的は、勝ち筋が決めていないところだけを決める */
+  for (const id of goalFirst) if (!first.includes(id)) first.push(id);
+
+  const rank = (s: Omit<PageSpec, "order" | "depth" | "searchWeight">): [number, number, number] => {
     const r = roleOrder.indexOf(s.role);
-    const w = WITHIN_ROLE.indexOf(s.id);
-    /** 事例の個別ページは、一覧のすぐ後ろに件数順で並べる */
-    return [r < 0 ? 99 : r, w < 0 ? 99 : w, s.caseNo ?? 0];
+    /**
+     * **事例の個別ページは、一覧と同じ位置に置く。**
+     * 別々に並べていたため、一覧を前に出した会社で
+     * **一覧 → 強み・技術 → 1件目 → 2件目** と、間に別のページが挟まっていた。
+     */
+    const key = s.id === "case" ? "cases" : s.id;
+    const f = first.indexOf(key);
+    const w = WITHIN_ROLE.indexOf(key);
+    /** 先に出すページは、役割の中で負の位置に置く（件数順は最後に効かせる） */
+    return [r < 0 ? 99 : r, f >= 0 ? f - first.length : (w < 0 ? 99 : w), s.caseNo ?? 0];
   };
   const sorted = [...specs].sort((x, y) => {
-    const a = rank(x), b = rank(y);
-    return a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+    const u = rank(x), v = rank(y);
+    return u[0] - v[0] || u[1] - v[1] || u[2] - v[2];
   });
 
+  /**
+   * ④ どのページを厚くするか。
+   * 勝ち筋の表に加えて、**来てほしくない問い合わせがある会社は対応可能範囲を厚く**する。
+   */
+  /**
+   * **厚くするのは2ページまで。** 勝ち筋の1ページを先に入れ、目的で1ページ足す。
+   * 3ページ4ページと厚くすると、**厚みが厚みでなくなる**（装飾の数と同じ理屈・原則⑤）。
+   */
+  const thick = new Set<PageId>();
+  for (const id of [...(arch.thicken ?? []), ...goalThick]) {
+    if (thick.size >= 2) break;
+    thick.add(id);
+  }
+
+  /**
+   * ⑤ 検索での重み。**導線の順とは別に決める**（ご指示）。
+   *
+   * 役割で決め、厚くしたページだけ一段上げる。
+   * 入口は 1.0、問い合わせは導線の最後でも検索では拾われてよいので 0.7 に置く。
+   */
+  const BASE_WEIGHT: Record<PageRole, number> = {
+    entry: 1.0, capacity: 0.9, proof: 0.8, action: 0.7, trust: 0.6, people: 0.5, hiring: 0.5,
+  };
+
   return {
-    pages: sorted.map((s, i) => ({ ...s, order: i + 1 })),
+    pages: sorted.map((s, i) => {
+      const depth = thick.has(s.id) ? "thick" as const : "standard" as const;
+      const w = (BASE_WEIGHT[s.role] ?? 0.5) + (depth === "thick" ? 0.1 : 0);
+      /** 事例の個別ページは一覧より一段下げる。**同じ主題のページを同じ重みにしない** */
+      const cut = s.id === "case" ? 0.2 : 0;
+      return {
+        ...s,
+        order: i + 1,
+        depth,
+        searchWeight: Math.round(Math.min(1, w - cut) * 10) / 10,
+      };
+    }),
     formSet,
-    why: "既定の並び",
+    why: why.join("／"),
   };
 }

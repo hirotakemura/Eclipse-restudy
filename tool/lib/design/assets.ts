@@ -529,7 +529,7 @@ export function photoRequestsFor(
         : (NAME[pg.id] ?? pg.label);
       const base = pg.id === "index"
         ? composeTop(source, a, { direction: dir })
-        : composePage(pg.id as any, source, a, { direction: dir });
+        : composePage(pg.id as any, source, a, { direction: dir, depth: pg.depth });
       return {
         page: label,
         sections: composeAssets(composeVisual(base, source, a, { direction: dir }), source, a, { direction: dir, page: pg.id }),

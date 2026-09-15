@@ -19,7 +19,7 @@ import { analyze } from "../../../lib/design/analysis.ts";
 import { composePage } from "../../../lib/design/sections.ts";
 import { composeVisual } from "../../../lib/design/visual.ts";
 import { composeAssets, willDraw } from "../../../lib/design/assets.ts";
-import { project, companyName, isGeneral } from "../lib/site";
+import { project, companyName, isGeneral, depthOf, descriptionOf } from "../lib/site";
 import { theme } from "../lib/theme";
 import { hasDraft } from "../lib/draft";
 
@@ -28,6 +28,7 @@ const sections = composeAssets(
   composeVisual(composePage("strengths", project as any, analysis, {
     direction: theme.direction,
     hasProse: hasDraft("strengths"),
+    depth: depthOf("strengths"),
   }), project as any, analysis, { direction: theme.direction }),
   project as any, analysis, { direction: theme.direction, page: "strengths" },
 ).filter((s) => willDraw(s, project as any, "strengths"));
@@ -37,7 +38,7 @@ const lead = isGeneral
   ? "なぜ、お客様に選んでいただけているのか。"
   : "なぜ他社様で難しいと言われた案件をお受けできるのか。";
 ---
-<Base title={title} description={`${companyName}が選ばれている理由`}>
+<Base title={title} description={descriptionOf("strengths")}>
   <div class="page-head"><div class="inner">
     <h1>{title}</h1>
     <p>{lead}</p>

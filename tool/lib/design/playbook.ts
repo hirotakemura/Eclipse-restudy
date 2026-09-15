@@ -11,7 +11,7 @@
  */
 
 import type { Analysis, PrimaryStrength } from "./analysis.ts";
-import type { ContentId, PresentationId, Materials } from "./system/index.ts";
+import type { ContentId, PresentationId, Materials, PageId, PageRole } from "./system/index.ts";
 import { canPresent, hasMaterial, COMPATIBLE } from "./system/index.ts";
 
 export interface Play {
@@ -105,6 +105,76 @@ export const PLAYBOOK: Record<PrimaryStrength, Play> = {
    * 特徴的な表現を割り当てず、安全な既定に任せる（D-205）。
    */
   unknown: { lead: "conditions", leadPresentations: [], prefer: {} },
+};
+
+/**
+ * ── 勝ち筋ごとの、サイトの骨格（第6段階）────────────────
+ *
+ * **上の `PLAYBOOK` と同じ思想を、ページの並びまで延ばしたものである。**
+ *
+ * これまで `PLAYBOOK` は「帯の中身をどう見せるか」しか決めていなかった。
+ * その結果、**情報の中身は会社ごとに違うのに、サイトの骨格は全社同じ**だった
+ * （実測：商品が同じなら、ページの集合も順番も1社たりとも変わらない）。
+ *
+ * 【ページ名ではなく役割で書く】
+ * 15の勝ち筋 × 11ページの表を作ると、ページを1枚足すたびに15行を直すことになる。
+ * 役割は7つしかないので、**7個の並べ替え**で済む。
+ *
+ * 【`entry` と `action` は動かさない】
+ * 入口と問い合わせの位置が会社ごとに変わると、**使い方そのものが分からなくなる。**
+ * `composeSite` が、並べ替えのあとで必ず先頭と末尾に戻す。
+ *
+ * 【`unknown` は空にする】
+ * 根拠が無いのに並べ替えない（D-205）。既定の並びのまま出る。
+ */
+export interface Architecture {
+  /** 役割の並べ替え。**書かなければ既定** */
+  roles?: PageRole[];
+  /** 同じ役割の中で、先に出すページ */
+  first?: PageId[];
+  /**
+   * 厚くするページ。**新しい内容は作らない。**
+   * すでにこの会社が持っている材料を、そのページにも降ろすだけである。
+   * 材料が無ければ `composePage` が何も足さないので、**水増しにならない。**
+   */
+  thicken?: PageId[];
+  /** なぜその並びか。**社長に説明できない構成は出さない** */
+  why: string;
+}
+
+/** 証拠を先に読ませる並び。「実際に受けた仕事」で引きつける会社に使う */
+const PROOF_FIRST: PageRole[] = ["entry", "proof", "capacity", "trust", "people", "hiring", "action"];
+/** 人を先に読ませる並び。会う前に人柄を見られる商売に使う */
+const PEOPLE_FIRST: PageRole[] = ["entry", "people", "proof", "trust", "capacity", "hiring", "action"];
+
+export const ARCHITECTURE: Record<PrimaryStrength, Architecture> = {
+  /** 受けられる条件が先。**対応可能範囲が主戦場**で、そこを厚くする */
+  precision: { thicken: ["capability"], why: "精度で選ばれる会社は、受けられる条件から読ませる" },
+  /** **事例が先。** 「他社が断った案件を受けた」は、事例そのものが証拠である */
+  difficulty: { roles: PROOF_FIRST, first: ["cases"], thicken: ["cases"], why: "難加工で選ばれる会社は、実際に受けた仕事から読ませる" },
+  /**
+   * **設備を対応可能範囲より先に出す。**
+   * 短納期で選ばれる会社に効くのは「何ができるか」より「どれだけ回せるか」で、
+   * 台数と体制がそれを表す。
+   */
+  speed: { first: ["equipment"], thicken: ["equipment"], why: "短納期で選ばれる会社は、回せる体制から読ませる" },
+  range: { thicken: ["capability"], why: "対応範囲で選ばれる会社は、受けられる条件を厚くする" },
+  engineering: { roles: PROOF_FIRST, thicken: ["cases"], why: "設計で選ばれる会社は、受けた案件の中身から読ませる" },
+  equipment: { first: ["equipment"], thicken: ["equipment"], why: "設備で選ばれる会社は、設備から読ませる" },
+  /** 職人。**技術と言葉が先、会社の来歴がその次。** 対応条件は後ろでよい */
+  craft: { roles: ["entry", "proof", "trust", "capacity", "people", "hiring", "action"], thicken: ["cases"], why: "職人性で選ばれる会社は、仕事そのものから読ませる" },
+  history: { roles: ["entry", "trust", "proof", "capacity", "people", "hiring", "action"], why: "歴史で選ばれる会社は、会社そのものから読ませる" },
+
+  // ── 汎用プラン ──
+  offering: { first: ["services"], thicken: ["services"], why: "取り扱いが明確な会社は、何を売っているかから読ませる" },
+  price: { first: ["services"], thicken: ["services"], why: "料金を出せる会社は、いくらかから読ませる" },
+  reason: { roles: PROOF_FIRST, why: "選ばれている理由を言語化できている会社は、その理由から読ませる" },
+  voice: { roles: PROOF_FIRST, why: "お客様の言葉がある会社は、その言葉から読ませる" },
+  record: { roles: PROOF_FIRST, first: ["cases"], thicken: ["cases"], why: "実績で選ばれる会社は、実績から読ませる" },
+  person: { roles: PEOPLE_FIRST, why: "人で選ばれる会社は、人から読ませる" },
+
+  /** **根拠が無いので並べ替えない**（D-205）。既定の並びのまま */
+  unknown: { why: "強みの根拠が無いので、既定の並びのまま" },
 };
 
 /**

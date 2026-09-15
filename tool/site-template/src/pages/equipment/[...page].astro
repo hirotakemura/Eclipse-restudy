@@ -22,7 +22,7 @@ import { analyze } from "../../../../lib/design/analysis.ts";
 import { composePage } from "../../../../lib/design/sections.ts";
 import { composeVisual } from "../../../../lib/design/visual.ts";
 import { composeAssets, willDraw } from "../../../../lib/design/assets.ts";
-import { project, companyName, photosOf, isGeneral, buildsPage } from "../../lib/site";
+import { project, companyName, photosOf, isGeneral, buildsPage, depthOf, descriptionOf } from "../../lib/site";
 import { theme } from "../../lib/theme";
 import { hasDraft } from "../../lib/draft";
 
@@ -39,6 +39,7 @@ const sections = composeAssets(
   composeVisual(composePage("equipment", project as any, analysis, {
     direction: theme.direction,
     hasProse: hasDraft("equipment"),
+    depth: depthOf("equipment"),
   }), project as any, analysis, { direction: theme.direction }),
   project as any, analysis, { direction: theme.direction, page: "equipment" },
 ).filter((s) => willDraw(s, project as any, "equipment"));
@@ -51,7 +52,7 @@ export function getStaticPaths() {
   return buildsPage("equipment") ? [{ params: { page: undefined } }] : [];
 }
 ---
-<Base title="設備一覧" description={`${companyName}の保有設備一覧（メーカー・型番・台数）`}>
+<Base title="設備一覧" description={descriptionOf("equipment")}>
   <div class="page-head"><div class="inner">
     <h1>設備一覧</h1>
     {total > 0 && <p>保有設備 {total}台</p>}

@@ -15,7 +15,7 @@ import { analyze } from "../../../lib/design/analysis.ts";
 import { composePage } from "../../../lib/design/sections.ts";
 import { composeVisual } from "../../../lib/design/visual.ts";
 import { composeAssets, willDraw } from "../../../lib/design/assets.ts";
-import { project, companyName } from "../lib/site";
+import { project, companyName, descriptionOf } from "../lib/site";
 import { theme } from "../lib/theme";
 
 const analysis = analyze(project as any);
@@ -27,7 +27,7 @@ const sections = composeAssets(
   project as any, analysis, { direction: theme.direction, page: "contact" },
 ).filter((s) => willDraw(s, project as any, "contact"));
 ---
-<Base title="お問い合わせ" description={`${companyName}へのお問い合わせ。お電話・メールで承ります`}>
+<Base title="お問い合わせ" description={descriptionOf("contact")}>
   <div class="page-head"><div class="inner">
     <h1>お問い合わせ</h1>
     <p>可否のご確認だけでも構いません。お気軽にご連絡ください。</p>

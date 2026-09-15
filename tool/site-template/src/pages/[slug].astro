@@ -15,7 +15,7 @@ import { analyze } from "../../../lib/design/analysis.ts";
 import { composePage } from "../../../lib/design/sections.ts";
 import { composeVisual } from "../../../lib/design/visual.ts";
 import { composeAssets, willDraw } from "../../../lib/design/assets.ts";
-import { project, hasRecruit, hasMessage, companyName, photosOf, narrowTo, buildsPage } from "../lib/site";
+import { project, hasRecruit, hasMessage, companyName, photosOf, narrowTo, buildsPage, descriptionOf } from "../lib/site";
 import { theme } from "../lib/theme";
 import { hasDraft } from "../lib/draft";
 
@@ -39,7 +39,7 @@ const sections = composeAssets(
   source, analysis, { direction: theme.direction, page: kind },
 ).filter((s) => willDraw(s, source, kind));
 ---
-<Base title={title} description={`${companyName}の${title}`}>
+<Base title={title} description={descriptionOf(kind)}>
   <div class="page-head"><div class="inner">
     <h1>{title}</h1>
     {kind === "message" && project.basics?.representative && (
