@@ -242,5 +242,97 @@ console.log("\n━━━ 事例の直後に「どうやって受けているか�
   check("技術の帯が無ければ、並びは変わらない（落ちない）", !list.includes("technique"), list.join(" "));
 }
 
+/**
+ * ── 13ページ全部が帯で組まれているか（D-301〜303）────────────
+ *
+ * ここは長いあいだ3ページしか受け付けず、
+ * **加工事例・会社概要・代表挨拶・採用・お問い合わせは素のまま**だった。
+ * 戻ってしまったことに気づけるよう、機械で押さえる。
+ */
+console.log("\n━━━ 13ページ全部が帯で組まれているか（D-301）━━━");
+{
+  const full = make({
+    basics: {
+      name: "試験株式会社", representative: "試験 太郎", founded: "1972年", capital: "1000万円",
+      employees: 28, address: "北九州市", tel: "093-000-0000",
+      businessSummary: "精密切削加工。",
+      history: [{ year: "1972年", event: "創業" }, { year: "2019年", event: "三代目が就任" }],
+    },
+    capability: { materials: ["アルミ", "ステンレス"], processes: ["マシニング加工", "旋盤加工"], operatingHours: "2交代制" },
+    strengths: { wonAfterOthersDeclined: "他社から「割れるから無理」と断られた薄肉部品を受けている。" },
+    executive: { vision: "5年後に名指しで相談が来る会社になる。", messageToStaff: "「よそではできないことなんだ」と伝えたい。" },
+    recruitment: { neededRoles: ["加工オペレーター"], terms: { salary: "月給22万円〜", workingHours: "8:00-17:00", holidays: "土日祝" } },
+    cases: [{ title: "薄肉カバー部品", clientIndustry: "精密機械", partDescription: "肉厚2mm",
+      materials: ["アルミ"], processes: ["マシニング加工"], quantity: "月20個", leadTime: "14日",
+      declinedReason: "反り", challenge: "反って精度が出ない", solution: "治具を内製した", result: "±0.01mmに収まった" }],
+    inquiry: { goals: ["集客", "採用", "信用構築"] },
+  });
+  for (const slug of ["strengths", "capability", "equipment", "cases", "case", "company", "message", "recruit", "contact"]) {
+    const list = page(slug, full);
+    check(`${slug} が帯で組まれている`, list.length >= 1, list.join(" "));
+  }
+}
+
+/**
+ * **見出しと中身がずれないか**（D-302）。
+ *
+ * 形を決めずに帯を並べたところ、`repress` の「同じ内容を同じ形で2度出さない」規則が
+ * 2つの帯の形を入れ替え、**「ご連絡先」の下に用紙が出た**（実測）。
+ * 見出しを我々が書いている帯は、形も我々が決める。
+ */
+console.log("\n━━━ 見出しと中身がずれていないか（D-302）━━━");
+{
+  const full = make({
+    basics: { name: "試験株式会社", tel: "093-000-0000", address: "北九州市",
+      history: [{ year: "1972年", event: "創業" }, { year: "2019年", event: "三代目が就任" }] },
+    capability: { operatingHours: "2交代制" },
+    strengths: { wonAfterOthersDeclined: "他社から「割れるから無理」と断られた案件を受けている。" },
+    inquiry: { goals: ["集客"] },
+  });
+  const secs = composePage("contact", full, analyze(full), {});
+  const byHeading = Object.fromEntries(secs.map((x) => [x.heading, x.presentation]));
+  check("「ご連絡先」は一覧のまま", byHeading["ご連絡先"] === "list", JSON.stringify(byHeading));
+  check("「フォームでのお問い合わせ」は用紙のまま", byHeading["フォームでのお問い合わせ"] === "prose", JSON.stringify(byHeading));
+
+  /**
+   * **沿革は、聞き取った行を全部出す**（D-204）。
+   * 2件しかない会社で年表の材料が足りず、**「創業 1972年」の1行だけ**になっていた。
+   */
+  const co = composePage("company", full, analyze(full), {});
+  const rekishi = co.find((x) => x.heading === "沿革");
+  check("沿革が2件なら箇条書き（散文に落とさない）", rekishi?.presentation === "list", rekishi?.presentation ?? "帯が無い");
+  const many = make({ ...full, basics: { ...full.basics, history: [
+    { year: "1972年", event: "創業" }, { year: "2000年", event: "工場移転" }, { year: "2019年", event: "三代目が就任" }] } });
+  const co3 = composePage("company", many, analyze(many), {});
+  check("沿革が3件以上なら年表", co3.find((x) => x.heading === "沿革")?.presentation === "timeline");
+}
+
+/**
+ * **聞けていない帯は、見出しごと出さない**（D-302）。
+ * 労働条件が1つも聞けていない案件で「募集要項」の見出しの下が空になっていた。
+ */
+console.log("\n━━━ 材料の無い帯を、見出しだけ出さないか（D-302）━━━");
+{
+  const noTerms = make({
+    basics: { name: "試験株式会社", tel: "093-000-0000" },
+    recruitment: { neededRoles: ["加工オペレーター"] },
+    inquiry: { goals: ["採用"] },
+  });
+  const secs = composePage("recruit", noTerms, analyze(noTerms), {});
+  check("労働条件が空なら「募集要項」を出さない", !secs.some((x) => x.heading === "募集要項"),
+    secs.map((x) => x.heading).join(" "));
+
+  /** **原稿があるときは、聞き取った欄をそのまま出さない**（同じ話が2度並ぶ） */
+  const mes = make({
+    basics: { name: "試験株式会社", tel: "093-000-0000" },
+    executive: { vision: "5年後に名指しで相談が来る会社になる。", messageToStaff: "「よそではできないことなんだ」。" },
+    inquiry: { goals: ["信用構築"] },
+  });
+  const withDraft = composePage("message", mes, analyze(mes), { hasProse: true }).map((x) => x.kind);
+  const without = composePage("message", mes, analyze(mes), { hasProse: false }).map((x) => x.kind);
+  check("代表挨拶：原稿があれば「これからの5年」を重ねない", !withDraft.includes("people"), withDraft.join(" "));
+  check("代表挨拶：原稿が無ければ聞き取った欄を出す", without.includes("people"), without.join(" "));
+}
+
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);
 process.exit(ng ? 1 : 0);

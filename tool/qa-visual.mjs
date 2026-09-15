@@ -49,8 +49,7 @@ const COMPANIES = [
  */
 const PAGES = ["index", "strengths/index", "capability/index", "equipment/index",
   "cases/index", "cases/1/index", "company/index", "message/index", "recruit/index", "contact/index"];
-/** 帯で組まれているページ。ここだけが `composeVisual` を通る */
-const BAND_PAGES = new Set(["index", "strengths/index", "capability/index", "equipment/index"]);
+/** 13ページのうち、どれが帯で組まれているか。**いまは全部**（D-301） */
 
 /**
  * **写真は「足すもの」であって、骨格ではない**（D-099・ご指示§10）。
@@ -167,30 +166,56 @@ console.log("  " + "".padEnd(26) + results.map((r) => {
 }).join(""));
 
 /**
- * ── ページごとに、見た目の仕組みが効いているか（D-300）───────
+ * ── ページごとに、見た目の仕組みが効いているか（D-300・D-303）───────
  *
  * ご指示§11は「**各ページに** Visual Peak」である。**各ページ、と書いてある。**
- * いま効いているのは4ページで、残り9ページは素のままなので、ここに出す。
- * **出さなければ、出来ていないことに気づけない。**
+ *
+ * **帯が2本以下のページは、設計の失敗ではなく材料不足である**（D-303）。
+ * 2本しかない画面に「余白2種・面2種・組み方2種」を求めると、
+ * **意図の無い交互**を作ることになる（ご指示§7が禁じているのはそれ）。
+ * だから2本以下は別に出し、**取材で埋めるもの**として名指しする。
  */
 console.log("\n━━━ ページごとに、見た目の仕組みが効いているか ━━━\n");
 {
   const r0 = results[0];
-  const rows = PAGES.map((page) => {
-    const b = r0.pages[page]?.bands ?? [];
-    return { page, n: b.length, peak: b.some((x) => x.peak),
+  const rows = PAGES.filter((page) => r0.pages[page]).map((page) => {
+    const b = r0.pages[page].bands;
+    return { page, n: b.length, peak: b.filter((x) => x.peak).length,
+      dens: new Set(b.map((x) => x.density)).size,
+      surf: new Set(b.map((x) => x.surface)).size,
+      lay: new Set(b.map((x) => x.layout)).size,
       steps: new Set(b.map((x) => headingPx(x, 1440))).size + 1 };
-  }).filter((x) => r0.pages[x.page]);
+  });
+  const thin = [];
   for (const x of rows) {
-    const on = BAND_PAGES.has(x.page);
-    console.log(`  ${x.page.padEnd(18)}${on ? "○ 帯で組まれている" : "✗ 帯で組まれていない"}　帯 ${String(x.n).padStart(2)}本　山 ${x.peak ? "あり" : "なし"}　文字の段 ${x.steps}`);
+    if (x.n === 0) {
+      ng++;
+      console.log(`  ${x.page.padEnd(18)}✗ **帯が1本もありません**（見た目の仕組みが効いていません）`);
+      continue;
+    }
+    if (x.n <= 2) { thin.push(x); console.log(`  ${x.page.padEnd(18)}△ 帯 ${x.n}本　材料が足りません（取材で埋めるもの）`); continue; }
+    /**
+     * **山が0なのは、材料が足りないということ**（D-303）。
+     * `composeVisual` は全部の帯を試したうえで「置けない」と答えている。
+     * 2台しかない設備を画面いっぱいにしても、2台しかないことが大きく見えるだけである。
+     * **設計の失敗は「山が2つ以上」のほう。** 2つ作ると、どちらも山でなくなる。
+     */
+    const bad = [
+      x.peak <= 1 ? "" : `山が${x.peak}個`,
+      x.dens >= 2 ? "" : "余白1種",
+      x.surf >= 2 ? "" : "面1種",
+      x.lay >= 2 ? "" : "組み方1種",
+      x.steps >= 3 ? "" : `文字の段${x.steps}`,
+    ].filter(Boolean);
+    if (bad.length) ng++;
+    const mark = bad.length ? "✗ " + bad.join("・") : x.peak === 0 ? "△ 山なし（材料が足りません）" : "○";
+    console.log(`  ${x.page.padEnd(18)}${mark.padEnd(26)}帯 ${x.n}本　山 ${x.peak}　余白 ${x.dens}種　面 ${x.surf}種　組み方 ${x.lay}種　文字の段 ${x.steps}`);
   }
-  const off = rows.filter((x) => !BAND_PAGES.has(x.page));
-  if (off.length) {
-    ng++;
-    console.log(`\n  ✗ **${off.length}ページが、山も余白の変化も持っていません。**`);
-    console.log(`     ご指示§11は「各ページに Visual Peak」です。いまは ${rows.length - off.length}/${rows.length} ページだけです。`);
-    console.log(`     とくに **加工事例（cases）は、我々の見立てで最も問い合わせに繋がるページ**です。`);
+  const withPeak = rows.filter((x) => x.peak === 1).length;
+  console.log(`\n  山のあるページ ${withPeak}/${rows.length}`);
+  if (thin.length) {
+    console.log(`\n  △ ${thin.length}ページは帯が2本以下です：${thin.map((x) => x.page).join(" ")}`);
+    console.log(`     **見た目ではなく、聞き取りの問題です。** npm run gaps -- <案件ID> で何を聞けばよいか出ます。`);
   }
 }
 

@@ -145,5 +145,17 @@ export const photoOf = (category: string) => photosOf(category)[0] ?? null;
 /** 事例の写真。何件目かで絞る（1始まり） */
 export const photosOfCase = (n: number) => photosOf("加工事例").filter((p) => p.caseNo === n);
 
+/**
+ * **そのページだけの案件データ**（D-301）。
+ *
+ * 帯の材料を数える（`materialsOf`）とき、ページによって見る範囲が違う。
+ * 事例の個別ページの「写真」はその1件の写真であって、工場の写真ではない。
+ * 全件で数えると、**代表者の写真が1枚も無い会社で「代表者」の帯が空のまま出る。**
+ *
+ * **見立て（`analyze`）には渡さない。** 見立ては会社の性格で、ページごとに変わらない。
+ * ここで絞るのは材料の数え方だけである。
+ */
+export const narrowTo = (over: Record<string, unknown>) => ({ ...(project as any), ...over });
+
 /** 事例ページのURL。1始まりで、生成した原稿の slug と合わせる */
 export const caseHref = (i: number) => `/cases/${i + 1}/`;

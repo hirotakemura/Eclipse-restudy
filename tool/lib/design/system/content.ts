@@ -20,6 +20,9 @@ export type ContentId =
   | "history"     // 沿革
   | "executive"   // 代表
   | "photos"      // 写真
+  | "profile"     // 会社概要（発注前に確かめる欄）
+  | "recruit"     // 採用（募集要項・職種・職場）
+  | "inquiry"     // お問い合わせ（用紙と連絡先）
   | "draft";      // 生成した原稿
 
 export interface Content {
@@ -50,6 +53,20 @@ export const CONTENTS: Content[] = [
   { id: "history", label: "沿革", core: false },
   { id: "executive", label: "代表", core: false },
   { id: "photos", label: "写真", core: false },
+  /**
+   * **会社概要・採用・お問い合わせを、語彙に入れる**（D-301）。
+   *
+   * この3つは長いあいだ `pages/` に直接書かれており、
+   * **可否表も材料条件も、山も余白も通っていなかった。**
+   * 実測：帯のあるページは見出しの段が3〜6段、この3つは2段で固定。
+   * 「構成システムの外にあるものは、構成できない」（D-272 と同じ理由）。
+   *
+   * `core: false` にしてあるのは、**SEOの本体ではない**からで、
+   * 出さないという意味ではない。会社概要は発注前に必ず見られる。
+   */
+  { id: "profile", label: "会社概要", core: false },
+  { id: "recruit", label: "採用", core: false },
+  { id: "inquiry", label: "お問い合わせ", core: false },
   { id: "draft", label: "原稿", core: false },
 ];
 

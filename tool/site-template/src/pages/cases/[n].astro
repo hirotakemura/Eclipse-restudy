@@ -5,11 +5,19 @@
  *
  * **`confidentialityNotes` は絶対に出力しない。**
  * あれは「何を伏せるか」を我々が控えた項目であって、掲載する内容ではない。
+ *
+ * **骨格も見せ方も、このファイルが決めない**（D-301）。
+ * 直す前はこのページに帯が1本も無く、見出しと本文が同じ間隔で続くだけだった。
+ * サイトで最も読まれるページが、トップとは別物に見えていた。
  */
 import Base from "../../layouts/Base.astro";
-import Prose from "../../components/Prose.astro";
-import { cases, companyName, photosOfCase, isGeneral } from "../../lib/site";
-import Gallery from "../../components/Gallery.astro";
+import Band from "../../components/Band.astro";
+import Present from "../../components/Present.astro";
+import { analyze } from "../../../../lib/design/analysis.ts";
+import { composePage } from "../../../../lib/design/sections.ts";
+import { composeVisual } from "../../../../lib/design/visual.ts";
+import { project, cases, isGeneral, photosOfCase, narrowTo } from "../../lib/site";
+import { theme } from "../../lib/theme";
 import { hasDraft } from "../../lib/draft";
 
 export function getStaticPaths() {
@@ -21,54 +29,40 @@ export function getStaticPaths() {
   }));
 }
 const { item, index } = Astro.props;
-const slug = `case-${index + 1}`;
-const tags = [...(item.materials ?? []), ...(item.processes ?? [])];
-const sections = [
-  ["ご相談の内容", item.challenge],
-  ["対応した内容", item.solution],
-  ["結果", item.result],
-].filter(([, v]) => v) as [string, string][];
+const n = index + 1;
+const slug = `case-${n}`;
 
+const analysis = analyze(project as any);
 /**
- * 事例の説得力は、**数字が入っているか**で決まる（D-172）。
- * 材質・数量・納期・他社が断った理由。聞けていない行は出さない。
+ * **材料を数える範囲は、この1件だけ。**
+ * 全件で数えると、写真の無い事例に「加工したもの」の帯が空のまま出る。
+ * 見立て（`analyze`）は会社の性格なので、絞らずそのまま渡す。
  */
-const spec = ([
-  ["材質", (item.materials ?? []).join("・")],
-  ["数量・ロット", item.quantity],
-  ["納期", item.leadTime],
-  ["加工法", (item.processes ?? []).join("・")],
-  ["他社様でお断りになった理由", item.declinedReason],
-] as [string, string][]).filter(([, v]) => v);
+const source = narrowTo({
+  /** **この画面は事例の個別ページである**、と材料の数え方に伝える（`materialsOf`） */
+  caseDetail: true,
+  cases: [item],
+  photos: photosOfCase(n),
+  /** 材質・加工法の札は、**この案件のもの**を出す。会社の対応材質ではない */
+  capability: { ...((project as any).capability ?? {}), materials: item.materials ?? [], processes: item.processes ?? [] },
+});
+const sections = composeVisual(
+  composePage("case", source, analysis, { direction: theme.direction, hasProse: hasDraft(slug) }),
+  source, analysis, { direction: theme.direction },
+);
 ---
 <Base title={`加工事例：${item.title}`} description={`${item.clientIndustry}｜${item.partDescription ?? ""}`}>
   <div class="page-head"><div class="inner">
     <p>{item.clientIndustry}</p>
     <h1>{item.title}</h1>
   </div></div>
-  <section class="section"><div class="inner case-body">
-    {item.partDescription && <div class="note-box">{item.partDescription}</div>}
-    {spec.length > 0 && (
-      <div class="table-wrap">
-        <table>
-          <tbody>{spec.map(([h, v]) => <tr><th scope="row">{h}</th><td>{v}</td></tr>)}</tbody>
-        </table>
-      </div>
-    )}
-    <Gallery photos={photosOfCase(index + 1)} />
-    <Prose slug={slug} />
-    {!hasDraft(slug) && sections.map(([title, body]) => (
-      <>
-        <h2>{title}</h2>
-        <p>{body}</p>
-      </>
-    ))}
-    {tags.length > 0 && (
-      <>
-        <h2>材質・加工法</h2>
-        <p class="case-tags">{tags.map((t: string) => <em>{t}</em>)}</p>
-      </>
-    )}
-    <p style="margin-top:34px"><a href="/cases/">加工事例の一覧に戻る</a></p>
-  </div></section>
+  {sections.map((sec) => (
+    <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} motif={sec.motif} content={sec.content} presentation={sec.presentation}
+          decidedBy={sec.decidedBy} density={sec.visual?.density} peak={sec.visual?.peak} role={sec.visual?.role} layout={sec.visual?.layout ?? sec.layout} heading={sec.kind === "prose" ? undefined : sec.heading}>
+      <Present content={sec.content} presentation={sec.presentation} analysis={analysis} slug="case" caseNo={n} draftSlug={slug} />
+    </Band>
+  ))}
+  <div class="section"><div class="inner">
+    <p><a href="/cases/">加工事例の一覧に戻る</a></p>
+  </div></div>
 </Base>

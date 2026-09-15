@@ -55,6 +55,16 @@ export interface Section {
     | "points" // 強みを複数の塊に分ける
     | "specTable" // 対応可能範囲の表
     | "equipmentTable" // 設備の一覧表
+    /** ここから下は、事例個別・会社概要・採用・お問い合わせのための帯（D-301） */
+    | "caseSpec" // この事例の条件（材質・数量・納期・加工法・お断りの理由）
+    | "caseSteps" // この事例の ご相談 → 対応 → 結果
+    | "caseTags" // この事例の材質・加工法
+    | "profileTable" // 会社概要の表
+    | "recruitTerms" // 募集要項の表
+    | "recruitPoints" // 募集している職種・職場について
+    | "executiveVoice" // 社員に伝えたいこと（代表の言葉そのまま）
+    | "inquiryContact" // ご連絡先（電話・メール・所在地・稼働体制）
+    | "inquiry" // お問い合わせの用紙
     | "prose"; // 生成した散文
   width: Width;
   emphasis: Emphasis;
@@ -679,8 +689,19 @@ export function explain(sections: Section[]): string {
  *
  * 材料の無いものは作らない、はトップと同じ。
  */
+/**
+ * 帯で組むページ。**13ページ全部**（D-301）。
+ *
+ * 長いあいだ、ここは3ページしか受け付けなかった。
+ * 事例・会社概要・代表挨拶・採用・お問い合わせは `pages/*.astro` に直接書かれており、
+ * **山も・余白の変化も・組み方の変化も、構造として存在しなかった。**
+ */
+export type PageSlug =
+  | "strengths" | "capability" | "equipment"
+  | "cases" | "case" | "company" | "message" | "recruit" | "contact";
+
 export function composePage(
-  slug: "strengths" | "capability" | "equipment",
+  slug: PageSlug,
   project: Project,
   a: Analysis,
   /**
@@ -760,8 +781,144 @@ export function composePage(
     if (named.length >= 2) {
       add({ kind: "equipment", width: "wide", emphasis: "lead", heading: "主な設備" }, "型番まで分かっている設備。型番そのものが検索される");
     }
-    add({ kind: "equipmentTable", width: "wide", emphasis: named.length ? "quiet" : "normal", heading: "保有設備一覧", form: "spec" }, "全設備の一覧");
+    /**
+     * **「控えめ」にしてよいのは、上に「主な設備」の帯があるときだけ**（D-302）。
+     * `named.length` だけを見ていたので、型番が1台しか分からない会社では
+     * **上に何も無いのに一覧表が控えめ**になり、ページに主役が1つも無くなっていた。
+     * 条件は、上の帯を足した条件（2台以上）と同じでなければならない。
+     */
+    add({ kind: "equipmentTable", width: "wide", emphasis: named.length >= 2 ? "quiet" : "normal", heading: "保有設備一覧", form: "spec" }, "全設備の一覧");
     add({ kind: "gallery", width: "full", emphasis: "normal", heading: "工場・設備" }, "設備は写真があると伝わる");
+  }
+
+  /**
+   * ── 加工事例の一覧 ────────────────────────────
+   * **一覧はカードの格子である**、が既定。ただし格子1つだけのページにしない。
+   * 難加工が強みの会社では、代表1件を工程として先に見せる（D-301）。
+   */
+  if (slug === "cases") {
+    if (["difficulty", "craft", "engineering"].includes(a.primaryStrength)) {
+      add({ kind: "caseSteps", width: "narrow", emphasis: "lead", heading: "代表的な案件" }, "難しい仕事が強みの会社は、1件を順を追って見せたほうが伝わる");
+    }
+    add({ kind: "cases", width: "wide", emphasis: "normal", heading: isGeneral ? "実績" : "加工事例" }, "一覧");
+    add({ kind: "gallery", width: "full", emphasis: "quiet", heading: "加工したもの" }, "加工品の写真がいちばん問い合わせに繋がる");
+  }
+
+  /**
+   * ── 加工事例の個別ページ ──────────────────────
+   * **最も読まれ、最も問い合わせに繋がる**（`pages/cases/[n].astro` の注記）。
+   * それなのに、ここは長いあいだ帯が1本も無かった。
+   *
+   * 渡ってくる `project` は**この1件だけに絞ったもの**なので、
+   * 材料の数え方（`materialsOf`）はそのまま使える。
+   */
+  if (slug === "case") {
+    /**
+     * **見出しと中身がずれないように、材料をここで見る**（D-302）。
+     *
+     * 帯を無条件に足して `repress` の落とし先に任せると、
+     * **「この案件の条件」という見出しの下に工程が出る**、
+     * **「ご相談から結果まで」の下にカードが1枚出る**、ということが起きた（実測）。
+     * 見出しは我々が書いているので、**中身が決まってから足す。**
+     */
+    const mc = materialsOf(project, "cases", a.hasRealPhotos);
+    const mm = materialsOf(project, "materials", a.hasRealPhotos);
+    if ((mc.rows ?? 0) >= 1) {
+      add({ kind: "caseSpec", width: "wide", emphasis: "normal", heading: "この案件について", form: "spec" }, "調達担当者が最初に見るもの");
+    }
+    add({ kind: "gallery", width: "full", emphasis: "normal", heading: "加工したもの" }, "加工品の写真");
+    /**
+     * **原稿があるときは、工程の帯を出さない。**
+     * 原稿はこの事例の話そのものなので、両方出すと同じ内容が2度並ぶ。
+     * 原稿が無い案件（第1回取材まで）では、ここが本文になる。
+     */
+    if (!hasProse && (mc.steps ?? 0) >= 2) {
+      add({ kind: "caseSteps", width: "narrow", emphasis: "lead", heading: "ご相談から結果まで", form: "process" }, "事例の説得力は、順を追って読めるかで決まる");
+    }
+    /** 札は2つ以上そろってはじめて札になる。1つだけなら条件の表の中で足りている */
+    if (mm.count >= 2) {
+      add({ kind: "caseTags", width: "wide", emphasis: "quiet", heading: "材質・加工法" }, "検索される語そのもの");
+    }
+  }
+
+  if (slug === "company") {
+    add({ kind: "gallery", width: "full", emphasis: "normal", heading: "外観" }, "どこにある会社かが分かる");
+    add({ kind: "profileTable", width: "wide", emphasis: "lead", heading: "会社概要", form: "spec" }, "発注前に確かめる欄");
+    /**
+     * **沿革は、聞き取った行を全部出す**（D-204・D-302）。
+     *
+     * 形を強みで選ばせていたため、沿革が2件の会社で「年表」の材料が足りず、
+     * **「沿革」という見出しの下に「創業 1972年」の1行だけが出て、
+     * 聞き取った出来事が丸ごと消えていた**（実測・松原精機）。
+     * 3件以上なら年表、2件なら箇条書き。**どちらでも全行が出る。**
+     */
+    const mh = materialsOf(project, "history", a.hasRealPhotos);
+    if (mh.count >= 2) {
+      add({ kind: "timeline", width: "narrow", emphasis: "normal", heading: "沿革", form: mh.count >= 3 ? "timeline" : "list" }, "続いていることが信用になる");
+    }
+  }
+
+  /**
+   * ── 代表挨拶 ──────────────────────────────────
+   *
+   * **このページの中身は、聞き取った2つの欄しかない。**
+   * だから原稿があるときは、原稿がその2つを書き直したものである。
+   * 両方を出すと、**同じ話が3回並ぶ**（実測・デモ案件で確認）。
+   *
+   * 強み・対応可能範囲のページは事情が違う。あちらは帯ごとに別の材料があり、
+   * 原稿は「すでに画面に出ているもの」を知ったうえで書かれる（D-193）。
+   */
+  if (slug === "message") {
+    if (!hasProse) {
+      add({ kind: "people", width: "narrow", emphasis: "lead", heading: "これからの5年" }, "代表の言葉が、この会社の人柄になる");
+      /** **聞き取った文章をそのまま読ませる。** 引用に畳むと、前後の説明が落ちる（D-204） */
+      if (has(p.executive?.messageToStaff)) {
+        add({ kind: "executiveVoice", width: "narrow", emphasis: "normal", heading: "社員に伝えたいこと", form: "longform" }, "社内に向けた言葉は、社外にいちばんよく届く");
+      }
+    }
+    /** 実写が届けば、ここが山になる（`image` の山） */
+    add({ kind: "gallery", width: "normal", emphasis: "normal", heading: "代表者" }, "顔が見えると信用が変わる");
+  }
+
+  if (slug === "recruit") {
+    /**
+     * **聞けていない帯は出さない**（D-302）。
+     *
+     * 募集要項を無条件に足していたため、労働条件が1つも聞けていない案件で
+     * **「募集要項」という見出しの下が空**になった（実測）。
+     * 空欄の並んだ表より不信を招く。聞けるまでは、見出しごと出さない。
+     */
+    const mr = materialsOf(project, "recruit", a.hasRealPhotos);
+    const r = p.recruitment ?? {};
+    const heads = [
+      (r.neededRoles ?? []).length ? "募集している職種" : "",
+      (r.workplaceAppeal ?? []).length ? "職場について" : "",
+    ].filter(Boolean);
+    /** 代表挨拶と同じ理由で、原稿があるときは聞き取った欄をそのまま出さない */
+    if (heads.length && !hasProse) {
+      add({ kind: "recruitPoints", width: "narrow", emphasis: "lead", heading: heads.join("・") }, "何をする仕事かが先");
+    }
+    if ((mr.rows ?? 0) >= 1) {
+      add({ kind: "recruitTerms", width: "wide", emphasis: "normal", heading: "募集要項", form: "spec" }, "条件の書いていない求人は応募されない（D-171）");
+    }
+    add({ kind: "gallery", width: "full", emphasis: "quiet", heading: "働く人" }, "働いている人が見えると応募が変わる");
+  }
+
+  if (slug === "contact") {
+    /** **用紙の前に、相談してよい理由を置く。** 用紙だけのページは送信されない */
+    if (has(st.wonAfterOthersDeclined) || isGeneral) {
+      add({ kind: "declined", width: "narrow", emphasis: "lead", heading: "他社様で難しいと言われた案件" }, "相談してよい理由を、用紙の前に置く");
+    }
+    /**
+     * **見出しと中身がずれないように、両方とも形を決めておく**（D-302）。
+     *
+     * 形を決めずに並べたところ、`repress` が「同じ内容を同じ形で2度出さない」規則に従って
+     * 2つの帯の形を入れ替え、**「ご連絡先」の下に用紙が、「フォームでのお問い合わせ」の下に
+     * 電話番号の表が出た**（実測）。見出しは我々が書いているので、形も我々が決める。
+     */
+    add({ kind: "inquiryContact", width: "wide", emphasis: "normal", heading: "ご連絡先", form: "list" }, "電話とメールは必ず出す（D-060）。用紙が止まっても問い合わせが絶えないように");
+    /** **書くことが分かってから、用紙に入る。** 先に用紙を出すと、空欄を見ることになる */
+    add({ kind: "inquiry", width: "normal", emphasis: "normal", heading: "フォームでのお問い合わせ", form: "prose" }, "用紙");
   }
 
   return dedupe(out);
@@ -790,6 +947,15 @@ const SHOWS: Record<Section["kind"], string> = {
   timeline: "創業年と沿革の年表",
   people: "5年後のビジョン・代表者名",
   points: "褒め言葉・同業が敬遠する仕事・最も難しかった仕事（聞き取った文章そのまま）",
+  caseSpec: "この事例の材質・数量・納期・加工法・他社様がお断りになった理由",
+  caseSteps: "この事例の ご相談の内容 → 対応した内容 → 結果",
+  caseTags: "この事例の材質・加工法を、ひとつずつ札にして",
+  profileTable: "会社名・代表者・創業・資本金・従業員数・所在地・連絡先・事業内容",
+  recruitTerms: "募集要項（雇用形態・給与・勤務時間・休日・手当・保険・応募資格・選考）",
+  recruitPoints: "募集している職種・職場について",
+  executiveVoice: "社員に伝えたいこと（聞き取った文章そのまま）",
+  inquiryContact: "電話・メールアドレス・所在地・稼働体制",
+  inquiry: "ご相談の際にお知らせいただきたいことと、お問い合わせの用紙",
   prose: "——ここにあなたの文章が入ります——",
 };
 
@@ -849,6 +1015,15 @@ const KIND_AS: Record<Section["kind"], { content: ContentId; presentation: Prese
   timeline: { content: "history", presentation: "timeline" },
   people: { content: "executive", presentation: "prose" },
   points: { content: "praise", presentation: "cardGrid" },
+  caseSpec: { content: "cases", presentation: "spec" },
+  caseSteps: { content: "cases", presentation: "process" },
+  caseTags: { content: "materials", presentation: "chips" },
+  profileTable: { content: "profile", presentation: "spec" },
+  recruitTerms: { content: "recruit", presentation: "spec" },
+  recruitPoints: { content: "recruit", presentation: "list" },
+  executiveVoice: { content: "executive", presentation: "longform" },
+  inquiryContact: { content: "inquiry", presentation: "list" },
+  inquiry: { content: "inquiry", presentation: "prose" },
   prose: { content: "draft", presentation: "prose" },
 };
 

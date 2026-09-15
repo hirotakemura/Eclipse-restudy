@@ -26,7 +26,8 @@ import Gallery from "./Gallery.astro";
 import CaseCard from "./CaseCard.astro";
 import Prose from "./Prose.astro";
 import { cardGrid } from "../lib/cards";
-import { project, cases, rows, photosOf, isGeneral, reasonChosen, idealCustomer, offerings } from "../lib/site";
+import { project, cases, rows, photosOf, photosOfCase, tel, telHref, email, serviceArea, isGeneral, reasonChosen, idealCustomer, offerings } from "../lib/site";
+import InquiryForm from "./InquiryForm.astro";
 import { splitParts } from "../lib/text";
 
 /**
@@ -34,9 +35,16 @@ import { splitParts } from "../lib/text";
  *             **自分自身へのリンクを出さないため**に要る（強みページに
  *             「強み・技術をくわしく見る」が出ていては、ただの行き止まり）。
  */
-interface Props { content: string; presentation: string; analysis: any; slug?: string }
-const { content, presentation, analysis, slug } = Astro.props;
+/**
+ * @param caseNo 事例の個別ページで、**どの案件を描いているか**（1始まり・D-301）。
+ *               渡されたときは、事例・写真・材質の帯が**その1件だけ**を出す。
+ *               渡さなければ、これまでどおり全件から選ぶ。
+ */
+interface Props { content: string; presentation: string; analysis: any; slug?: string; caseNo?: number; draftSlug?: string }
+const { content, presentation, analysis, slug, caseNo, draftSlug } = Astro.props;
 const page = slug ?? "index";
+/** この帯が見ている事例。個別ページなら1件、それ以外は undefined */
+const only: any = caseNo ? cases[caseNo - 1] : undefined;
 /** 自分のページへは張らない */
 const linkTo = (to: string) => (page === to ? undefined : `/${to}/`);
 
@@ -53,7 +61,7 @@ const basics = (project as any).basics ?? {};
  * 別々の案件がひと続きの工程に見えていた。読んで意味が通らない。
  * 工程は**順序に意味がある**表現なので、順序が本当にあるもの＝1件の中だけに使う。
  */
-const caseForProcess = cases.find((c: any) => c.challenge && c.solution && c.result) ?? cases[0];
+const caseForProcess = only ?? cases.find((c: any) => c.challenge && c.solution && c.result) ?? cases[0];
 const caseSteps = (caseForProcess
   ? [
       { title: "ご相談の内容", body: caseForProcess.challenge },
@@ -86,6 +94,27 @@ const grid = cardGrid(shownCases.length);
  * **汎用ベーシック（198,000円）には「同業が敬遠しがちな仕事」が無い。**
  * 中原設備などの既存案件を壊さないよう、商品ごとに中身を変える（ご指示①）。
  */
+/**
+ * 募集要項。**条件の書いていない求人は応募されない**（D-171）。
+ * 聞けていない項目は行ごと出さない。空欄の並んだ表のほうが不信を招く。
+ */
+const rt = ((project as any).recruitment?.terms ?? {}) as any;
+const recruitTerms = rows([
+  ["雇用形態", rt.employmentType], ["給与", rt.salary], ["勤務時間", rt.workingHours],
+  ["休日・休暇", rt.holidays], ["諸手当", rt.allowances], ["社会保険", rt.insurance],
+  ["応募資格", rt.qualifications], ["選考の流れ", rt.selection], ["応募書類", rt.documents],
+  ["お問い合わせ", rt.contact], ["工場見学", rt.factoryTour],
+]);
+/**
+ * `retentionNotes`（若手の定着状況）は**我々が採用ページの要否を判断するための欄**で、
+ * 載せる欄ではない（D-170）。ここには出さない。
+ */
+const rr = ((project as any).recruitment ?? {}) as any;
+const recruitBlocks = ([
+  ["募集している職種", (rr.neededRoles ?? []).join("、")],
+  ["職場について", (rr.workplaceAppeal ?? []).join("、")],
+].filter(([, v]) => v)) as [string, string][];
+
 const points = ((isGeneral
   ? [
       ["お客様からよくいただく言葉", st.praiseFromClients],
@@ -97,7 +126,8 @@ const points = ((isGeneral
       ["技術的に最も難しかった仕事", st.hardestJob],
     ]) as [string, string][]).filter(([, v]) => v);
 ---
-{content === "draft" && <Prose slug={slug ?? "index"} />}
+{/** 原稿の差し込み先は、ページ名と違うことがある（事例は `case-1`・D-301） */}
+{content === "draft" && <Prose slug={draftSlug ?? page} />}
 
 {/* 取り扱い（汎用プランの中心・D-272）。**構成システムの中で出す** */}
 {content === "offerings" && presentation === "cardGrid" && <Offerings offerings={offerings} href={offerings.length > 3 ? "/services/" : undefined} />}
@@ -122,7 +152,9 @@ const points = ((isGeneral
 )}
 
 {content === "materials" && presentation === "chips" && (
-  <Materials materials={cap.materials ?? []} processes={cap.processes ?? []} href={linkTo("capability")} />
+  <Materials materials={(only ? only.materials : cap.materials) ?? []}
+             processes={(only ? only.processes : cap.processes) ?? []}
+             href={linkTo("capability")} />
 )}
 {content === "materials" && presentation === "list" && <ListView items={cap.materials ?? []} />}
 {content === "materials" && presentation === "spec" && (
@@ -160,8 +192,18 @@ const points = ((isGeneral
     {page !== "cases" && <p><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>}
   </>
 )}
-{content === "cases" && presentation === "spec" && (
+{content === "cases" && presentation === "spec" && !only && (
   <Table rows={rows(cases.map((c: any) => [c.title, [c.materials?.join("・"), c.quantity, c.leadTime].filter(Boolean).join("／")]))} />
+)}
+{/* 事例の個別ページ。**この1件の条件だけ**を出す（D-301・D-172） */}
+{content === "cases" && presentation === "spec" && only && (
+  <>
+    {only.partDescription && <div class="note-box">{only.partDescription}</div>}
+    <Table rows={rows([
+      ["材質", only.materials], ["数量・ロット", only.quantity], ["納期", only.leadTime],
+      ["加工法", only.processes], ["他社様でお断りになった理由", only.declinedReason],
+    ])} />
+  </>
 )}
 
 {content === "technique" && presentation === "prose" && <Technique text={st.followUpFindings} praise={page === "strengths" ? undefined : st.praiseFromClients} href={linkTo("strengths")} />}
@@ -198,8 +240,92 @@ const points = ((isGeneral
   <People vision={(project as any).executive?.vision} representative={basics.representative} href={linkTo("message")} />
 )}
 {content === "executive" && presentation === "quote" && <Declined text={quoteOf((project as any).executive?.messageToStaff ?? (project as any).executive?.vision)} />}
+{/**
+  * **代表挨拶のページでは、すぐ上の帯が「これからの5年」を出している。**
+  * ここで両方を出すと同じ文章が2度並ぶので、社員に伝えたいことだけにする（D-301）。
+  */}
 {content === "executive" && presentation === "longform" && (
-  <Longform text={[(project as any).executive?.vision, (project as any).executive?.messageToStaff].filter(Boolean).join("\n\n")} />
+  <Longform text={(page === "message"
+    ? [(project as any).executive?.messageToStaff]
+    : [(project as any).executive?.vision, (project as any).executive?.messageToStaff]
+  ).filter(Boolean).join("\n\n")} />
 )}
 
-{content === "photos" && <Gallery photos={photosOf("工場・設備")} />}
+{/**
+  * 写真の帯は、**そのページが見るべき写真**を出す（D-301）。
+  * 直す前はどのページでも「工場・設備」で、代表挨拶に工場の写真が出ていた。
+  */}
+{content === "photos" && (
+  <Gallery photos={
+    caseNo ? photosOfCase(caseNo)
+    : page === "cases" ? photosOf("加工事例")
+    : page === "company" ? photosOf("外観")
+    : page === "message" ? photosOf("代表者")
+    : page === "recruit" ? photosOf("働く人")
+    : photosOf("工場・設備")
+  } />
+)}
+
+{/* ── 会社概要・採用・お問い合わせ（D-301）────────────── */}
+{content === "profile" && presentation === "spec" && (
+  <Table rows={rows([
+    ["会社名", basics.name], ["代表者", basics.representative], ["創業", basics.founded],
+    ["資本金", basics.capital], ["従業員数", basics.employees ? `${basics.employees}名` : ""],
+    ["所在地", basics.address], ["電話番号", tel], ["メールアドレス", email],
+    ["事業内容", basics.businessSummary], ["主要取引先の業界", basics.clientIndustries],
+  ])} />
+)}
+{content === "profile" && presentation === "list" && (
+  <ListView items={[basics.address, tel, basics.founded].filter(Boolean)} />
+)}
+
+{content === "recruit" && presentation === "spec" && <Table rows={recruitTerms} />}
+{content === "recruit" && presentation === "list" && <ListView items={recruitBlocks.map(([h]) => h)} />}
+{content === "recruit" && presentation === "prose" && (
+  <>{recruitBlocks.map(([h, body]) => <><h3>{h}</h3><p>{body}</p></>)}</>
+)}
+
+{/* ご連絡先。**電話とメールは、用紙と同じページに必ず置く**（D-060） */}
+{content === "inquiry" && presentation === "list" && (
+  <div class="table-wrap">
+    <table><tbody>
+      {tel && <tr><th scope="row">電話</th><td><a href={`tel:${telHref}`}>{tel}</a></td></tr>}
+      {email && <tr><th scope="row">メール</th><td><a href={`mailto:${email}`}>{email}</a></td></tr>}
+      {basics.address && <tr><th scope="row">所在地</th><td>{basics.address}</td></tr>}
+      {cap.operatingHours && <tr><th scope="row">稼働体制</th><td>{cap.operatingHours}</td></tr>}
+    </tbody></table>
+  </div>
+)}
+{/**
+  * **書くことが分かってから、用紙に入る。**
+  * 先に用紙を出すと、何を書けばよいか分からないまま空欄を見ることになる。
+  */}
+{content === "inquiry" && presentation === "prose" && (
+  <>
+    <h3>ご相談の際にお知らせいただきたいこと</h3>
+    <p>下記が分かると、お返事が早くなります。分かる範囲で構いません。</p>
+    {isGeneral ? (
+      <>
+        <ul>
+          <li>ご相談の内容（どこが、どのような状態か）</li>
+          <li>ご希望の時期</li>
+          <li>お住まい・所在地の地域</li>
+          <li>ご予算の目安（お決まりであれば）</li>
+        </ul>
+        {serviceArea && <p>対応エリア：{serviceArea}</p>}
+      </>
+    ) : (
+      <>
+        <ul>
+          <li>図面（PDF・DXFなど。お手元にあるものでかまいません）</li>
+          <li>材質</li>
+          <li>数量</li>
+          <li>ご希望の納期</li>
+          <li>用途・使われ方（精度の要否の判断に使います）</li>
+        </ul>
+        <p>図面がまだ固まっていない段階のご相談も承ります。</p>
+      </>
+    )}
+    <InquiryForm tel={tel} email={email} />
+  </>
+)}

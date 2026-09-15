@@ -64,7 +64,8 @@ export const PEAKS: Peak[] = [
    * 「他社から『ビビって割れる』と断られた案件を複数回受注している」のような一文を大きく置く。
    */
   { id: "statement", label: "一言を大きく", note: "会社を一言で言う文を大きく。**写真0枚でもここで山が作れる**",
-    contents: ["declined", "praise", "executive", "technique"], presentations: ["quote", "prose", "longform"], needsPhoto: false, role: "statement" },
+    // **採用の「何をする仕事か」もここ**（D-302）。求職者がいちばん先に読む
+    contents: ["declined", "praise", "executive", "technique", "recruit"], presentations: ["quote", "prose", "longform"], needsPhoto: false, role: "statement" },
   { id: "process", label: "工程を大きく", note: "課題→工程→結果を、カードではなく縦の流れとして見せる",
     contents: ["cases", "technique"], presentations: ["process"], needsPhoto: false, role: "display" },
   /**
@@ -76,7 +77,9 @@ export const PEAKS: Peak[] = [
    */
   { id: "spec", label: "条件を壁に", note: "条件表・料金表を、表ではなく画面を占める構成物として見せる",
     // **汎用の料金表もここ**（D-283）。料金が全件そろっている会社では、それが山になる
-    contents: ["conditions", "equipment", "materials", "offerings"], presentations: ["spec", "cardGrid", "chips"], needsPhoto: false, role: "statement" },
+    // **事例の条件表もここ**（D-302）。調達担当者の目が最初に止まるのは、材質・数量・納期である
+    // **会社概要と募集要項もここ**（D-302）。どちらも「突き合わせて読む表」がページの主題である
+    contents: ["conditions", "equipment", "materials", "offerings", "cases", "profile", "recruit"], presentations: ["spec", "cardGrid", "chips"], needsPhoto: false, role: "statement" },
   { id: "image", label: "写真を全幅", note: "写真を画面いっぱいに。**実写があるときだけ**",
     contents: ["photos", "cases", "equipment"], presentations: ["fullWidth", "cardGrid"], needsPhoto: true, role: "display" },
 ];

@@ -135,9 +135,17 @@ export function composeVisual(
    */
   let peakAt = -1;
   let peakId: PeakId = "none";
+  /**
+   * **「控えめに」と決めた帯を、山にしない**（D-302）。
+   *
+   * 山は主役の帯から選ぶ。主役が無ければ材料の厚い帯で試すが、
+   * `emphasis: "quiet"` は**こちらが「弱く置く」と決めた帯**である。
+   * そこを山にすると、決めたことと反対のことが起きる。
+   * 実際に、事例の個別ページで**末尾の「材質・加工法」の札3つが山になった。**
+   */
   const order = [
     ...body.map((s, i) => ({ s, i })).filter((x) => x.s.emphasis === "lead"),
-    ...body.map((s, i) => ({ s, i })).filter((x) => x.s.emphasis !== "lead"),
+    ...body.map((s, i) => ({ s, i })).filter((x) => x.s.emphasis === "normal"),
   ];
   for (const { s, i } of order) {
     const id = peakFor(s, project, a, d.tone);

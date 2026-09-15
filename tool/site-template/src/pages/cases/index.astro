@@ -1,33 +1,37 @@
 ---
+/**
+ * 加工事例の一覧。
+ *
+ * **骨格も見せ方も、このファイルが決めない**（D-301）。
+ * 直す前はカードの格子が1つ置いてあるだけで、帯が無く、山も余白の変化も無かった。
+ */
 import Base from "../../layouts/Base.astro";
-import CaseCard from "../../components/CaseCard.astro";
-import { cardGrid } from "../../lib/cards";
-import { cases, companyName, isGeneral, photosOfCase } from "../../lib/site";
-import Gallery from "../../components/Gallery.astro";
-const grid = cardGrid(cases.length);
+import Band from "../../components/Band.astro";
+import Present from "../../components/Present.astro";
+import { analyze } from "../../../../lib/design/analysis.ts";
+import { composePage } from "../../../../lib/design/sections.ts";
+import { composeVisual } from "../../../../lib/design/visual.ts";
+import { project, companyName, isGeneral, photosOf, narrowTo } from "../../lib/site";
+import { theme } from "../../lib/theme";
+
+const analysis = analyze(project as any);
+/** 写真の帯が見るのは**加工事例の写真**。工場の写真ではない */
+const source = narrowTo({ photos: photosOf("加工事例") });
+const sections = composeVisual(
+  composePage("cases", source, analysis, { direction: theme.direction }),
+  source, analysis, { direction: theme.direction },
+);
+const title = isGeneral ? "実績" : "加工事例";
 ---
-<Base title={isGeneral ? "実績" : "加工事例"} description={`${companyName}の${isGeneral ? "実績" : "加工事例"}`}>
+<Base title={title} description={`${companyName}の${title}`}>
   <div class="page-head"><div class="inner">
-    <h1>{isGeneral ? "実績" : "加工事例"}</h1>
+    <h1>{title}</h1>
     <p>お客様の社名は伏せております。</p>
   </div></div>
-  <section class="section"><div class="inner">
-    {isGeneral ? (
-      // 汎用は件数が多くないので、1ページに全部出す。個別ページを量産しない
-      cases.map((c: any, i: number) => (
-        <div class="case-body work">
-          <p class="case-industry">{c.clientIndustry}</p>
-          <h2>{c.title}</h2>
-          <Gallery photos={photosOfCase(i + 1)} />
-          {c.challenge && <><h3>ご相談の内容</h3><p>{c.challenge}</p></>}
-          {c.solution && <><h3>対応した内容</h3><p>{c.solution}</p></>}
-          {c.result && <><h3>結果</h3><p>{c.result}</p></>}
-        </div>
-      ))
-    ) : (
-      <div class={`cards${grid.orphan ? " has-orphan" : ""}`} style={`--cols:${grid.cols}`}>
-        {cases.map((c, i) => <CaseCard index={i} item={c} />)}
-      </div>
-    )}
-  </div></section>
+  {sections.map((sec) => (
+    <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} motif={sec.motif} content={sec.content} presentation={sec.presentation}
+          decidedBy={sec.decidedBy} density={sec.visual?.density} peak={sec.visual?.peak} role={sec.visual?.role} layout={sec.visual?.layout ?? sec.layout} heading={sec.kind === "prose" ? undefined : sec.heading}>
+      <Present content={sec.content} presentation={sec.presentation} analysis={analysis} slug="cases" />
+    </Band>
+  ))}
 </Base>

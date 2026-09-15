@@ -104,13 +104,37 @@ export function materialsOf(project: Project, content: ContentId, hasRealPhotos:
        * **工程として描かれるのは1件の中だけ**（D-237）。
        * その1件が何段になるかを数える（課題・対応・結果で最大3段）。
        */
-      const one = cs.find((c: any) => text(c?.challenge) && text(c?.solution) && text(c?.result)) ?? cs[0];
-      const steps = one ? [one.challenge, one.solution, one.result].filter((x: any) => text(x)).length : 0;
+      /**
+       * **段数は、いちばん多く埋まっている1件で数える**（D-302）。
+       *
+       * 直す前は「3つとも揃っている事例が1件でもあるか」だけを見ていた。
+       * ところが事例の個別ページ（1件だけを渡す）では、
+       * 結果が取材で埋まっていない案件が**工程として見せられない**と判定され、
+       * 「ご相談から結果まで」の帯が**引用に化けて、対応した内容が丸ごと落ちた**（実測）。
+       * 2段あれば順序は成り立つ（D-251の条件と同じ）。
+       */
+      const stepsOf = (c: any) => [c?.challenge, c?.solution, c?.result].filter((x: any) => text(x)).length;
+      const steps = cs.length ? Math.max(...cs.map(stepsOf)) : 0;
+      /**
+       * **表にしたときの行数。**
+       *
+       * 一覧（トップ・事例一覧）は**1件1行**なので、行数＝件数。
+       * 事例の個別ページだけは、その1件の**材質・数量・納期・加工法・お断りの理由**が行になる。
+       *
+       * **「件数が1なら個別ページ」と見なしてはいけない**（実測で踏んだ）。
+       * 事例が1件しかない会社のトップページで、1件の表が「5行ある」と数えられ、
+       * **工程の帯が表に化けた。** どちらの画面かは、渡す側が言う（`caseDetail`）。
+       */
+      const one = cs[0];
+      const rows = (p as any).caseDetail === true && one
+        ? [one.partDescription, one.materials?.length ? "y" : "", one.quantity, one.leadTime,
+           one.processes?.length ? "y" : "", one.declinedReason]
+            .filter((x: any) => text(x)).length
+        : cs.length;
       return {
-        ...base, count: cs.length, length: joined.length,
+        ...base, count: cs.length, rows, length: joined.length,
         hasQuote: hasQuoted(joined),
-        // 課題→解決→結果が揃っている事例が1件でもあれば、工程として見せられる
-        hasSteps: cs.some((c: any) => text(c?.challenge) && text(c?.solution) && text(c?.result)),
+        hasSteps: steps >= 2,
         steps,
       };
     }
@@ -139,6 +163,41 @@ export function materialsOf(project: Project, content: ContentId, hasRealPhotos:
     case "photos": {
       const ph = arr(p.photos).filter((x: any) => x?.file && !/\.svg$/i.test(String(x.file)));
       return { ...base, count: ph.length, hasRealPhotos: ph.length > 0 };
+    }
+    /**
+     * 会社概要。**発注前に確かめる欄の、埋まっている数**（D-301）。
+     * 空欄は行ごと出さないので（D-095）、埋まっている行だけを数える。
+     */
+    case "profile": {
+      const vals = [
+        text(basics.name), text(basics.representative), text(basics.founded), text(basics.capital),
+        basics.employees ? String(basics.employees) : "", text(basics.address),
+        text(basics.tel), text(p.terms?.inquiryNotifyEmail), text(basics.businessSummary),
+        arr(basics.clientIndustries).join("・"),
+      ].filter(Boolean);
+      return { ...base, count: vals.length, rows: vals.length, length: text(basics.businessSummary).length };
+    }
+    /**
+     * 採用。**募集要項の行数**で表になるかを決める。
+     * 職種と職場の話は件数（`count`）。条件が3行に満たない求人は表にしない（D-171）。
+     */
+    case "recruit": {
+      const r = p.recruitment ?? {};
+      const t = r.terms ?? {};
+      const terms = [t.employmentType, t.salary, t.workingHours, t.holidays,
+        arr(t.allowances).join("、"), t.insurance, t.qualifications, t.selection,
+        t.documents, t.contact, t.factoryTour].map(text).filter(Boolean);
+      const blocks = [arr(r.neededRoles).join("、"), arr(r.workplaceAppeal).join("、")].map(text).filter(Boolean);
+      return { ...base, count: blocks.length, rows: terms.length, length: blocks.join("").length };
+    }
+    /**
+     * お問い合わせ。用紙は必ずあるので `length` は固定。
+     * 数えるのは**ご連絡先の埋まっている数**で、電話しか無い会社では一覧にしない。
+     */
+    case "inquiry": {
+      const contacts = [text(basics.tel), text(p.terms?.inquiryNotifyEmail),
+        text(basics.address), text(cap.operatingHours)].filter(Boolean);
+      return { ...base, count: contacts.length, rows: contacts.length, length: 1 };
     }
     case "draft":
       return { ...base, count: 1, length: 300 };

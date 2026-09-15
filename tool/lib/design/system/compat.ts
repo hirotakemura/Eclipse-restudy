@@ -30,6 +30,19 @@ export const COMPATIBLE: Record<ContentId, PresentationId[]> = {
   history: ["timeline", "prose", "list", "longform"],
   executive: ["prose", "quote", "longform"],
   photos: ["fullWidth", "cardGrid"],
+  /**
+   * 会社概要は**突き合わせて読む表**である。読み物にはしない（D-095）。
+   * ここを散文にすると、発注前に確かめたい欄（資本金・所在地）を探せなくなる。
+   */
+  profile: ["spec", "list"],
+  /** 募集要項は表。**条件の書いていない求人は応募されない**（D-171） */
+  recruit: ["spec", "list", "prose"],
+  /**
+   * お問い合わせ。`list` は**ご連絡先**（電話・メール・所在地・稼働体制）、
+   * `prose` は**用意いただきたいことと用紙**。
+   * **電話とメールは必ず同じページに出す**（D-060）。用紙が止まっても問い合わせを絶やさない。
+   */
+  inquiry: ["prose", "list"],
   draft: ["prose", "longform"],
 };
 

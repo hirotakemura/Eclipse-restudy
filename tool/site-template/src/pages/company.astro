@@ -2,45 +2,35 @@
 /**
  * 会社概要。読み物ではなく、発注前の確認のための表。
  * 表は聞き取ったデータをそのまま出す（D-095）。
+ *
+ * **骨格も見せ方も、このファイルが決めない**（D-301）。
+ * 直す前はここに表を直書きしていたため、帯が1本も無く、
+ * **山も・余白の変化も・組み方の変化も構造として存在しなかった。**
  */
 import Base from "../layouts/Base.astro";
-import Table from "../components/Table.astro";
-import { project, rows, companyName, tel, email, photoOf } from "../lib/site";
-import Figure from "../components/Figure.astro";
+import Band from "../components/Band.astro";
+import Present from "../components/Present.astro";
+import { analyze } from "../../../lib/design/analysis.ts";
+import { composePage } from "../../../lib/design/sections.ts";
+import { composeVisual } from "../../../lib/design/visual.ts";
+import { project, companyName, photosOf, narrowTo } from "../lib/site";
+import { theme } from "../lib/theme";
+import { hasDraft } from "../lib/draft";
 
-const b = project.basics ?? ({} as any);
-const profile = rows([
-  ["会社名", b.name],
-  ["代表者", b.representative],
-  ["創業", b.founded],
-  ["資本金", b.capital],
-  ["従業員数", b.employees ? `${b.employees}名` : ""],
-  ["所在地", b.address],
-  ["電話番号", tel],
-  ["メールアドレス", email],
-  ["事業内容", b.businessSummary],
-  ["主要取引先の業界", b.clientIndustries],
-]);
-const history = (b.history ?? []).filter((h: any) => h.year || h.event);
+const analysis = analyze(project as any);
+/** 写真の帯が見るのは**外観**なので、材料もそれで数える */
+const source = narrowTo({ photos: photosOf("外観") });
+const sections = composeVisual(
+  composePage("company", source, analysis, { direction: theme.direction, hasProse: hasDraft("company") }),
+  source, analysis, { direction: theme.direction },
+);
 ---
 <Base title="会社概要" description={`${companyName}の会社概要・沿革`}>
   <div class="page-head"><div class="inner"><h1>会社概要</h1></div></div>
-  <section class="section"><div class="inner">
-    <Figure photo={photoOf("外観")} className="hero-photo" />
-    <Table rows={profile} />
-    {history.length > 0 && (
-      <>
-        <h2>沿革</h2>
-        <div class="table-wrap">
-          <table>
-            <tbody>
-              {history.map((h: any) => (
-                <tr><th scope="row">{h.year}</th><td>{h.event}</td></tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </>
-    )}
-  </div></section>
+  {sections.map((sec) => (
+    <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} motif={sec.motif} content={sec.content} presentation={sec.presentation}
+          decidedBy={sec.decidedBy} density={sec.visual?.density} peak={sec.visual?.peak} role={sec.visual?.role} layout={sec.visual?.layout ?? sec.layout} heading={sec.kind === "prose" ? undefined : sec.heading}>
+      <Present content={sec.content} presentation={sec.presentation} analysis={analysis} slug="company" />
+    </Band>
+  ))}
 </Base>

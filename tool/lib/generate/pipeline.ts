@@ -71,12 +71,27 @@ export async function generateSite(
   /** 画面の構成は、AI版の判断（あれば）込みで決まる。**writerView は designBrief を落とすので、元から取る** */
   const brief = (project as any).designBrief;
   const direction = resolved.direction;
+  /**
+   * **原稿を書く人に、その画面にすでに出ているものを伝える**（D-193）。
+   *
+   * 13ページ全部が帯で組まれるようになったので（D-301）、ここも全部を返す。
+   * 返さないページがあると、**すぐ下に出ている表を、原稿でもう一度並べる**ことになる。
+   */
   const layoutOf = (slug: string): { sections: Section[]; analysis: typeof analysis; direction?: string } | undefined => {
     let sections: Section[] = [];
+    const caseNo = /^case-(\d+)$/.exec(slug);
     if (slug === "index") {
       sections = composeTop(source, analysis, { hero: resolved.hero.id, direction, hasProse: true, brief });
-    } else if (slug === "strengths" || slug === "capability" || slug === "equipment") {
+    } else if (slug === "strengths" || slug === "capability" || slug === "equipment"
+            || slug === "cases" || slug === "company" || slug === "message" || slug === "recruit" || slug === "contact") {
       sections = composePage(slug, source, analysis, { direction, hasProse: true });
+    } else if (caseNo) {
+      /** 事例の個別ページは、**その1件だけ**を渡す（画面と同じ数え方・D-302） */
+      const one = ((source as any).cases ?? [])[Number(caseNo[1]) - 1];
+      if (one) {
+        const only = { ...(source as any), caseDetail: true, cases: [one] };
+        sections = composePage("case", only, analysis, { direction, hasProse: true });
+      }
     }
     return sections.length ? { sections, analysis, direction } : undefined;
   };
