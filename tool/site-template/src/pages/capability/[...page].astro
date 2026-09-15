@@ -65,7 +65,7 @@ export function getStaticPaths() {
   {sections.map((sec) => (
     <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} motif={sec.motif} content={sec.content} presentation={sec.presentation}
           decidedBy={sec.decidedBy} density={sec.visual?.density} peak={sec.visual?.peak} role={sec.visual?.role} layout={sec.visual?.layout ?? sec.layout}
-          assetSource={sec.asset?.source} assetIntent={sec.asset?.intent} assetRole={sec.asset?.role} assetSubject={sec.asset?.subject} assetWanted={sec.asset?.wanted?.category} assetPriority={sec.asset?.wanted?.priority} heading={sec.kind === "prose" ? undefined : sec.heading}>
+          assetSource={sec.asset?.source} assetIntent={sec.asset?.intent} assetRole={sec.asset?.role} assetSubject={sec.asset?.subject} assetWanted={sec.asset?.wanted?.category} assetPriority={sec.asset?.wanted?.priority} assetLibrary={sec.asset?.library?.id} assetImage={sec.asset?.library?.path} heading={sec.kind === "prose" ? undefined : sec.heading}>
       <Present content={sec.content} presentation={sec.presentation} analysis={analysis} slug="capability" />
       {/* 表そのものではなく、**この帯に添える一文**。見せ方の分岐ではない */}
       {sec.kind === "specTable" && <p>記載のない条件についても、まずはご相談ください。可否だけでもお答えします。</p>}

@@ -13,7 +13,7 @@ import { analyze } from "./lib/design/analysis.ts";
 import { composeTop, composePage } from "./lib/design/sections.ts";
 import { composeVisual } from "./lib/design/visual.ts";
 import { composeAssets, wantedPhotos, photoRequests, willDraw, PHOTO_OF_PAGE, SUBJECT_OF_CATEGORY, categoryFor } from "./lib/design/assets.ts";
-import { ALLOWED, EVIDENTIAL, SUBJECT_OF, DRAWABLE, canUse } from "./lib/design/system/index.ts";
+import { ALLOWED, EVIDENTIAL, SUBJECT_OF, DRAWABLE, canUse, LIBRARY, LIBRARY_SUBJECTS, assertLibrary, findLibraryAsset } from "./lib/design/system/index.ts";
 import { DIRECTIONS } from "./lib/design/direction.ts";
 
 const ORDER = { high: 3, medium: 2, low: 1 };
@@ -408,6 +408,173 @@ console.log("\n━━━ 装飾の描き方（site.css）━━━");
   /** **小さい画面では、線を本文の裏から外す**（画面を見て直した） */
   const mobile = bare.slice(bare.lastIndexOf("@media (max-width: 720px)"));
   check("スマホで幾何の線の位置を変えている", /data-asset-subject="geometry"[\s\S]{0,200}bottom:/.test(mobile));
+}
+
+console.log("\n━━━ 素材ライブラリ（第5段階）━━━");
+{
+  /**
+   * **この段階で確かめたいのは、「増えたか」ではない。**
+   *
+   *   ① 証拠に届かないこと（型と実行時の両方で）
+   *   ② 生成画像に到達する経路が無いこと
+   *   ③ 権利の分からない素材が本番に入らないこと
+   *   ④ **必要なページだけが使い、要らないページは `none` のまま成立すること**
+   *
+   * ④は「0件であること」だけでは足りない。**仕組みが死んでいても0件になる。**
+   * だから「実案件では0件」と「条件が揃えば採られる」を**両方**見る。
+   */
+  const relPath = (x) => `site-template/public${x.path}`;
+
+  check("登録簿そのものが検査を通る", (() => { try { assertLibrary(); return true; } catch { return false; } })());
+
+  /** **実物として読まれる主題は、登録できない**（ご指示の原則③④を型と検査で守る） */
+  for (const bad of ["workpiece", "facility", "exterior", "person", "workplace", "product"]) {
+    const sample = { ...LIBRARY[0], id: `x-${bad}`, subject: bad };
+    let threw = false;
+    try { assertLibrary([sample]); } catch { threw = true; }
+    check(`「${bad}」は登録できない`, threw);
+  }
+  /** CSSが描けるものは、ライブラリに来る理由が無い */
+  check("登録してよい主題は texture だけ", LIBRARY_SUBJECTS.length === 1 && LIBRARY_SUBJECTS[0] === "texture",
+    LIBRARY_SUBJECTS.join(","));
+
+  check("登録された素材は、すべて library / atmosphere",
+    LIBRARY.every((x) => x.source === "library" && x.intent === "atmosphere"));
+
+  /** **権利が分からない素材を本番に置かない**（ご指示） */
+  for (const x of LIBRARY) {
+    check(`「${x.id}」は権利が埋まっている`,
+      Boolean(x.license.holder && x.license.terms && x.license.origin && x.license.checked));
+    check(`「${x.id}」の実体がある`, fs.existsSync(relPath(x)), relPath(x));
+  }
+  /** 白い下地を敷くと帯の地を塗りつぶす。**地の上に重ねる素材でなくなる** */
+  for (const x of LIBRARY) {
+    const svg = fs.readFileSync(relPath(x), "utf8");
+    check(`「${x.id}」は地を塗りつぶさない`, !/fill="#f{3,6}"/i.test(svg));
+  }
+  /** 素材の側から用途が広がらないこと。**「どの型でも使える」は書けない** */
+  check("素材は、使ってよい型を必ず挙げている", LIBRARY.every((x) => x.directions.length > 0));
+  check("1ページ1枚までが、素材の側に書いてある", LIBRARY.every((x) => x.usage.maxPerPage === 1));
+  check("地の層にしか使わないと、素材の側に書いてある", LIBRARY.every((x) => x.usage.as === "background"));
+
+  /** **代わりを探しにいかない。** 見つからなければ `undefined` で終わる */
+  check("登録外の主題では、素材を返さない", findLibraryAsset("facility", "classic") === undefined);
+  check("登録外の型では、素材を返さない", findLibraryAsset("texture", "technical") === undefined);
+  check("挙げてある型でだけ、素材を返す", findLibraryAsset("texture", "classic")?.id === "paper-grain");
+
+  /**
+   * **生成画像に到達する経路が無い**（ご指示）。
+   * 語彙には `generated` があるが、**そこへ値を入れるコードはどこにも書かない。**
+   */
+  const srcs = [];
+  const walk = (dir) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      const f = `${dir}/${e.name}`;
+      if (e.isDirectory()) walk(f);
+      else if (/\.ts$/.test(e.name)) srcs.push([f, fs.readFileSync(f, "utf8")]);
+    }
+  };
+  walk("lib");
+  const assigns = srcs.filter(([, t]) => /(?:source|as)\s*[:=]\s*"generated"/.test(t)).map(([f]) => f);
+  check("生成画像に値を入れているコードが無い", assigns.length === 0, assigns.join(" "));
+
+  /**
+   * ── 実案件・全15型・全ページ ─────────────────
+   * **いま何件採られているか**を、そのまま数える。
+   * 0件は失敗ではない（原則①）。**気づかないうちに増えることだけが問題**なので、
+   * 数を固定せず「どこで採られたか」を出して、変わったら目に入るようにする。
+   */
+  const seen = [];
+  let generatedSeen = 0, evidenceLib = 0, bad = 0;
+  for (const [name, file] of FIXTURES) {
+    const p = load(file);
+    const a = analyze(p);
+    for (const d of DIRECTIONS) {
+      for (const page of ["index", ...PAGES]) {
+        const base = page === "index" ? composeTop(p, a, { direction: d.id }) : composePage(page, p, a, { direction: d.id });
+        const secs = composeAssets(composeVisual(base, p, a, { direction: d.id }), p, a, { direction: d.id, page });
+        const libs = secs.filter((s) => s.asset.source === "library");
+        for (const s of libs) seen.push(`${name}/${d.id}/${page}:${s.content}`);
+        /** **1ページ1枚まで** */
+        if (libs.length > 1) bad++;
+        for (const s of secs) {
+          if (s.asset.source === "generated") generatedSeen++;
+          if (s.asset.source === "library" && s.asset.intent !== "atmosphere") evidenceLib++;
+          /** 採ったなら、どれを採ったかが残っていること */
+          if (s.asset.source === "library" && !s.asset.library?.path) bad++;
+        }
+      }
+    }
+  }
+  check("生成画像は、どの型のどのページにも出ない", generatedSeen === 0, String(generatedSeen));
+  check("ライブラリが証拠の帯に入ることはない", evidenceLib === 0, String(evidenceLib));
+  check("1ページ1枚を超えない・採ったものは記録されている", bad === 0, String(bad));
+  console.log(`      いま採られているライブラリ素材：${seen.length}件${seen.length ? `（${seen.slice(0, 6).join(" ")}）` : "（＝どのページも none のまま成立している）"}`);
+
+  /**
+   * **仕組みが生きていることを、別に確かめる。**
+   *
+   * 上が0件なのは「要らないと判断された」からであって、
+   * 「壊れていて選べない」からではない——それをここで分ける。
+   * 条件（型が texture を挙げている・地紋なし・plain/soft・山か主役）を
+   * 揃えた構成を渡したら、**採られること。**
+   */
+  {
+    const p = load(FIXTURES[0][1]);
+    const a = analyze(p);
+    const base = composeVisual(composeTop(p, a, { direction: "classic" }), p, a, { direction: "classic" });
+    /** 地紋と紙の地を外す＝「graphic では満たせない」状態を作る */
+    /** 地紋も紙の地も無い＝「graphic では雰囲気が出ていない」状態を、手で作る */
+    const flat = base.map((s) => ({ ...s, motif: "none", surface: "plain" }));
+    /**
+     * 主役の帯に「素材の話」を持たせる。
+     *
+     * **実案件でこの形にならないのは、構成の側がそう決めているから**であって、
+     * 素材の層が壊れているからではない——それをここで分ける。
+     * （実測：どの型でも、主役の帯は表紙で、表紙には紙の地が入っている）
+     */
+    const at = flat.findIndex((s) => s.kind !== "hero" && !EVIDENTIAL.includes(s.content));
+    const forced = flat.map((s, k) => (k === at ? { ...s, content: "materials", emphasis: "lead" } : s));
+    const got = composeAssets(forced, p, a, { direction: "classic", page: "index" });
+    const hit = got.filter((s) => s.asset.source === "library");
+    check("条件が揃えば、ライブラリが採られる（仕組みが死んでいない）", hit.length === 1,
+      hit.map((s) => `${s.content}:${s.asset.library?.id}`).join(" ") || "0件");
+    check("採られるのは、山か主役の帯だけ",
+      hit.every((s) => (s.visual?.peak ?? "none") !== "none" || s.emphasis === "lead"),
+      hit.map((s) => `${s.content}:${s.emphasis}`).join(" "));
+
+    /** **graphic で満たせるページには足さない。** 紙の地を1本戻すだけで採らなくなる */
+    const withPaper = forced.map((s, i) => (i === 0 ? { ...s, surface: "paper" } : s));
+    const got2 = composeAssets(withPaper, p, a, { direction: "classic", page: "index" });
+    check("graphic で雰囲気が出ているページには足さない",
+      got2.every((s) => s.asset.source !== "library"));
+
+    /** **挙げていない型では、条件が揃っていても採らない** */
+    const got3 = composeAssets(forced, p, a, { direction: "technical", page: "index" });
+    check("型が挙げていなければ、条件が揃っても採らない",
+      got3.every((s) => s.asset.source !== "library"));
+  }
+
+  /** ── 描き方（site.css）───────────────────── */
+  {
+    const css = fs.readFileSync("site-template/src/styles/site.css", "utf8");
+    const bare = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    const rules = [...bare.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .map((m) => ({ sel: m[1].trim(), body: m[2].trim() }))
+      .filter((r) => r.sel.includes('data-asset-source="library"'));
+    const draws = rules.filter((r) => /content:/.test(r.body));
+    check("ライブラリは地の層として敷く（::before の背景）",
+      draws.length > 0 && draws.every((r) => /::before/.test(r.sel) && /background-image/.test(r.body)));
+    check("ライブラリは地紋のある帯に敷かない",
+      draws.every((r) => r.sel.includes(":not([data-motif])")));
+    check("ライブラリに動きを付けていない", rules.every((r) => !/animation|transition/.test(r.body)));
+    const print = bare.slice(bare.indexOf("@media print"));
+    check("印刷ではライブラリを消す", /data-asset-source="library"[\s\S]{0,120}display:\s*none/.test(print));
+    /** **`<img>` にしない。** 画面でもHTMLでも、実績写真と取り違えられないため */
+    /** **注記は外して読む。** 説明文の中の `<img>` を数えて赤くなったことがある（D-297） */
+    const band = fs.readFileSync("site-template/src/components/Band.astro", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    check("ライブラリを <img> で出していない", !/<img/.test(band) && /--asset-image/.test(band));
+  }
 }
 
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);

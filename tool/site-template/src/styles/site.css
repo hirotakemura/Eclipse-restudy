@@ -274,7 +274,8 @@ thead th { width: auto; }
   .site-nav, .cta, .btn { display: none !important; }
   /** **装飾は紙に出さない。** インクを使うだけで、読む助けにならない（第2段階） */
   .band[data-asset-source="graphic"]:is([data-asset-subject="light"],[data-asset-subject="geometry"])::before,
-  .band[data-asset-source="graphic"][data-asset-subject="geometry"]::after { display: none !important; }
+  .band[data-asset-source="graphic"][data-asset-subject="geometry"]::after,
+  .band[data-asset-source="library"]::before { display: none !important; }
 }
 
 /* ── レイアウトの型（案件ごとに選ぶ・tool/lib/theme.ts） ── */
@@ -678,6 +679,35 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
 .band:is([data-surface="accent"],[data-surface="dark"])[data-asset-subject="geometry"]::before,
 .band:is([data-surface="accent"],[data-surface="dark"])[data-asset-subject="geometry"]::after {
   border-color: rgba(255,255,255,.35);
+}
+
+/* ── 素材ライブラリ（第5段階）───────────────────────
+   **地の層にだけ敷く。`<img>` にはしない。**
+
+   `<img>` にすると、画面でも、HTMLを読んでも、**お客様の実績写真と見分けがつかない。**
+   ライブラリの絵が実績の証拠として読まれるのが、この仕組みのいちばんの事故なので、
+   **そもそも「写真の置き場所」に入れない**ことで止める（`system/library.ts` 参照）。
+
+   場所は `--asset-image`（`Band.astro` がインラインで渡す）。
+   **CSSにIDと場所の対応表を持たない**——登録簿を単一の正にするため（D-197）。
+
+   `:not([data-motif])` は二重敷きの防止。語彙の側でも止めているが、
+   **二重に描かれる事故は片方が壊れたときに起きる**ので、両側で止める（第2段階と同じ）。
+
+   動きは付けない。印刷では消す。 */
+.band[data-asset-source="library"][data-asset-subject="texture"]:not([data-motif]) {
+  position: relative;
+}
+/* **中身は必ず素材の上に。** 位置を持たせるだけで、重なりの順が中身優先になる */
+.band[data-asset-source="library"][data-asset-subject="texture"]:not([data-motif]) > .inner {
+  position: relative;
+}
+.band[data-asset-source="library"][data-asset-subject="texture"]:not([data-motif])::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background-image: var(--asset-image);
+  background-repeat: repeat;
+  /* 素材の実寸で敷く。拡大すると目が粗くなって、紙ではなく模様に見える */
+  background-size: auto;
 }
 
 /* ── 動き ───────────────────────────────── */

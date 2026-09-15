@@ -46,9 +46,21 @@ interface Props {
    */
   assetWanted?: string;
   assetPriority?: string;
+  /**
+   * 素材ライブラリから採ったとき**だけ**入る（第5段階・`lib/design/system/library.ts`）。
+   *
+   * 場所（`assetImage`）は**カスタムプロパティで渡す。**
+   * CSS側にIDと場所の対応表を作ると、**同じことを2箇所で決める**ことになり、
+   * 素材を1枚足すたびにCSSも直す羽目になる。単一の正は登録簿だけにする（D-197）。
+   *
+   * **`<img>` にはしない。** 地の層に敷くだけなので、
+   * 画面でも、HTMLを読んでも、**お客様の実績写真と取り違えようがない。**
+   */
+  assetLibrary?: string;
+  assetImage?: string;
 }
 const { width = "normal", emphasis = "normal", surface = "plain", layout = "stack", motif = "none", content, presentation, decidedBy, heading, density = "normal", peak = "none", role,
-  assetSource, assetIntent, assetRole, assetSubject, assetWanted, assetPriority } = Astro.props;
+  assetSource, assetIntent, assetRole, assetSubject, assetWanted, assetPriority, assetLibrary, assetImage } = Astro.props;
 ---
 <section
   class="section band"
@@ -69,6 +81,8 @@ const { width = "normal", emphasis = "normal", surface = "plain", layout = "stac
   data-asset-subject={assetSubject}
   data-asset-wanted={assetWanted}
   data-asset-priority={assetPriority}
+  data-asset-library={assetLibrary}
+  style={assetImage ? `--asset-image:url(${assetImage})` : undefined}
 >
   <div class="inner">
     {heading && <h2>{heading}</h2>}

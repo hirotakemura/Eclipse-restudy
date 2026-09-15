@@ -22,6 +22,7 @@
  */
 
 import type { ContentId } from "./content.ts";
+import type { LibraryRef } from "./library.ts";
 
 /** どこから来た素材か。**権利と証拠性はここで決まる** */
 export type AssetSource = "none" | "graphic" | "customer" | "library" | "generated";
@@ -62,6 +63,14 @@ export interface Asset {
    * `npm run gaps` に流して、お客様への写真依頼にする（第3段階）。
    */
   wanted?: { category: PhotoCategoryId; why: string; priority: "high" | "medium" | "low" };
+  /**
+   * **素材ライブラリから採ったとき**だけ入る（第5段階・`system/library.ts`）。
+   *
+   * `source === "library"` と対で、**どの素材を採ったかを画面に残す。**
+   * 「ライブラリを使ったこと」を後から人が確かめられないと、
+   * **借り物が黙って増えていく**——それが素材置き場のいちばんありがちな壊れ方である。
+   */
+  library?: LibraryRef;
 }
 
 /**

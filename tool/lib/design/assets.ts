@@ -43,7 +43,7 @@ import { composeTop, composePage } from "./sections.ts";
 import { composeVisual } from "./visual.ts";
 import type { VisualSection } from "./visual.ts";
 import {
-  DRAWABLE, EVIDENTIAL, SUBJECT_OF, canUse,
+  DRAWABLE, EVIDENTIAL, SUBJECT_OF, canUse, findLibraryAsset,
   type Asset, type AssetSource, type AssetRole, type AssetSubject, type PhotoCategoryId,
 } from "./system/index.ts";
 
@@ -295,7 +295,76 @@ export function composeAssets(
     return { ...sec, asset };
   });
 
-  return decorate(out, d);
+  return adoptLibrary(decorate(out, d), d);
+}
+
+/**
+ * ── 素材ライブラリを採るかどうか（第5段階）──────────────
+ *
+ * **採用の順序を、そのままコードの順序にしてある**（ご指示）。
+ *
+ *   構成（composeVisual・ここまでの composeAssets）
+ *     → その構成が要求している主題（`sec.asset.subject` と `direction.assets`）
+ *     → graphic で満たせるか（`decorate` を**先に**走らせてある）
+ *     → ライブラリに候補があるか（`findLibraryAsset`）
+ *     → 採用条件（素材側の `usage`）
+ *     → どれか1つでも欠ければ `none` のまま
+ *
+ * **「空白があるから探す」ではない。** 探しはじめる条件は「構成が要求していること」で、
+ * 要求が無ければこの関数は何もしない。
+ *
+ * 【`decorate` のあとに置く理由】
+ * 「graphic で満たせるなら library に行かない」を、**順序で保証する。**
+ * 判断の中で「CSSで描けるか」を毎回考えるのではなく、
+ * **先に graphic を試し終えた状態だけをこの関数に渡す。**
+ */
+function adoptLibrary(out: AssetSection[], d: ReturnType<typeof getDirection>): AssetSection[] {
+  /**
+   * **そのページに雰囲気の素材が1つでもあるなら、足さない。**
+   *
+   * 地紋でも、第2段階の光でも、幾何でも同じ。
+   * 装飾の数は品質ではない（docs/31 原則⑤）ので、**雰囲気は1ページ1系統まで**にする。
+   * これがあるおかげで、地紋を持っている型（製造業のほとんど）には**そもそも届かない。**
+   */
+  if (out.some((s) => s.asset.intent === "atmosphere" && s.asset.source === "graphic")) return out;
+
+  /**
+   * 置いてよい帯か。**「空いている帯」ではなく「そこにあると効く帯」だけ。**
+   *
+   * 山か主役に限る。控えめに置くと決めた帯に素材を敷くのは、
+   * **決めた控えめさを素材で打ち消している**ということであって、品質は上がらない。
+   * `decorate` が最後に使っていた「それ以外の帯」への逃げ道は、ここには作らない。
+   */
+  const ok = (s: AssetSection) =>
+    s.kind !== "hero"
+    && s.asset.intent === "atmosphere"
+    && s.asset.source === "none"
+    && s.motif === "none"
+    && ((s.visual?.peak ?? "none") !== "none" || s.emphasis === "lead")
+    /** **構成がその主題を要求しているか。** 型が挙げていない主題は、要求ではない */
+    && d.assets.includes(s.asset.subject);
+
+  const i = out.findIndex((s) => ok(s) && (s.visual?.peak ?? "none") !== "none");
+  const at = i >= 0 ? i : out.findIndex(ok);
+  if (at < 0) return out;
+
+  /**
+   * **1ページ1枚。** ここで探すのは1本だけなので、繰り返さない。
+   * 素材の側の `usage.maxPerPage` は 1 以外を許さない検査が付いているので、
+   * **表とコードが食い違ったら、サイトが書き出せない**（`assertLibrary`）。
+   */
+  const sec = out[at]!;
+  const lib = findLibraryAsset(sec.asset.subject, d.id);
+  /** **見つからなければ、それで終わり。** 似た主題で代用しない */
+  if (!lib) return out;
+  /** 採用条件は**素材の側が持っている。** 判断する側で書き写さない（D-197） */
+  if (!lib.usage.surfaces.includes(sec.surface)) return out;
+
+  out[at] = {
+    ...sec,
+    asset: { ...sec.asset, source: "library", role: lib.role, library: { id: lib.id, path: lib.path } },
+  };
+  return out;
 }
 
 /**
