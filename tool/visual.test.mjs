@@ -201,10 +201,16 @@ console.log("\n━━━ 製造業の見立てを、1点も動かしていない
    * **汎用を足すついでに製造業が動くのが、いちばん怖い。**
    * 基準HTMLでも捕まるが、こちらは**点数そのもの**を留める。
    */
+  /**
+   * **`people` が 1 → 2 に上がったのは、意図した変更**（D-290）。
+   * 代表者の写真に付けていた2点を外し、代表の言葉のほうを 1 → 2 にした。
+   * **写真が届いただけで会社の話の順番が変わる**のを止めるための変更で、
+   * 順位には影響していない（3社の基準HTMLは1ページも変わらなかった）。
+   */
   const EXPECT = {
-    "a-precision": "precision|numbers:6 technique:4 materials:4 equipment:4 declined:1 people:1 history:1",
-    "b-difficulty": "difficulty|declined:7 technique:6 numbers:4 materials:4 people:1 history:1",
-    "c-speed": "speed|technique:6 equipment:6 numbers:4 materials:4 declined:3 people:1 history:1",
+    "a-precision": "precision|numbers:6 technique:4 materials:4 equipment:4 people:2 declined:1 history:1",
+    "b-difficulty": "difficulty|declined:7 technique:6 numbers:4 materials:4 people:2 history:1",
+    "c-speed": "speed|technique:6 equipment:6 numbers:4 materials:4 declined:3 people:2 history:1",
   };
   for (const [f, want] of Object.entries(EXPECT)) {
     const p = sanitizeProject(JSON.parse(fs.readFileSync(path.join("fixtures", "design-diversity", `${f}.json`), "utf8")));
@@ -382,6 +388,70 @@ console.log("\n━━━ 文字の値が、語彙から画面へ届いている�
   check("Phase 4 のCSSに、文字の実寸を書き写していない",
     !/font-size:\s*clamp\(\d/.test(tail.replace(/clamp\(19px, 1\.6vw, 24px\)/g, "")),
     (tail.match(/font-size:\s*clamp\([^)]*\)/g) ?? []).join(" "));
+}
+
+
+/**
+ * ── Phase 6 ───────────────────────────────────────────
+ *
+ * **写真が届いても、サイトが別物にならないか**（ご指示§10）。
+ * 実案件は写真0枚から始まる。あとから届くのが普通である。
+ */
+console.log("\n━━━ 写真は、骨格ではなくメディアの層か（D-289・D-290）━━━");
+{
+  const { analyze } = await import("./lib/design/analysis.ts");
+  const { sanitizeProject } = await import("./lib/sanitize.ts");
+  const { composeTop } = await import("./lib/design/sections.ts");
+  const { composeVisual } = await import("./lib/design/visual.ts");
+  const { resolveTheme } = await import("./lib/theme.ts");
+
+  const PS = [
+    { file: "gaikan.png", category: "外観" }, { file: "kojo-1.png", category: "工場・設備" },
+    { file: "daihyo.png", category: "代表者" }, { file: "hataraku-1.png", category: "働く人" },
+    { file: "jirei-1.png", category: "加工事例" },
+  ];
+  const CASES = [
+    ["a-precision", path.join("fixtures", "design-diversity", "a-precision.json"), "manufacturing", "technical"],
+    ["b-difficulty", path.join("fixtures", "design-diversity", "b-difficulty.json"), "manufacturing", "technical"],
+    ["汎用C", path.join("fixtures", "visual-general", "g-c-people.json"), "general", "human"],
+  ];
+  for (const [name, f, plan, dir] of CASES) {
+    const raw = JSON.parse(fs.readFileSync(f, "utf8"));
+    const of = (photos) => {
+      const p = sanitizeProject({ ...raw, photos });
+      const a = analyze(p);
+      const r = resolveTheme({ ...p.theme, direction: dir }, plan);
+      return composeVisual(composeTop(p, a, { hero: r.hero.id, direction: dir, hasProse: false }), p, a, { direction: dir })
+        .filter((s) => s.kind !== "hero" && s.content !== "photos")
+        .map((s) => `${s.content}:${s.presentation}`);
+    };
+    const before = of([]), after = of(PS);
+    check(`${name}：写真が届いても、帯が1つも消えない`,
+      before.every((x) => after.includes(x)),
+      `消えた ${before.filter((x) => !after.includes(x)).join(" ")}`);
+    check(`${name}：写真が届いても、帯の順番が入れ替わらない`,
+      JSON.stringify(after.filter((x) => before.includes(x))) === JSON.stringify(before.filter((x) => after.includes(x))),
+      `${before.join(" ")}\n      → ${after.join(" ")}`);
+  }
+
+  /** **写真は見立ての点数を動かさない**（D-286・D-290） */
+  const raw = JSON.parse(fs.readFileSync(path.join("fixtures", "visual-general", "g-c-people.json"), "utf8"));
+  const s0 = analyze(sanitizeProject({ ...raw, photos: [] }));
+  const s1 = analyze(sanitizeProject({ ...raw, photos: PS }));
+  check("写真が届いても、最大の強みが変わらない",
+    s0.primaryStrength === s1.primaryStrength, `${s0.primaryStrength} → ${s1.primaryStrength}`);
+  check("写真が届いても、代表の筋の点数が変わらない",
+    (s0.strands.find((x) => x.id === "people")?.score ?? 0) === (s1.strands.find((x) => x.id === "people")?.score ?? 0));
+  /** ただし**写真の筋は上がる**（写真の帯を出すため）。0 のままでは足し算にならない */
+  check("写真が届いたら、写真の筋は上がる",
+    (s1.strands.find((x) => x.id === "photos")?.score ?? 0) > 0);
+
+  /** **いちばん効く写真の区分が、見立てに入っているか**（D-287） */
+  const withCase = analyze(sanitizeProject({ ...raw, photos: [{ file: "a.png", category: "加工事例" }] }));
+  check("「加工事例」の写真が、見立てに数えられている",
+    (withCase.strands.find((x) => x.id === "photos")?.score ?? 0) >= 2);
+  const src = fs.readFileSync("lib/design/analysis.ts", "utf8");
+  check("存在しない区分（加工品）を探していない", !src.includes('photoOf("加工品")'));
 }
 
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);

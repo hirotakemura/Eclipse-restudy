@@ -537,9 +537,32 @@ export function composeTop(
   });
 
   // 見立ての上位。材料の無いものは analyze() の時点で落ちている
-  let picked = applyDirection(a.strands, direction)
-    .filter((s) => BY_STRAND[s.id] && !coveredByHero.includes(BY_STRAND[s.id]!.kind))
-    .slice(0, maxStrands);
+  /**
+   * **写真は足し算であって、置き換えではない**（D-289・ご指示§10）。
+   *
+   * 帯の数には上限がある（`maxStrands`）。写真の筋をその枠の中で数えていたため、
+   * **写真が届いた途端、別の帯が枠から押し出されて画面から消えていた。**
+   * 実測：写真7枚を足すと、
+   *   ・精度の会社　… 「どうやって受けているか」が消えた
+   *   ・美容室　　　… **「選ばれている理由」（その会社の山）が消えた**
+   * D-204（情報を削らせない）に真っ向から反する。
+   *
+   * 写真は**メディアの層**であって、情報の帯と枠を奪い合うものではない。
+   * 枠の外に出して、材料があるときだけ後ろに足す。
+   */
+  const ranked2 = applyDirection(a.strands, direction)
+    .filter((s) => BY_STRAND[s.id] && !coveredByHero.includes(BY_STRAND[s.id]!.kind));
+  const gallery = ranked2.find((s) => s.id === "photos");
+  let picked = ranked2.filter((s) => s.id !== "photos").slice(0, maxStrands);
+  /**
+   * **枠は奪わないが、位置は型の好みに従う。**
+   * 最後に固定すると、写真を前に出す型（量産・設備）の指定を踏み潰す。
+   * 点数どおりの位置に**差し込む**ので、ほかの帯は1つも消えず、**相対の順番も変わらない。**
+   */
+  if (gallery) {
+    const at = picked.findIndex((s) => s.score < gallery.score);
+    picked.splice(at < 0 ? picked.length : at, 0, gallery);
+  }
 
   /**
    * **最大の強みに対応する内容を、主役として先頭に持ってくる**（ご指示④）。
@@ -613,7 +636,8 @@ export function composeTop(
    * 会社ごとに違う判断ではない以上、毎回AIに訊いて払う理由がない。
    */
   const rest = picked.slice(1);
-  const tech = rest.findIndex((s) => s.id === "technique");
+  /** **事例が無ければ、この規則は意味を持たない。** 直後に置くものが無い */
+  const tech = has.cases ? rest.findIndex((s) => s.id === "technique") : -1;
   if (tech > 0) rest.unshift(...rest.splice(tech, 1));
   for (const s of rest) put(BY_STRAND[s.id]!, s.why);
 

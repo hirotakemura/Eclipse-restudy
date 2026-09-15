@@ -36,20 +36,52 @@ const COMPANIES = [
 ];
 const PAGES = ["index", "strengths/index"];
 
+/**
+ * **写真は「足すもの」であって、骨格ではない**（D-099・ご指示§10）。
+ *
+ * 実案件は写真0枚から始まる。あとから届いたとき、
+ * **サイトが別物になってはいけない。** 変わってよいのは写真の層だけで、
+ * すでにある帯の順番・余白・組み方は動かない、が要件である。
+ *
+ * ここでは各社を2回建てて、**写真の帯以外が動いていないか**を突き合わせる。
+ * 使うのは仮のSVG。`analyze()` は写真として数え、公開判定だけが止める（D-242）。
+ */
+const PHOTO_SET = [
+  { file: "gaikan.png", category: "外観", caption: "外観", mock: true },
+  { file: "kojo-1.png", category: "工場・設備", caption: "現場1", mock: true },
+  { file: "kojo-2.png", category: "工場・設備", caption: "現場2", mock: true },
+  { file: "daihyo.png", category: "代表者", caption: "代表", mock: true },
+  { file: "hataraku-1.png", category: "働く人", caption: "働く人", mock: true },
+  /** **加工したものが写っている写真が、いちばん問い合わせに繋がる**（docs/06） */
+  { file: "jirei-1.png", category: "加工事例", caption: "事例1", mock: true, caseNo: 1 },
+  { file: "jirei-2.png", category: "加工事例", caption: "事例2", mock: true, caseNo: 2 },
+];
+const PHOTO_SRC = path.join("fixtures", "visual-photos");
+/** 骨格＝写真の帯を除いた、帯の並び・余白・組み方 */
+const skeleton = (bands) => bands.filter((b) => b.content !== "photos")
+  .map((b) => `${b.content}:${b.presentation}/${b.density}/${b.layout}`).join(" ");
+
 for (const f of fs.existsSync("projects") ? fs.readdirSync("projects") : []) {
   if (f.startsWith("qv-")) fs.rmSync(path.join("projects", f), { recursive: true, force: true });
 }
 
 console.log("\n  **写真0枚で並べます。** 実案件は写真0枚から始まります（ご指示§10）\n");
 
+function buildAll(withPhotos) {
 const results = [];
-for (const [id, label, src] of COMPANIES) {
+for (const [baseId, label, src] of COMPANIES) {
+  /** **写真ありは別の案件として建てる。** 同じフォルダに上書きすると、比べるものが消える */
+  const id = baseId + (withPhotos ? "-p" : "");
   const dir = path.join("projects", id);
   fs.mkdirSync(dir, { recursive: true });
   const p = JSON.parse(fs.readFileSync(src, "utf8"));
   p.id = id;
-  p.photos = []; // **写真0枚にそろえる**
+  p.photos = withPhotos ? PHOTO_SET : []; // 写真0枚 ／ 写真あり
   fs.writeFileSync(path.join(dir, "project.json"), JSON.stringify(p, null, 2));
+  if (withPhotos) {
+    fs.mkdirSync(path.join(dir, "photos"), { recursive: true });
+    for (const ph of PHOTO_SET) fs.copyFileSync(path.join(PHOTO_SRC, ph.file), path.join(dir, "photos", ph.file));
+  }
   const r = spawnSync("node", ["build-site.mjs", id], { encoding: "utf8" });
   /**
    * **公開判定を通ったかどうかも出す**（D-285）。
@@ -76,6 +108,10 @@ for (const [id, label, src] of COMPANIES) {
   }
   results.push({ id, label, section, pages, publishable, stdout: r.stdout ?? "" });
 }
+return results;
+}
+
+const results = buildAll(false);
 
 /** その帯の見出しの実寸（px）。**語彙から計算する** */
 const headingPx = (band, vw) => sizeAt(getTypeRole(band.role), vw);
@@ -128,11 +164,58 @@ const peaks = new Set(results.map((r) => { const p = (r.pages.index?.bands ?? []
 const firsts = new Set(results.map((r) => (r.pages.index?.bands ?? [])[0]?.content));
 console.log(`\n  山の種類 ${peaks.size}通り／先頭の帯 ${firsts.size}通り（6社中）`);
 
+/**
+ * ── 写真を足したとき、骨格が動かないか（ご指示§10）─────────
+ *
+ * **変わってよいのは写真の層だけ。**
+ * 写真の帯が増えるのは足し算なので構わないが、
+ * **すでにある帯の順番・余白・組み方が変わるのは「別物になった」ということ。**
+ */
+console.log("\n━━━ 写真を足しても、骨格が変わらないか ━━━\n");
+const withPhotos = buildAll(true);
+/**
+ * **足し算は許す。並べ替えと削除は許さない。**
+ * 写真が届けば、写真の帯や代表の帯が**増える**のは自然である。
+ * いけないのは、**すでにある帯が消えること・順番が入れ替わること**で、
+ * それは「別物になった」ということだから。
+ */
+for (const [i, r] of results.entries()) {
+  const a = (r.pages.index?.bands ?? []).filter((x) => x.content !== "photos");
+  const b = (withPhotos[i].pages.index?.bands ?? []).filter((x) => x.content !== "photos");
+  /**
+   * **骨格は「何が、どの順で」である。**
+   * 余白と組み方は、帯が1つ増えればリズムの計算が変わるので動く。
+   * それは骨格が壊れたのではなく、**リズムが取り直された**ということ。
+   * 消えた帯と、並べ替えだけを落とす。余白・組み方の動きは注記にとどめる。
+   */
+  const key = (x) => `${x.content}:${x.presentation}`;
+  const full = (x) => `${x.content}/${x.density}/${x.layout}`;
+  const before = a.map(key);
+  const after = b.map(key);
+  const lost = before.filter((x) => !after.includes(x));
+  /** 残ったものが、同じ順に並んでいるか */
+  const kept = after.filter((x) => before.includes(x));
+  const reordered = JSON.stringify(kept) !== JSON.stringify(before.filter((x) => after.includes(x)));
+  const added = after.filter((x) => !before.includes(x));
+  const photoBands = (withPhotos[i].pages.index?.bands ?? []).filter((x) => x.content === "photos").length;
+  const ok = lost.length === 0 && !reordered;
+  if (!ok) ng++;
+  console.log(`  ${r.label.padEnd(16)} ${ok ? "○ 骨格そのまま" : "✗ 骨格が変わった"}　写真の帯 +${photoBands}　増えた帯 ${added.length}`);
+  if (lost.length) console.log(`      **消えた帯**：${lost.join(" ")}`);
+  if (reordered) console.log(`      **順番が変わった**：${before.join(" ")}\n      　　　　　　　　→ ${after.join(" ")}`);
+  if (ok && added.length) console.log(`      増えたもの：${added.join(" ")}`);
+  if (ok) {
+    const moved = b.filter((x) => a.some((y) => key(y) === key(x) && full(y) !== full(x)));
+    if (moved.length) console.log(`      （余白・組み方は取り直されました：${moved.map(full).join(" ")}）`);
+  }
+}
+
 console.log(`\n━━━ まとめ ━━━`);
 console.log(`  ${ng ? `✗ ${ng}件が基準に届いていません` : "○ すべて基準を満たしています"}`);
 console.log(`
   **数字が良くても、良いとは限りません。**
   情報を削れば単調さは簡単に消えます（D-259）。**最後は画面を見てください。**`);
-for (const [id, label] of COMPANIES) console.log(`    npm run preview:site -- ${id}`);
+for (const [id, label] of COMPANIES) console.log(`    npm run preview:site -- ${id}      ${label}（写真0枚）`);
+console.log("    ※ 写真ありは、同じIDに -p を付けたもの");
 console.log("");
 process.exit(ng ? 1 : 0);
