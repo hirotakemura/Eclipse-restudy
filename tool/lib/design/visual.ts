@@ -29,7 +29,7 @@ import type { Section } from "./sections.ts";
 import { getDirection } from "./direction.ts";
 import { materialsOf } from "./materials.ts";
 import {
-  PEAKS, canPeak, getPeak, type PeakId, type Materials,
+  PEAKS, canPeak, getPeak, type PeakId, type Materials, type PresentationId,
   type DensityId, type LayoutId, type TypeRoleId,
   fit, getTypeRole,
 } from "./system/index.ts";
@@ -64,6 +64,22 @@ const PEAK_ORDER: Record<string, PeakId[]> = {
   visual: ["image", "statement", "process", "spec", "number"],
 };
 
+/**
+ * **その山が、その見せ方の帯で本当に何かを大きくするか**（D-357）。
+ *
+ * 語彙の表（`peak.presentations`）が言っているのは「当ててよい」までである。
+ * 実際に何が大きくなるかは CSS にあり、**「条件を壁に」が大きくするのは表**
+ * （`table` ／ `th, td`）**だけ**で、札束（`cardGrid`）と札（`chips`）には何も当たらない。
+ * 表の上では許されるので、**山と宣言されているのに画面が1pxも変わらない帯**ができていた
+ * （実測：汎用34帯・製造業22帯。汎用トップの主役の山の多くがこれだった）。
+ *
+ * **D-251・D-278 と同じ**——判定に使う値と、実際に描くものを揃える。
+ * ここで落ちた帯は山にならず、次の候補（多くは「一言を大きく」）へ回る。
+ */
+function draws(id: PeakId, presentation: PresentationId): boolean {
+  return id !== "spec" || presentation === "spec";
+}
+
 /** その帯に置ける山を選ぶ。**無ければ `none`** */
 function peakFor(sec: Section, project: Project, a: Analysis, tone: string): PeakId {
   const m = materialsOf(project, sec.content, a.hasRealPhotos);
@@ -76,6 +92,8 @@ function peakFor(sec: Section, project: Project, a: Analysis, tone: string): Pea
      */
     if (id === "spec" && (m.rows ?? m.count) < 3) continue;
     if (id === "process" && (m.steps ?? 0) < 2) continue;
+    /** **描けない組み合わせは、山に選ばない**（D-357） */
+    if (!draws(id, sec.presentation)) continue;
     if (id === "number" && !m.hasStrongValue) continue;
     /** **見出しが長ければ、その役割では組めない**（D-251の再発防止） */
     if (sec.heading && fit(peak.role, sec.heading).id !== peak.role) continue;
@@ -182,14 +200,8 @@ export function composeVisual(
         /** 一言は文字数。40字に満たないものを大きくしても、余白しか増えない（D-298） */
         if (id === "statement" && m.length < 40) continue;
         if (id === "spec" && (m.rows ?? m.count) < 3) continue;
-        /**
-         * **2つ目の山は、その帯で本当に何かが大きくならなければ意味が無い**（D-251・D-278）。
-         * 「条件を壁に」が大きくするのは表（`table`／`th, td`）である。
-         * 語彙の上では札（`chips`）や札束（`cardGrid`）の帯にも当てられるが、
-         * **主役と違って余白も見出しも動かさない**ので、表が無ければ**画面は1pxも変わらない。**
-         * 実際に、松原精機のトップで「対応できる材質」の札の帯に付いて、何も起きなかった。
-         */
-        if (id === "spec" && s.presentation !== "spec") continue;
+        /** **描けない組み合わせは、山に選ばない**（D-356 → D-357 で主役と共通の規則にした） */
+        if (!draws(id, s.presentation)) continue;
         subAt = i; subId = id;
         break outer;
       }

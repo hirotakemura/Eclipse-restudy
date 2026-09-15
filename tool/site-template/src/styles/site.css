@@ -581,7 +581,9 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
   figcaption, .photo figcaption, .plain-list, .longform-quote, .hero-kicker
 ) { color: rgba(255,255,255,.85); }
 .band:is([data-surface="accent"],[data-surface="dark"]) h2,
-.band:is([data-surface="accent"],[data-surface="dark"]) h3 { color: #fff; }
+.band:is([data-surface="accent"],[data-surface="dark"]) h3,
+/** 導入（`.lead`）は自分で色を持っているので、地の色では決まらない（D-358） */
+.band:is([data-surface="accent"],[data-surface="dark"]) .lead { color: #fff; }
 .band:is([data-surface="accent"],[data-surface="dark"]) a { color: #fff; }
 /*
   万一アクセント地に札が乗っても、文字が消えないようにしておく。
@@ -596,6 +598,27 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
 .band:is([data-surface="accent"],[data-surface="dark"]) .machine,
 .band:is([data-surface="accent"],[data-surface="dark"]) .chips span { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.45); }
 .band:is([data-surface="accent"],[data-surface="dark"]) .declined { border-left-color: #fff; }
+/**
+ * **白抜きの地の上では、項目名の見出しも料金も白に倒す**（D-358。D-329と同じ見落とし）。
+ *
+ * 【実測・汎用トップ】
+ *   「取り扱い」の見出し … 文字も地も rgb(23,32,42)＝**1.00:1。見出しが消えていた**
+ *   料金の目安（`.price`）… 白い文字が `--bg-soft` の札の上で **1.08:1**
+ *
+ * 原因はどちらも**重なりの強さ**である。
+ *   `.band[data-layout="split"] > .inner > h2`（第7段階①の項目名）… 0,3,1
+ *   `.band:is([data-surface=…]) h2`（白に倒す既定）　　　　　　　 … 0,2,1
+ * **項目名のほうが強いので、白に倒す指定が負けていた。**
+ * `.price` は地の色を `--bg-soft` で持っているので、暗い地の上でも明るい札のまま残る。
+ *
+ * **D-329 と同じ形**——検査が通っていたのは、**宣言だけを見て、勝ち負けを見ていない**ため。
+ */
+.band:is([data-surface="accent"],[data-surface="dark"]) .price {
+  background: rgba(255,255,255,.12); border-left-color: #fff; color: #fff;
+}
+/** 色地は中間の明るさなので、札は**黒で沈める**（表の縞と同じ理屈） */
+.band[data-surface="accent"] .price { background: rgba(0,0,0,.18); }
+.band:is([data-surface="accent"],[data-surface="dark"]) .price span { color: rgba(255,255,255,.9); }
 .band:is([data-surface="accent"],[data-surface="dark"]) .figures > div { border-color: rgba(255,255,255,.4); }
 .band:is([data-surface="accent"],[data-surface="dark"]) .figures dt { color: rgba(255,255,255,.85); }
 /**
@@ -628,6 +651,17 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
 .band:is([data-surface="accent"],[data-surface="dark"]) tbody tr:nth-child(odd) {
   background: rgba(255,255,255,.07);
 }
+/**
+ * **色地（accent）は「暗い地」ではない**（D-358）。
+ * D-329 は白の透過で縞を作ったが、色地は中間の明るさなので、
+ * 白を重ねると**セルが明るくなり、白い文字に近づく**（実測 3.83:1・4.33:1）。
+ * 色地では**黒を重ねて沈める。** 縞は残り、白い文字は読めるようになる。
+ */
+.band[data-surface="accent"] th,
+.band[data-surface="accent"] thead th,
+.band[data-surface="accent"] tbody tr:nth-child(odd) th,
+.band[data-surface="accent"] tbody tr:nth-child(even) th { background: rgba(0,0,0,.18); }
+.band[data-surface="accent"] tbody tr:nth-child(odd) { background: rgba(0,0,0,.08); }
 
 /* 方眼。図面の下地。**線は薄く。本文の邪魔をしない** */
 .band[data-surface="grid"] {
@@ -1185,12 +1219,38 @@ html[data-hero="motif"] .hero {
    * 実測：`--ink-soft`（6.16:1）で 12px にしたら、
    * **中身との間が318px空いているぶん、見出しではなく「余りもの」に見えた。**
    * 小さくするのはよいが、薄くするのは別の話だった。
+   *
+   * **色は地から受け取る**（`inherit`）。`--ink` と書くと、白抜きの地の帯でも
+   * 黒い文字になり、**地と同じ色になって見出しが消える**（実測 1.00:1・D-358）。
    */
-  color: var(--ink);
+  color: inherit;
 }
 html:is([data-headings="rule"],[data-headings="underline"],[data-headings="band"]) .band[data-layout="split"] > .inner > h2 {
-  border: 0; background: 0 0; padding: 0; color: var(--ink);
+  border: 0; background: 0 0; padding: 0; color: inherit;   /* 同上（D-358） */
 }
+
+/**
+ * **最後に一度だけ、地の色から見出しの色を決める**（D-358）。
+ *
+ * 見出しの色を決める規則は、役割（`data-role`）・組み方（`data-layout`）・
+ * 強さ（`data-emphasis`）ごとに散らばっていて、**どれも「白抜きの地では白に倒す」より強い。**
+ * 個別に追いかけると必ず取りこぼす——D-329（表のセル）に続いて、今回も
+ * **「取り扱い」1.00:1・「代表より」1.01:1** と2度やった。
+ * ここは**この節の最後**に置く。後ろが勝つので、これから見出しの規則が増えても倒れる。
+ */
+.band:is([data-surface="accent"],[data-surface="dark"]) > .inner > :is(h2, h3) { color: #fff; }
+/** 控えめな見出し・項目名だけは、白のまま一段落とす（弱さは残す） */
+.band:is([data-surface="accent"],[data-surface="dark"]):is([data-role="label"],[data-emphasis="quiet"]) > .inner > h2 {
+  color: rgba(255,255,255,.85);
+}
+/**
+ * **見出しそのものに色地を敷く型でも、文字は白のまま**（D-358）。
+ * `html[data-headings="band"]` は見出しに `--accent` の地と白い文字を与えるが、
+ * 役割ごとの規則（`data-role="label"` など）が**色だけを後から上書き**していた。
+ * 地は緑のまま、文字が `--ink-soft` に戻るので、**実測 1.01:1**（「代表より」）。
+ * 地を持つほうが後に出るので、ここで文字を白へ戻す。
+ */
+html[data-headings="band"] .band > .inner > h2 { color: #fff; }
 
 /* ── 山（このページで最も記憶に残る画面）──────
    **中身のほうを大きくする。** 見出しだけ大きくしても、山にはならない。 */

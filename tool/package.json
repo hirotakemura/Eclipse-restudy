@@ -33,6 +33,7 @@
     "test:asset": "node asset.test.mjs",
     "qa:visual": "node qa-visual.mjs",
     "qa:assets": "node qa-assets.mjs",
+    "qa:contrast": "node qa-contrast.mjs",
     "test:architecture": "node architecture.test.mjs"
   },
   "devDependencies": {

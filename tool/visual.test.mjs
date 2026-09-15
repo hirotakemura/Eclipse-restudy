@@ -623,6 +623,62 @@ console.log("\n━━━ 動きの安全装置（ご指示§16）━━━");
     !/countUp|parallax/i.test(css));
 }
 
+console.log("\n━━━ 山は、画面で本当に大きくなるか（第7段階③）━━━");
+{
+  /**
+   * **語彙の表は「当ててよい」までしか言っていない**（D-357）。
+   * 「条件を壁に」が実際に大きくするのは表だけで、札束・札には何も当たらない。
+   * ここでは**6社 × 全15型 × 全ページ**を組み直して、
+   * 立った山が**その帯で本当に何かを大きくする組み合わせ**であることを見る。
+   */
+  const cssP = fs.readFileSync("site-template/src/styles/site.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  /** CSSの側の事実：`[data-peak="spec"]` が大きくするのは表である */
+  check("「条件を壁に」が大きくするのは表である（CSSの側の事実）",
+    /\.band\[data-peak="spec"\][^{]*\b(table|th|td)\b/.test(cssP) &&
+    !/\.band\[data-peak="spec"\][^{]*\.(cards|chips)\b/.test(cssP));
+
+  const { analyze: an8, PRIMARY_STRENGTHS: PS8 } = await import("./lib/design/analysis.ts");
+  const { composeTop: top8, composePage: page8 } = await import("./lib/design/sections.ts");
+  const { composeVisual: vis8 } = await import("./lib/design/visual.ts");
+  const { sanitizeProject: san8 } = await import("./lib/sanitize.ts");
+  const { DIRECTIONS: D8 } = await import("./lib/design/direction.ts");
+  const FIX8 = [
+    ["design-diversity", "a-precision.json"], ["design-diversity", "b-difficulty.json"],
+    ["design-diversity", "c-speed.json"], ["visual-general", "g-a-service.json"],
+    ["visual-general", "g-b-brand.json"], ["visual-general", "g-c-people.json"],
+  ];
+  const PG8 = ["strengths", "capability", "equipment", "cases", "case", "company", "message", "recruit", "contact"];
+  const dead = [];
+  const tops = [];
+  let many = 0;
+  for (const [d, f] of FIX8) {
+    const pj = san8(JSON.parse(fs.readFileSync(path.join("fixtures", d, f), "utf8")));
+    const a = an8(pj);
+    for (const dir of D8) {
+      const sets = [["index", top8(pj, a, { direction: dir.id, hasProse: false })],
+        ...PG8.map((pg) => { try { return [pg, page8(pg, pj, a)]; } catch { return [pg, []]; } })];
+      for (const [nm, secs] of sets) {
+        if (!secs.length) continue;
+        const v = vis8(secs, pj, a, { direction: dir.id }).filter((x) => x.kind !== "hero");
+        const pk = v.filter((x) => x.visual.peak !== "none");
+        if (pk.length > 2) many++;
+        for (const x of pk) {
+          /** **札束・札の帯に「条件を壁に」を立てない**——画面が1pxも変わらない */
+          if (x.visual.peak === "spec" && x.presentation !== "spec") dead.push(`${dir.id}/${nm} ${x.content}/${x.presentation}`);
+        }
+        if (nm === "index") tops.push({ dir: dir.id, f, n: pk.length });
+      }
+    }
+  }
+  check("画面が変わらない山を立てていない（6社 × 全15型 × 全ページ）", dead.length === 0,
+    `${dead.length}件 ${dead.slice(0, 3).join(" / ")}`);
+  check("山が3つ以上のページが無い", many === 0, `${many}ページ`);
+  /** **どの型でも、トップには山が1つ以上立つ**（汎用9方向を含む） */
+  const noPeak = tops.filter((t) => t.n === 0);
+  check("全15型・6社とも、トップに山が1つ以上ある", noPeak.length === 0,
+    noPeak.map((t) => `${t.f}/${t.dir}`).join(" "));
+}
+
 console.log("\n━━━ 帯の幅（第7段階②）━━━");
 {
   /**
