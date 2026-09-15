@@ -168,5 +168,111 @@ console.log("\n━━━ 既存の帯を1つも動かしていないか（第1�
     assets.every((s) => s.asset && typeof s.asset.source === "string"));
 }
 
+/**
+ * ── 第2段階：淡い光と幾何の線 ─────────────────────
+ *
+ * **数を増やしても良くならない**（docs/31 原則⑤）。
+ * ここで確かめるのは「付いたか」ではなく「**付きすぎていないか**」である。
+ */
+console.log("\n━━━ 装飾が、付きすぎていないか（第2段階）━━━");
+{
+  const GEN = ["editorial", "luxury", "modern", "human", "dynamic", "classic", "seikatsu", "shop", "gstandard"];
+  let over = [], onMotif = [], onEvidence = [], lightOnDark = [];
+  let pages = 0, decorated = 0;
+  for (const [label, f] of FIXTURES) {
+    const p = load(f);
+    for (const id of GEN) {
+      const d = DIRECTIONS.find((x) => x.id === id);
+      if (!d || d.plan !== "general") continue;
+      const project = { ...p, formSet: "general", photos: [], theme: { ...d.axes, direction: id } };
+      for (const page of ["index", ...PAGES]) {
+        const a = analyze(project);
+        const base = page === "index"
+          ? composeTop(project, a, { direction: id, hasProse: false })
+          : composePage(page, project, a, { direction: id, hasProse: false });
+        const secs = composeAssets(composeVisual(base, project, a, { direction: id }), project, a, { direction: id, page });
+        pages++;
+        const NEW = secs.filter((s) => s.asset.source === "graphic" && ["light", "geometry"].includes(s.asset.subject));
+        decorated += NEW.length;
+        for (const k of ["light", "geometry"]) {
+          const n = NEW.filter((s) => s.asset.subject === k).length;
+          if (n > 1) over.push(`${label}/${id}/${page} ${k}=${n}本`);
+        }
+        for (const s of NEW) {
+          if (s.motif !== "none") onMotif.push(`${label}/${id}/${page} ${s.content}`);
+          if (s.asset.intent !== "atmosphere") onEvidence.push(`${label}/${id}/${page} ${s.content}`);
+          if (s.asset.subject === "light" && ["accent", "dark"].includes(s.surface)) lightOnDark.push(`${label}/${id}/${page}`);
+        }
+      }
+    }
+  }
+  check(`1ページに light 1本・geometry 1本まで（${pages}ページ・装飾 ${decorated}本）`, over.length === 0, over.slice(0, 4).join("　"));
+  check("地紋のある帯には装飾を重ねない", onMotif.length === 0, onMotif.slice(0, 4).join("　"));
+  check("証拠の帯に装飾を置かない", onEvidence.length === 0, onEvidence.slice(0, 4).join("　"));
+  /** **暗い地に淡い光を重ねない。** 白い文字のコントラストが落ちる */
+  check("白抜きの地に淡い光を置かない", lightOnDark.length === 0, lightOnDark.slice(0, 4).join("　"));
+  /** **製造業には広げていない**（第2段階の範囲・ご指示） */
+  const man = load("fixtures/design-diversity/b-difficulty.json");
+  let manNew = 0;
+  for (const id of ["standard", "technical", "craft", "engineering", "industrial", "product"]) {
+    const d = DIRECTIONS.find((x) => x.id === id);
+    const project = { ...man, photos: [], theme: { ...d.axes, direction: id } };
+    const a = analyze(project);
+    const secs = composeAssets(composeVisual(composeTop(project, a, { direction: id }), project, a, { direction: id }), project, a, { direction: id, page: "index" });
+    manNew += secs.filter((s) => s.asset.source === "graphic" && ["light", "geometry"].includes(s.asset.subject)).length;
+  }
+  check("製造業の6型には、第2段階の装飾を出していない", manNew === 0, `${manNew}本`);
+}
+
+console.log("\n━━━ 装飾の描き方（site.css）━━━");
+{
+  const css = fs.readFileSync("site-template/src/styles/site.css", "utf8");
+  const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, "");
+  const bare = strip(css);
+
+  /**
+   * **章の区切りの縞が、帯の面を塗り替えないか**（D-310）。
+   *
+   * 【実測】`html[data-sections="alternate"] .section:nth-of-type(even)`（0,3,1）が
+   * `.band[data-surface="dark"]`（0,2,0）に勝ち、**暗い地が薄い地に変わって、
+   * 白い文字だけが残った。コントラスト比 1.08:1。**
+   * `test:contrast` が通っていたのは、あれが**宣言**を見ていて
+   * **重なりの勝ち負け**を見ていないからである。
+   */
+  const alt = /html\[data-sections="alternate"\]\s*\.section:nth-of-type\(even\)([^{]*)\{/.exec(bare);
+  check("章の区切りの縞に、帯の面を守る条件が付いている",
+    !!alt && /:is\(:not\(\.band\),\s*\.band\[data-surface="plain"\]\)/.test(alt[1]),
+    alt ? `条件 → ${alt[1].trim() || "（無し）"}` : "縞の指定が見当たりません");
+
+  check("淡い光の描き方がある", /\[data-asset-subject="light"\][^{]*::before/.test(bare));
+  check("幾何の線の描き方がある", /\[data-asset-subject="geometry"\][^{]*::before/.test(bare));
+  /**
+   * 装飾に関わる規則を、**選択子と中身の組**で取り出す。
+   * 選択子だけを見ると、消すための規則（印刷）まで数えてしまう。
+   */
+  const rules = [...bare.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .map((m) => ({ sel: m[1].trim(), body: m[2].trim() }))
+    .filter((r) => r.sel.includes('data-asset-source="graphic"') || r.sel.includes("data-asset-subject="));
+  /** **描く規則**＝擬似要素を作る（`content:` を持つ）もの */
+  const draws = rules.filter((r) => /content:/.test(r.body));
+
+  /** **地紋のある帯には敷かない。** 語彙の側でも止めているが、両側で止める */
+  for (const k of ["light", "geometry"]) {
+    const mine = draws.filter((r) => r.sel.includes(`data-asset-subject="${k}"`));
+    check(`「${k}」は地紋のある帯に敷かない（:not([data-motif])）`,
+      mine.length > 0 && mine.every((r) => r.sel.includes(":not([data-motif])")),
+      mine.filter((r) => !r.sel.includes(":not([data-motif])")).map((r) => r.sel).join(" ") || `${mine.length}件`);
+  }
+  /** **動きは足していない**（第2段階の範囲外・ご指示） */
+  const moving = rules.filter((r) => /animation|transition/.test(r.body));
+  check("装飾に動きを付けていない", moving.length === 0, moving.map((r) => r.sel).join(" "));
+  /** **紙には出さない。** インクを使うだけで、読む助けにならない */
+  const print = bare.slice(bare.indexOf("@media print"));
+  check("印刷では装飾を消す", /data-asset-source="graphic"[\s\S]{0,240}display:\s*none/.test(print));
+  /** **小さい画面では、線を本文の裏から外す**（画面を見て直した） */
+  const mobile = bare.slice(bare.lastIndexOf("@media (max-width: 720px)"));
+  check("スマホで幾何の線の位置を変えている", /data-asset-subject="geometry"[\s\S]{0,200}bottom:/.test(mobile));
+}
+
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);
 process.exit(ng ? 1 : 0);

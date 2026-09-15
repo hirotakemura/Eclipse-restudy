@@ -31,7 +31,8 @@
     "gaps": "node gaps.mjs",
     "test:visual": "node visual.test.mjs",
     "test:asset": "node asset.test.mjs",
-    "qa:visual": "node qa-visual.mjs"
+    "qa:visual": "node qa-visual.mjs",
+    "qa:assets": "node qa-assets.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.3"

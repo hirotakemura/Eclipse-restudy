@@ -24,11 +24,16 @@
  * 「ここに写真が要る」は、山がどこか・余白をどこで取るかが決まって初めて言える。
  * ページ全体を見ている関数は `composeVisual` だけである。
  *
- * 【第1段階（いま）でやること】
- * **計算して持ち、data属性として出すところまで。** 描画は1つも変えない。
- * `source: "graphic"` を返すのは、**いま実際に地紋が描かれている帯だけ**にしてある。
- * 「ここにも地紋が要る」という判断は第2段階で widen する。
- * 先に言うと、**描かれていないものを「ある」と言う**ことになるため。
+ * 【第2段階でやったこと】
+ * `softLight`（淡い光）と `geometry`（幾何の線）の2つだけを描けるようにした。
+ * **装飾のために全帯へ付けない。1ページに light 1本・geometry 1本まで。**
+ * `none` は完成形であって、埋めるべき穴ではない（docs/31 原則①）。
+ *
+ * **範囲は汎用プランに限る**（ご指示）。
+ * 製造業には寸法線・方眼・工程線・断面・素材の目が既にあり、
+ * **汎用にはほぼ何も無い**——それが実測で出た差である（docs/31 §1-2）。
+ * ここは設計上の原則ではなく、第2段階の範囲の線引きなので、
+ * 画面を見たうえで広げるかどうかを決める。
  */
 
 import type { Project } from "../schema.ts";
@@ -127,7 +132,33 @@ function subjectFor(content: string, direction: ReturnType<typeof getDirection>)
 const GROUND: AssetSubject[] = ["texture", "light"];
 
 /** いま実際に地紋が描かれている面（`site.css` の `[data-surface]`） */
-const PATTERNED = new Set(["grid", "paper"]);
+const PATTERNED: Record<string, AssetSubject> = { grid: "grid", paper: "texture" };
+
+/**
+ * **すでに描かれている地紋を、素材の言葉に置き換える。**
+ *
+ * ここで `light` と `geometry` を返してはいけない。
+ * その2つは第2段階で足した**描き方の名前**でもあるので、
+ * 地紋のある帯に付けると**地紋と装飾が二重に描かれる。**
+ * 表に無い組み合わせを作らないのと同じ理屈で、名前で衝突させない。
+ */
+const MOTIF_AS: Record<string, AssetSubject> = {
+  dimension: "dimension",
+  section: "dimension",
+  grid: "grid",
+  process: "grid",
+  grain: "texture",
+};
+
+/**
+ * **新しい装飾を置いてよい面**（第2段階）。
+ *
+ * 暗い地・アクセント地は白抜きなので、淡い光を重ねると文字が読みにくくなる。
+ * 方眼と紙の地には**すでに地紋がある。** 二重に敷かない。
+ */
+const DECORABLE = new Set(["plain", "soft"]);
+/** 白抜きの面。**幾何の線だけはこの上にも置ける**（線を白に倒してある） */
+const INVERTED_SURFACES = new Set(["accent", "dark"]);
 
 export function composeAssets(
   sections: VisualSection[],
@@ -138,7 +169,7 @@ export function composeAssets(
   const d = getDirection(opts.direction);
   const page = opts.page ?? "index";
 
-  return sections.map((sec) => {
+  const out: AssetSection[] = sections.map((sec) => {
     /** **証拠か雰囲気かは、帯の内容から機械的に決まる。** AIも人も選ばない */
     const intent = EVIDENTIAL.includes(sec.content) ? "evidence" as const : "atmosphere" as const;
     const isPeak = sec.kind !== "hero" && (sec.visual?.peak ?? "none") !== "none";
@@ -169,13 +200,12 @@ export function composeAssets(
       }
     } else {
       /**
-       * 雰囲気。**第1段階では、いま実際に描かれているものだけを `graphic` と言う。**
-       * 「ここにも要る」という判断は第2段階（描き方を足してから）。
-       * 描かれていないものを「ある」と言わない。
+       * 雰囲気。**まず、いま実際に描かれているものを記録する。**
+       * 新しい装飾（第2段階）は、そのあとで、描かれていない帯にだけ置く。
        */
-      const drawnNow = sec.motif !== "none" || PATTERNED.has(sec.surface);
-      source = drawnNow ? "graphic" : "none";
-      subject = subjectFor(sec.content, d);
+      const drawn = MOTIF_AS[sec.motif] ?? PATTERNED[sec.surface];
+      if (drawn) { source = "graphic"; subject = drawn; }
+      else { source = "none"; subject = subjectFor(sec.content, d); }
     }
 
     /**
@@ -197,6 +227,72 @@ export function composeAssets(
     }
     return { ...sec, asset };
   });
+
+  return decorate(out, d);
+}
+
+/**
+ * ── 淡い光と、幾何の線を置く（第2段階）──────────────
+ *
+ * **1ページに light 1本・geometry 1本まで。**
+ * 白抜きの帯を1ページ1回に絞ったのと同じ理屈で（D-230）、
+ * **二度使うと効かなくなる。** 装飾の数は品質ではない（docs/31 原則⑤）。
+ *
+ * 置く場所は**画面の山、無ければ最初の主役の帯**。
+ * 2つ目は、1つ目から2本以上離れた帯にだけ置く。
+ * **隣り合わせにすると、装飾どうしが競って、どちらも効かない。**
+ */
+function decorate(out: AssetSection[], d: ReturnType<typeof getDirection>): AssetSection[] {
+  /** **第2段階の範囲は汎用プランに限る**（ご指示）。製造業には既に地紋がある */
+  if (d.plan !== "general") return out;
+  const kinds = (["light", "geometry"] as const).filter((k) => d.assets.includes(k));
+  if (!kinds.length) return out;
+
+  /**
+   * 置いてよい帯か。**地紋のある帯・証拠の帯には置かない。**
+   *
+   * 面の条件は、装飾の種類で変わる。
+   * **淡い光は、白抜きの地の上では使えない**——暗い地に明るい光を重ねると、
+   * 白い文字のコントラストが落ちる。
+   * **幾何の線は、白抜きの上でも使える**（線を白に倒してある・`site.css`）。
+   */
+  const canDecorate = (s: AssetSection, kind: AssetSubject) =>
+    s.kind !== "hero"
+    && s.asset.intent === "atmosphere"
+    && s.asset.source === "none"
+    && s.motif === "none"
+    && (DECORABLE.has(s.surface) || (kind === "geometry" && INVERTED_SURFACES.has(s.surface)));
+
+  const put = (i: number, subject: AssetSubject) => {
+    out[i] = { ...out[i]!, asset: { ...out[i]!.asset, source: "graphic", subject, role: "background" } };
+  };
+
+  /**
+   * 置く場所は、**山 → 主役 → それ以外**の順で探す。
+   *
+   * 最初に山だけを見ていたら、山の帯に地紋がある型（モダン）で
+   * **1本も置かれなかった**（実測）。山が使えないときに諦めるのは、
+   * 「置けるところが無い」ではなく「探していない」である。
+   */
+  const pick = (kind: AssetSubject, avoid: number) => {
+    const ok = (s: AssetSection, i: number) => canDecorate(s, kind) && (avoid < 0 || Math.abs(i - avoid) >= 2);
+    const peak = out.findIndex((s, i) => ok(s, i) && (s.visual?.peak ?? "none") !== "none");
+    if (peak >= 0) return peak;
+    const lead = out.findIndex((s, i) => ok(s, i) && s.emphasis === "lead");
+    if (lead >= 0) return lead;
+    return out.findIndex((s, i) => ok(s, i) && s.emphasis !== "quiet");
+  };
+
+  const first = pick(kinds[0]!, -1);
+  if (first < 0) return out;
+  put(first, kinds[0]!);
+
+  /** **もう1種類あれば1本だけ。隣り合わせにしない**——装飾どうしが競うと、どちらも効かない */
+  if (kinds.length > 1) {
+    const second = pick(kinds[1]!, first);
+    if (second >= 0) put(second, kinds[1]!);
+  }
+  return out;
 }
 
 /** この案件で、お客様にお願いすべき写真。**第3段階で `gaps` が使う** */

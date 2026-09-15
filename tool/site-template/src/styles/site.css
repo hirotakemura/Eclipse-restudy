@@ -272,6 +272,9 @@ thead th { width: auto; }
 }
 @media print {
   .site-nav, .cta, .btn { display: none !important; }
+  /** **装飾は紙に出さない。** インクを使うだけで、読む助けにならない（第2段階） */
+  .band[data-asset-source="graphic"]:is([data-asset-subject="light"],[data-asset-subject="geometry"])::before,
+  .band[data-asset-source="graphic"][data-asset-subject="geometry"]::after { display: none !important; }
 }
 
 /* ── レイアウトの型（案件ごとに選ぶ・tool/lib/theme.ts） ── */
@@ -309,7 +312,27 @@ html[data-hero="photo"] .hero-photo img { aspect-ratio: 21 / 9; border-radius: 0
 /* ── 章の区切り方 ───────────────────────── */
 html[data-sections="space"] .section + .section { border-top: 0; }
 html[data-sections="alternate"] .section + .section { border-top: 0; }
-html[data-sections="alternate"] .section:nth-of-type(even) { background: var(--bg-soft); }
+/**
+ * **帯が自分で地を決めているときは、縞を当てない**（D-310）。
+ *
+ * 【実測】章の区切りを「交互」にした型で、**白抜きの帯の文字が消えていた。**
+ *   量産・設備／力強い　… 文字 #fff ／ 地 #f4f6f8　**コントラスト比 1.08:1**
+ *
+ * 原因は重なりの強さである。
+ *   `html[data-sections="alternate"] .section:nth-of-type(even)` … 0,3,1
+ *   `.band[data-surface="dark"]`　　　　　　　　　　　　　　　 … 0,2,0
+ * **縞のほうが強いので、暗い地が薄い地に塗り替えられ、白い文字だけが残った。**
+ * 地の色は消えても `color: #fff` は残るので、**文字だけが見えなくなる。**
+ *
+ * `npm run test:contrast` が通っていたのは、あの検査が**CSSの宣言**を見ていて、
+ * **重なりの勝ち負けを見ていない**からである（D-232・D-237と同じ見落とし）。
+ *
+ * 縞は「帯が自分の地を持っていなかった時代」の仕組みなので、
+ * **自分の地を持つ帯には当てない**のが筋。当てるのは白地の帯だけにする。
+ */
+html[data-sections="alternate"] .section:nth-of-type(even):is(:not(.band), .band[data-surface="plain"]) {
+  background: var(--bg-soft);
+}
 
 /* ── 見出しの飾り ───────────────────────── */
 html[data-headings="rule"] .section h2 {
@@ -608,6 +631,53 @@ html[data-hero="spec"] .hero .lead { font-size: 17px; margin-top: 20px; }
 }
 .band:is([data-surface="accent"],[data-surface="dark"])[data-motif="section"] > .inner > h2 {
   border-bottom-color: rgba(255,255,255,.45);
+}
+
+/* ── 素材（Asset）の装飾 ─────────────────────
+   **背景・余白・境界だけ。** カードも枠も増やさない（docs/31・第2段階）。
+
+   置く場所は `lib/design/assets.ts` が決める。**1ページに light 1本・geometry 1本まで。**
+   数を増やしても良くならない（原則⑤）。むしろ、どのページも同じ顔になる。
+
+   **地紋のある帯には敷かない**（`:not([data-motif])`）。
+   語彙の側でも `light` / `geometry` を地紋の帯に返さないようにしてあるが、
+   **二重に描かれる事故は、片方が壊れたときに起きる。** 両側で止める。
+
+   動きは付けない（第2段階の範囲外）。印刷では消す。 */
+.band[data-asset-source="graphic"]:is([data-asset-subject="light"],[data-asset-subject="geometry"]):not([data-motif]) {
+  position: relative;
+}
+/* **中身は必ず装飾の上に。** 位置を持たせるだけで、重なりの順が中身優先になる */
+.band[data-asset-source="graphic"]:is([data-asset-subject="light"],[data-asset-subject="geometry"]):not([data-motif]) > .inner {
+  position: relative;
+}
+
+/* 淡い光。**色は増やさない。** 配色がすでに持っている `--accent-soft`（ほぼ白）だけで作る */
+.band[data-asset-source="graphic"][data-asset-subject="light"]:not([data-motif])::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(78% 62% at 86% -12%, var(--accent-soft) 0%, transparent 62%),
+    linear-gradient(180deg, var(--accent-soft) 0%, transparent 44%);
+}
+
+/* 幾何の線。**開いた円を2つ、帯の端に。** 情報を囲わない＝枠にもカードにもしない */
+.band[data-asset-source="graphic"][data-asset-subject="geometry"]:not([data-motif]) { overflow: hidden; }
+.band[data-asset-source="graphic"][data-asset-subject="geometry"]:not([data-motif])::before,
+.band[data-asset-source="graphic"][data-asset-subject="geometry"]:not([data-motif])::after {
+  content: ""; position: absolute; pointer-events: none;
+  top: 50%; translate: 0 -50%; border-radius: 50%;
+  border: 1px solid var(--line);
+}
+.band[data-asset-source="graphic"][data-asset-subject="geometry"]:not([data-motif])::before {
+  right: -130px; width: 340px; height: 340px;
+}
+.band[data-asset-source="graphic"][data-asset-subject="geometry"]:not([data-motif])::after {
+  right: -60px; width: 190px; height: 190px; opacity: .6;
+}
+/* **白抜きの地の上では線を白に倒す**（D-230と同じ理由。`--line` は暗い地で消える） */
+.band:is([data-surface="accent"],[data-surface="dark"])[data-asset-subject="geometry"]::before,
+.band:is([data-surface="accent"],[data-surface="dark"])[data-asset-subject="geometry"]::after {
+  border-color: rgba(255,255,255,.35);
 }
 
 /* ── 動き ───────────────────────────────── */
@@ -990,6 +1060,21 @@ html[data-hero="motif"] .hero {
    * `vast` をそのまま当てると画面の4分の1が空になり、
    * `tight` をそのまま当てると帯どうしがくっついて見える。
    */
+  /**
+   * **小さい画面では、線を本文の裏から外す**（第2段階・画面を見て直した）。
+   *
+   * PCでは本文が狭いので、円は右half の空いたところに収まる。
+   * **スマホは本文が画面幅いっぱいに来るので、同じ位置だと円が文字を横切る。**
+   * 実測（390px・2倍で拡大）：弧が「か」「過」「鋏」を貫いていて、
+   * **背景ではなく、描き損じた線に見えた。**
+   *
+   * 中央から右下の隅へ動かし、**本文の下**に回す。円は1つだけにする。
+   */
+  .band[data-asset-source="graphic"][data-asset-subject="geometry"]:not([data-motif])::before {
+    top: auto; bottom: -96px; right: -96px; translate: none;
+    width: 200px; height: 200px;
+  }
+  .band[data-asset-source="graphic"][data-asset-subject="geometry"]:not([data-motif])::after { display: none; }
   .band[data-density="tight"] { padding: calc(var(--section) * 0.7) 0; }
   .band[data-density="loose"] { padding: calc(var(--section) * 1.15) 0; }
   .band[data-density="vast"] { padding: calc(var(--section) * 1.4) 0; }
