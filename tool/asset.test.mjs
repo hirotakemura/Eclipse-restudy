@@ -516,8 +516,13 @@ console.log("\n━━━ 素材ライブラリ（第5段階）━━━");
   }
 
   /**
-   * **生成画像に到達する経路が無い**（ご指示）。
-   * 語彙には `generated` があるが、**そこへ値を入れるコードはどこにも書かない。**
+   * **生成画像へ値を入れてよいのは、1箇所だけ**（第9段階・D-367）。
+   *
+   * 第8段階までは「そこへ値を入れるコードをどこにも書かない」で守っていたが、
+   * 第9段階で生成ビジュアルを正式に入れたので、**守り方を変える。**
+   * 書いてよいのは `assets.ts`（置く側）と `system/generated.ts`（語彙）と
+   * `generated-brief.ts`（注文書）**だけ**で、ほかのファイルから生成に触れない。
+   * **経路が増えていないこと**を、ここで見張る。
    */
   const srcs = [];
   const walk = (dir) => {
@@ -528,8 +533,13 @@ console.log("\n━━━ 素材ライブラリ（第5段階）━━━");
     }
   };
   walk("lib");
+  const ALLOWED_FILES = ["lib/design/assets.ts", "lib/design/system/generated.ts", "lib/design/generated-brief.ts"];
   const assigns = srcs.filter(([, t]) => /(?:source|as)\s*[:=]\s*"generated"/.test(t)).map(([f]) => f);
-  check("生成画像に値を入れているコードが無い", assigns.length === 0, assigns.join(" "));
+  check("生成画像に値を入れているのは、決めた3ファイルだけ",
+    assigns.every((f) => ALLOWED_FILES.includes(f)), assigns.join(" "));
+  /** **証拠に生成を許す表が、どこにも無いこと** */
+  check("証拠に生成を許しているコードが無い",
+    !srcs.some(([, t]) => /evidence[^\n]*"generated"/.test(t)));
 
   /**
    * ── 実案件・全15型・全ページ ─────────────────

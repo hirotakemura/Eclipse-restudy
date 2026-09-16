@@ -57,10 +57,14 @@ interface Props {
    * 画面でも、HTMLを読んでも、**お客様の実績写真と取り違えようがない。**
    */
   assetLibrary?: string;
+  /** 生成ビジュアルを採ったときの注文書ID（第9段階）。**来歴を画面に残す** */
+  assetGenerated?: string;
   assetImage?: string;
+  /** 生成ビジュアルの焦点（`background-position`）。**スマホで切られても中心が残る** */
+  assetFocal?: string;
 }
 const { width = "normal", emphasis = "normal", surface = "plain", layout = "stack", motif = "none", content, presentation, decidedBy, heading, density = "normal", peak = "none", role,
-  assetSource, assetIntent, assetRole, assetSubject, assetWanted, assetPriority, assetLibrary, assetImage } = Astro.props;
+  assetSource, assetIntent, assetRole, assetSubject, assetWanted, assetPriority, assetLibrary, assetGenerated, assetImage, assetFocal } = Astro.props;
 ---
 <section
   class="section band"
@@ -82,7 +86,8 @@ const { width = "normal", emphasis = "normal", surface = "plain", layout = "stac
   data-asset-wanted={assetWanted}
   data-asset-priority={assetPriority}
   data-asset-library={assetLibrary}
-  style={assetImage ? `--asset-image:url(${assetImage})` : undefined}
+  data-asset-generated={assetGenerated}
+  style={assetImage ? `--asset-image:url(${assetImage})${assetFocal ? `;--asset-focal:${assetFocal}` : ""}` : undefined}
 >
   <div class="inner">
     {heading && <h2>{heading}</h2>}

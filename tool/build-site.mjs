@@ -80,6 +80,32 @@ if (fs.existsSync(photoSrc)) {
   }
 }
 
+/**
+ * 生成ビジュアル（第9段階）。**ここでも絵は作らない。**
+ *
+ * やるのは2つだけ。
+ *   ① `ready` になっている絵を公開ファイルとして配る
+ *   ② **ファイルが実在しない注文書を、その場で `brief` に落とす**
+ *      （注文書が「ある」と言っているだけで画面に穴が開く、を防ぐ。404を出さない）
+ */
+const genDst = path.join(templateDir, "public", "generated");
+fs.rmSync(genDst, { recursive: true, force: true });
+const genSrc = path.join(projectDir, "generated");
+let genCount = 0, genDropped = 0;
+if (project.visualPlan?.visuals?.length) {
+  for (const v of project.visualPlan.visuals) {
+    const file = v?.provenance?.file;
+    const ok = v?.status === "ready" && file && fs.existsSync(path.join(genSrc, file));
+    if (!ok) {
+      if (v?.status === "ready") { v.status = "brief"; genDropped++; }
+      continue;
+    }
+    fs.mkdirSync(genDst, { recursive: true });
+    fs.copyFileSync(path.join(genSrc, file), path.join(genDst, file));
+    genCount++;
+  }
+}
+
 const draftSrc = path.join(projectDir, "draft");
 let drafts = 0;
 if (fs.existsSync(draftSrc)) {
@@ -306,6 +332,12 @@ if (!b.tel) missing.push("電話番号");
 if (!b.address) missing.push("所在地");
 if (!project.terms?.inquiryNotifyEmail) missing.push("問い合わせの通知先メール");
 if (placeholders.length) missing.push(`実物の写真（仮の画像が${placeholders.length}枚のまま）`);
+
+if (project.visualPlan?.visuals?.length) {
+  console.log(`\n  ── 生成ビジュアル ── 注文書 ${project.visualPlan.visuals.length}件／画面に出る絵 ${genCount}枚`
+    + (genDropped ? `／**画像が見つからないので下ろした ${genDropped}件**` : ""));
+  if (!genCount) console.log("     絵はまだありません。サイトはいままでと同じです（npm run visual -- <案件ID> で注文書を見る）");
+}
 
 const move = (to) => {
   fs.rmSync(to, { recursive: true, force: true });

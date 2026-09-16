@@ -362,6 +362,11 @@ export interface Project {
    * 必ず言われる。**写真待ちで公開を止めない構造は保ったまま、置き場所だけ先に決めておく。**
    */
   photos?: SitePhoto[];
+  /**
+   * 生成ビジュアルの方針と注文書（第9段階・`npm run visual`）。
+   * **書き出しでは作らない。** 保存されたものを読むだけで、画像が無ければ何も起きない。
+   */
+  visualPlan?: import("./design/generated-brief.ts").StoredVisualPlan;
 
   basics: CompanyBasics;
   inquiry: InquiryReality;

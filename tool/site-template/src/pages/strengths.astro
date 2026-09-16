@@ -18,7 +18,7 @@ import Present from "../components/Present.astro";
 import { analyze } from "../../../lib/design/analysis.ts";
 import { composePage } from "../../../lib/design/sections.ts";
 import { composeVisual } from "../../../lib/design/visual.ts";
-import { composeAssets, willDraw } from "../../../lib/design/assets.ts";
+import { composeAssets, willDraw, assetImageOf } from "../../../lib/design/assets.ts";
 import { project, companyName, isGeneral, depthOf, descriptionOf } from "../lib/site";
 import { theme } from "../lib/theme";
 import { hasDraft } from "../lib/draft";
@@ -47,7 +47,7 @@ const lead = isGeneral
   {sections.map((sec) => (
     <Band width={sec.width} emphasis={sec.emphasis} surface={sec.surface} motif={sec.motif} content={sec.content} presentation={sec.presentation}
           decidedBy={sec.decidedBy} density={sec.visual?.density} peak={sec.visual?.peak} role={sec.visual?.role} layout={sec.visual?.layout ?? sec.layout}
-          assetSource={sec.asset?.source} assetIntent={sec.asset?.intent} assetRole={sec.asset?.role} assetSubject={sec.asset?.subject} assetWanted={sec.asset?.wanted?.category} assetPriority={sec.asset?.wanted?.priority} assetLibrary={sec.asset?.library?.id} assetImage={sec.asset?.library?.path} heading={sec.kind === "prose" ? undefined : sec.heading}>
+          assetSource={sec.asset?.source} assetIntent={sec.asset?.intent} assetRole={sec.asset?.role} assetSubject={sec.asset?.subject} assetWanted={sec.asset?.wanted?.category} assetPriority={sec.asset?.wanted?.priority} assetLibrary={sec.asset?.library?.id} assetGenerated={sec.asset?.generated?.id} assetImage={assetImageOf(sec.asset)} assetFocal={sec.asset?.generated?.focal} heading={sec.kind === "prose" ? undefined : sec.heading}>
       <Present content={sec.content} presentation={sec.presentation} analysis={analysis} slug="strengths" />
     </Band>
   ))}

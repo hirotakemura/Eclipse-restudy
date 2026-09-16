@@ -16,7 +16,7 @@ import Figure from "../components/Figure.astro";
 import { analyze } from "../../../lib/design/analysis.ts";
 import { composeTop, resolveHero } from "../../../lib/design/sections.ts";
 import { composeVisual } from "../../../lib/design/visual.ts";
-import { composeAssets, willDraw } from "../../../lib/design/assets.ts";
+import { composeAssets, willDraw, assetImageOf } from "../../../lib/design/assets.ts";
 /** **見出しの大きさは、中身の長さで決める**（D-277）。長文を巨大に組まない */
 import { fit } from "../../../lib/design/system/typography.ts";
 import { project, designBrief, companyName, cases, photoOf, realPhotoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen } from "../lib/site";
@@ -90,8 +90,16 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
 ---
 <Base title="トップ" description={`${companyName}｜${desc}`}>
   {sections.map((s) => {
+    /*
+      最初の画面の地に、生成ビジュアルを敷く（第9段階）。
+      **絵が無ければ属性もつかない**ので、いままでと1ピクセルも変わらない。
+      見出し・導入・札は**そのまま上に乗る**（「AI画像＋普通の見出し」にしない）。
+    */
     if (s.kind === "hero") return (
-      <section class="hero" data-motif={s.motif !== "none" ? s.motif : undefined}>
+      <section class="hero" data-motif={s.motif !== "none" ? s.motif : undefined}
+        data-asset-source={assetImageOf(s.asset) ? s.asset?.source : undefined}
+        data-asset-generated={s.asset?.generated?.id}
+        style={s.asset?.generated ? `--asset-image:url(${s.asset.generated.path});--asset-focal:${s.asset.generated.focal}` : undefined}>
         <div class="inner">
           {/*
             最初の画面は6通り（lib/design/system/hero.ts）。
@@ -140,7 +148,7 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
 
     return (
       <Band width={s.width} emphasis={s.emphasis} surface={s.surface} motif={s.motif} content={s.content} presentation={s.presentation} decidedBy={s.decidedBy} density={s.visual?.density} peak={s.visual?.peak} role={s.visual?.role} layout={s.visual?.layout ?? s.layout}
-            assetSource={s.asset?.source} assetIntent={s.asset?.intent} assetRole={s.asset?.role} assetSubject={s.asset?.subject} assetWanted={s.asset?.wanted?.category} assetPriority={s.asset?.wanted?.priority} assetLibrary={s.asset?.library?.id} assetImage={s.asset?.library?.path}
+            assetSource={s.asset?.source} assetIntent={s.asset?.intent} assetRole={s.asset?.role} assetSubject={s.asset?.subject} assetWanted={s.asset?.wanted?.category} assetPriority={s.asset?.wanted?.priority} assetLibrary={s.asset?.library?.id} assetGenerated={s.asset?.generated?.id} assetImage={assetImageOf(s.asset)} assetFocal={s.asset?.generated?.focal}
             heading={s.kind === "prose" ? undefined : s.heading}>
         <Present content={s.content} presentation={s.presentation} decidedBy={s.decidedBy} analysis={analysis} slug={s.slug} />
       </Band>

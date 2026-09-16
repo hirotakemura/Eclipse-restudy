@@ -46,6 +46,7 @@ import type { VisualSection } from "./visual.ts";
 import {
   DRAWABLE, EVIDENTIAL, SUBJECT_OF, canUse, findLibraryAsset, LIBRARY_SUBJECTS,
   type Asset, type AssetSource, type AssetRole, type AssetSubject, type PhotoCategoryId,
+  isReady, generatedPath, type GeneratedVisual,
 } from "./system/index.ts";
 
 export type AssetSection = VisualSection & { asset: Asset };
@@ -296,7 +297,54 @@ export function composeAssets(
     return { ...sec, asset };
   });
 
-  return adoptLibrary(decorate(out, d), d);
+  return adoptGenerated(adoptLibrary(decorate(out, d), d), project, page);
+}
+
+/**
+ * ── 生成ビジュアルを採るかどうか（第9段階）──────────────
+ *
+ * **ここは絵を作らない。** 保存されている注文書（`project.visualPlan`）のうち、
+ * **絵が実在して `ready` になっているものだけ**を、決められた場所へ置く。
+ *
+ * 【画像が無ければ、1ピクセルも変わらない】
+ * `status` が `ready` でない、`file` が無い、置き場所が見つからない——
+ * どれも**何もしないで返す。** 既存のレイアウトを保つのが、この関数のいちばんの仕事である。
+ *
+ * 【最後に置く】
+ * `decorate`（graphic）→ `adoptLibrary`（library）→ ここ、の順に並べてある。
+ * **CSSで描けている帯・素材が敷かれている帯には行かない**（`source === "none"` だけを見る）。
+ * 装飾どうしを重ねない、という第2・第5段階の規則をそのまま引き継ぐ。
+ *
+ * 【証拠には行かない】
+ * `intent === "atmosphere"` の帯しか見ない。事例・設備・外観・代表・採用は
+ * `intentOf()` が `evidence` を返すので、**構造として届かない。**
+ */
+function adoptGenerated(out: AssetSection[], project: Project, page: string): AssetSection[] {
+  const visuals = (project as any)?.visualPlan?.visuals as GeneratedVisual[] | undefined;
+  if (!visuals?.length) return out;
+
+  for (const v of visuals) {
+    if (!isReady(v) || v.placement.page !== page) continue;
+    /** 置ける帯を探す。**空いている帯だけ**（すでに描かれている帯は触らない） */
+    const i = out.findIndex((s) =>
+      (v.placement.slot === "hero" ? s.kind === "hero" : s.kind !== "hero" && s.content === v.placement.slot)
+      && s.asset.intent === "atmosphere"
+      && s.asset.source === "none");
+    if (i < 0) continue;
+    out[i] = {
+      ...out[i]!,
+      asset: {
+        ...out[i]!.asset,
+        source: "generated", intent: "atmosphere",
+        role: v.placement.role, subject: v.subject,
+        generated: {
+          id: v.visualId, path: generatedPath(v.provenance.file!),
+          focal: `${Math.round(v.mobile.focalPoint.x * 100)}% ${Math.round(v.mobile.focalPoint.y * 100)}%`,
+        },
+      },
+    };
+  }
+  return out;
 }
 
 /**
@@ -463,6 +511,14 @@ function decorate(out: AssetSection[], d: ReturnType<typeof getDirection>): Asse
  * **仮の画像（SVG）は描く。** あれは「ここに写真が入る」とお客様に見てもらうための
  * もので、画面には出る（D-242）。実写かどうか（`source`）とは別の話。
  */
+/**
+ * **その帯に敷く画像の場所。** `library` と `generated` の2つがあるが、
+ * 描く側（Astro）は**どちらかを気にしない。**
+ * ここを1箇所にしておかないと、5つの `.astro` に同じ条件が5回書かれる（D-197）。
+ */
+export const assetImageOf = (asset: { library?: { path: string }; generated?: { path: string } } | undefined): string | undefined =>
+  asset?.generated?.path ?? asset?.library?.path;
+
 export const willDraw = (sec: VisualSection, project: Project, page = "index"): boolean => {
   if (sec.content !== "photos") return true;
   /**

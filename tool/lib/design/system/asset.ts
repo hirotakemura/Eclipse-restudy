@@ -23,6 +23,7 @@
 
 import type { ContentId } from "./content.ts";
 import type { LibraryRef } from "./library.ts";
+import type { GeneratedRef } from "./generated.ts";
 
 /** どこから来た素材か。**権利と証拠性はここで決まる** */
 export type AssetSource = "none" | "graphic" | "customer" | "library" | "generated";
@@ -71,6 +72,13 @@ export interface Asset {
    * **借り物が黙って増えていく**——それが素材置き場のいちばんありがちな壊れ方である。
    */
   library?: LibraryRef;
+  /**
+   * **生成ビジュアルを採ったとき**だけ入る（第9段階・`system/generated.ts`）。
+   *
+   * `source === "generated"` と対で、**どの注文書の絵かを画面に残す。**
+   * `library` と同じ理由——**どこから来た画像か分からない状態を作らない。**
+   */
+  generated?: GeneratedRef;
 }
 
 /**

@@ -238,6 +238,11 @@ export function projectHash(project: unknown): string {
  * **生の案件データを見る。** 未確認で落とす前の状態が変われば、見せ方の前提も変わる。
  */
 export function projectHashOf(project: unknown): string {
-  const { designBrief, designBriefProposal, ...bare } = (project ?? {}) as Record<string, unknown>;
+  /**
+   * **生成ビジュアルの注文書も数えない**（第9段階・D-256と同じ理屈）。
+   * 数えると、注文書を保存した瞬間に印が変わり、**同じ会社データなのに `visualId` が変わる。**
+   * 実測：注文書を作り直したら、届いていた絵の状態（`ready`）が引き継げなくなった。
+   */
+  const { designBrief, designBriefProposal, visualPlan, ...bare } = (project ?? {}) as Record<string, unknown>;
   return projectHash(bare);
 }

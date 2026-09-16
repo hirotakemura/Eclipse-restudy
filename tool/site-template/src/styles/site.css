@@ -874,6 +874,48 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
 }
 
 /**
+ * ── 生成ビジュアル（第9段階）─────────────────────
+ *
+ * **絵は地に敷く。`<img>` にはしない。**
+ * `<img>` で置くと「この会社の写真」として読まれる余地ができる。
+ * 生成した絵は**雰囲気**であって証拠ではないので、素材ライブラリと同じ扱いにする。
+ *
+ * 【文字のコントラストを、絵に預けない】
+ * 絵の上に直接文字を置くと、**測れないコントラスト**ができる（`qa:contrast` は
+ * 地の色しか測れない）。だから薄く敷き、**帯の地の色を残す。**
+ *
+ * 【切り取り】
+ * `cover` ＋ 注文書の焦点（`--asset-focal`）で位置を決める。
+ * スマホで縦に切られても、注文書が `cropSafe` を指定しているので中身が消えない。
+ */
+.band[data-asset-source="generated"],
+.hero[data-asset-source="generated"] { position: relative; isolation: isolate; }
+.band[data-asset-source="generated"] > .inner,
+.hero[data-asset-source="generated"] > .inner { position: relative; z-index: 1; }
+.band[data-asset-source="generated"]::before,
+.hero[data-asset-source="generated"]::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image: var(--asset-image);
+  background-size: cover;
+  background-position: var(--asset-focal, 70% 45%);
+  background-repeat: no-repeat;
+  opacity: .22;
+}
+/** 白抜きの地では、絵をさらに沈める（白い文字を守る） */
+.band:is([data-surface="accent"],[data-surface="dark"])[data-asset-source="generated"]::before { opacity: .14; }
+/** 最初の画面は主役なので、少しだけ強く出す。**それでも文字の下は地の色のまま** */
+.hero[data-asset-source="generated"]::before { opacity: .28; }
+@media (max-width: 720px) {
+  /** **スマホでは薄くする。** 画面に対して絵が大きくなり、文字に近づくため */
+  .band[data-asset-source="generated"]::before,
+  .hero[data-asset-source="generated"]::before { opacity: .16; }
+}
+@media print {
+  .band[data-asset-source="generated"]::before,
+  .hero[data-asset-source="generated"]::before { display: none; }
+}
+
+/**
  * ── 焦点（第8段階⑤・D-363）───────────────────
  *
  * **キーボードで操作している人にだけ、はっきり見せる。**
