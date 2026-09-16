@@ -14,7 +14,7 @@ import { composeTop, composePage } from "./lib/design/sections.ts";
 import { composeVisual } from "./lib/design/visual.ts";
 import { composeAssets } from "./lib/design/assets.ts";
 import { sanitizeProject } from "./lib/sanitize.ts";
-import { planGeneratedVisuals, visualLanguageOf, storedPlan } from "./lib/design/generated-brief.ts";
+import { planGeneratedVisuals, visualLanguageOf, storedPlan, companySignals } from "./lib/design/generated-brief.ts";
 import {
   assertGenerated, assertVisualLanguages, isReady, generatedPath, DRAWABLE, EVIDENTIAL,
   ALLOWED, MAX_GENERATED, VISUAL_LANGUAGES, LANGUAGE_OF, NEGATIVE_PROMPT, FORBIDDEN_IN_PROMPT,
@@ -119,6 +119,95 @@ console.log("\n━━━ 会社ごとに、絵の方針が変わるか ━━━
     const after = JSON.stringify(planGeneratedVisuals(saved, a, "technical").visuals.map((v) => v.visualId));
     check("注文書を保存しても visualId が変わらない", before === after, `${before} → ${after}`);
   }
+}
+
+console.log("\n━━━ 会社固有性：別の会社のプロンプトとして成立しないか（第9段階②）━━━");
+{
+  /**
+   * **ここがこの段のいちばん重要な検査である。**
+   *
+   * 1枚目を実際に生成して分かったのは、「アルミを扱うどの会社でも成立する絵」だったこと。
+   * 勝ち筋そのままの言葉は抽象すぎて絵にならないので、**その会社が話した言葉**を拾うようにした。
+   * ここでは「拾えているか」ではなく、**別の会社と入れ替えて成立しないか**を見る。
+   */
+  const words = (s) => new Set(s.toLowerCase().split(/[,\s]+/).filter((w) => w.length > 3));
+  const overlap = (a, b) => {
+    const A = words(a), B = words(b);
+    const shared = [...A].filter((w) => B.has(w)).length;
+    return shared / Math.max(A.size, B.size);
+  };
+  const plans = FIXTURES.map(([name, f]) => {
+    const p = load(f);
+    return { name, sig: companySignals(p), plan: planGeneratedVisuals(p, analyze(p), "standard") };
+  });
+
+  /** ① その会社の言葉から、手がかりを拾えているか */
+  const thin = plans.filter((x) => x.sig.from.length < 2);
+  check("6社とも、会社の言葉から手がかりを2つ以上拾えている", thin.length === 0,
+    thin.map((x) => `${x.name}:${x.sig.from.length}`).join(" "));
+
+  /**
+   * ② 会社どうしで、同じ絵の注文になっていないか。
+   *
+   * **測るのは「会社から来た部分」だけ**である。
+   * プロンプトの後半（構図・光・比・モバイル・打ち消し）は**用途ごとの共通文**で、
+   * 同じ用途なら一致していて当たり前——そこを混ぜて数えると、
+   * **中身が違うのに「似ている」と出る**（実測：A精度とC短納期が89%。
+   * 中身は「極小の平面／等間隔に並ぶ同形」で、まったく別の絵だった）。
+   * 測りたいものに、測り方を合わせる（D-192）。
+   */
+  const own = (x) => [...x.sig.form, ...x.sig.problem, ...x.sig.act, ...x.sig.time, x.sig.scale,
+    x.plan.language.material].join(", ");
+  let worst = { r: 0, pair: "" }, worstAll = { r: 0, pair: "" };
+  for (let i = 0; i < plans.length; i++) {
+    for (let j = i + 1; j < plans.length; j++) {
+      const r = overlap(own(plans[i]), own(plans[j]));
+      if (r > worst.r) worst = { r, pair: `${plans[i].name} × ${plans[j].name}` };
+      const a = plans[i].plan.visuals[0], b = plans[j].plan.visuals[0];
+      if (!a || !b) continue;
+      const ra = overlap(a.prompt, b.prompt);
+      if (ra > worstAll.r) worstAll = { r: ra, pair: `${plans[i].name} × ${plans[j].name}` };
+    }
+  }
+  check("どの2社を並べても、会社から来た部分が8割以上は一致しない", worst.r < 0.8,
+    `最も似ている組：${worst.pair} ${(worst.r * 100).toFixed(0)}%`);
+  /** 安全網。**全文が丸ごと同じなら、それは会社を見ていない** */
+  check("どの2社を並べても、プロンプト全文が同一ではない", worstAll.r < 0.95,
+    `最も似ている組：${worstAll.pair} ${(worstAll.r * 100).toFixed(0)}%`);
+
+  /** ③ 同じ会社でも、ページ目的が違えば別のプロンプトになるか */
+  const one = plans.find((x) => x.plan.visuals.length >= 3);
+  if (one) {
+    const ps = one.plan.visuals.map((v) => v.prompt);
+    const uniq = new Set(ps).size;
+    check("同じ会社でも、ページ目的ごとにプロンプトが違う", uniq === ps.length, `${uniq}/${ps.length}`);
+    let sim = 0;
+    for (let i = 1; i < ps.length; i++) sim = Math.max(sim, overlap(ps[0], ps[i]));
+    check("同じ会社の中でも、用途どうしが9割以上は一致しない", sim < 0.9, `${(sim * 100).toFixed(0)}%`);
+    /** **用途ごとに主役が違う**（同じ絵を4枚作らない） */
+    /** **用途ごとに主役の手がかりが違う**（同じ会社に似た絵を4枚作らない） */
+    const leads = one.plan.visuals.map((v) => v.prompt.split(", ")[2]);
+    check("用途ごとに、主役にしている手がかりが違う", new Set(leads).size >= 3,
+      leads.map((x) => (x ?? "").slice(0, 24)).join(" / "));
+    check("用途ごとに、視点（viewpoint）が違う",
+      new Set(one.plan.visuals.map((v) => /view[^,]*/.exec(v.prompt)?.[0])).size >= 2);
+  }
+
+  /** ④ 画像生成に渡して意味のある項目が、すべて入っているか */
+  const need = [/focal point at \d+%/, /aspect ratio/, /cropped to/, /negative space/, /view/, /composition/];
+  const missing = [];
+  for (const x of plans) for (const v of x.plan.visuals) {
+    for (const re of need) if (!re.test(v.prompt)) missing.push(`${x.name}/${v.purpose}:${re}`);
+  }
+  check("焦点・比・モバイル・余白・視点・構図が、全プロンプトに入っている", missing.length === 0,
+    missing.slice(0, 3).join(" "));
+
+  /** ⑤ **数値も固有名詞も絵に渡していない**（事実を捏造させない） */
+  const leaked = [];
+  for (const x of plans) for (const v of x.plan.visuals) {
+    if (/\d+\s*mm|±|ISO\s*\d|\bJIS\b/i.test(v.prompt)) leaked.push(`${x.name}/${v.purpose}`);
+  }
+  check("公差・規格・型番などの数値が、プロンプトに漏れていない", leaked.length === 0, leaked.join(" "));
 }
 
 console.log("\n━━━ 絵が無いとき、画面が動かないか ━━━");
