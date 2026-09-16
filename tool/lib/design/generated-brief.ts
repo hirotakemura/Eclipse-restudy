@@ -140,51 +140,68 @@ export interface CompanySignals {
   from: string[];
 }
 
-/** 手がかり → 視覚の句。**絵の内容ではなく、絵の性質を書く** */
+/**
+ * 手がかり → **画面に見える出来事**（第9段階③で書き直した）。
+ *
+ * 【なぜ書き直したか】
+ * 3枚を実際に生成して分かったのは、**会社の言葉はプロンプトに入っていたのに、
+ * 絵がそれを構造として描けていなかった**こと。3枚とも「淡いアルミの膜が曲がっている」に収束した。
+ * 原因は、ここに書いていたのが「意味の説明」（*value that is not visible* のような）で、
+ * **画像生成に渡しても、画面上の何をどう置くかが決まらない**言い方だったからである。
+ *
+ * だから、変換の鎖をこう決める——
+ *   会社の事実 → 会社の合図 → **視覚的な出来事** → 画面に見える構造
+ * 書くのは、**要素の数・形・位置・接触・距離・重なり・状態の変化・安定／不安定**だけ。
+ * 「精密だ」「誠実だ」のような形容は書かない（絵にならないため）。
+ */
 const CUES: { re: RegExp; kind: "form" | "problem" | "act" | "time"; word: string }[] = [
-  // ── 形 ──
-  { re: /薄肉|薄物|薄板/, kind: "form", word: "extremely thin walled planes, almost translucent at the edge" },
-  { re: /複雑形状|複雑な形状|異形/, kind: "form", word: "compound curvature that changes direction twice" },
-  { re: /小ロット|1個から|試作/, kind: "form", word: "a single unique form, not a repeated series" },
-  { re: /量産|5,000個|数千個/, kind: "form", word: "the same form repeated in an even rank" },
-  { re: /古い設備|部品供給|廃番|型式/, kind: "form", word: "an older surface that has been kept in service" },
-  { re: /浴室|給湯|水まわり|配管/, kind: "form", word: "smooth domestic surfaces and clean water-like reflections" },
-  { re: /半導体|装置部品/, kind: "form", word: "flat precision planes with fine parallel steps" },
-  // ── 課題 ──
-  { re: /歪(み|む)|反(り|る)/, kind: "problem", word: "a plane under tension, minutely out of true" },
-  { re: /ビビ|振動|割れ/, kind: "problem", word: "a threshold where a surface is about to give way" },
-  { re: /断られ|無理と言われ|敬遠/, kind: "problem", word: "a boundary others stopped at, crossed quietly" },
-  { re: /交換|買い替え|全面改装/, kind: "problem", word: "one part renewed inside something otherwise intact" },
-  { re: /価格|相見積/, kind: "problem", word: "value that is not visible in the surface itself" },
-  // ── 行為 ──
-  { re: /治具|支持点|押さえ|固定/, kind: "act", word: "unseen support points holding a fragile shape steady" },
-  { re: /削る順番|加工順序|工程間|段取り/, kind: "act", word: "an ordered sequence of passes, each one lighter" },
-  { re: /休ませ|寝かせ|時間を置/, kind: "act", word: "a pause between two states, stress released" },
-  { re: /図面|設計|意図/, kind: "act", word: "an intention read from a drawing before it is cut" },
-  { re: /測定|検査|三次元/, kind: "act", word: "reference planes from which everything is measured" },
-  { re: /在庫|すぐ|1時間|即日/, kind: "act", word: "everything needed already at hand, nothing waiting" },
-  { re: /修理|直す|探して/, kind: "act", word: "continuity kept rather than replaced" },
+  // ── 形：何を扱っているか ──
+  { re: /薄肉|薄物|薄板/, kind: "form", word: "one continuous sheet thinner than card, its far edge so thin that light passes through it and that edge reads brighter than the body" },
+  { re: /複雑形状|複雑な形状|異形/, kind: "form", word: "a surface that changes direction twice before it leaves the frame, each turn a different radius" },
+  { re: /小ロット|1個から|試作/, kind: "form", word: "one form only, unrepeated, with no identical neighbour anywhere in the frame" },
+  { re: /量産|5,000個|数千個/, kind: "form", word: "identical forms standing in one even rank, the gaps between them equal, none of them singled out" },
+  { re: /古い設備|部品供給|廃番|型式/, kind: "form", word: "one older surface still in service, its finish unevenly worn while its edges stay true" },
+  { re: /浴室|給湯|水まわり|配管/, kind: "form", word: "smooth pale surfaces meeting at soft radii, with water-like reflections lying flat across them" },
+  { re: /半導体|装置部品/, kind: "form", word: "flat planes stepped in fine parallel terraces, every step the same height as the last" },
+  // ── 課題：何を解決しているか ──
+  { re: /歪(み|む)|反(り|る)/, kind: "problem", word: "a plane resting level at three of its four corners while the fourth lifts clear by a small but unmistakable amount" },
+  { re: /ビビ|振動|割れ/, kind: "problem", word: "one fine crease running diagonally inward and stopping halfway, the surface still unbroken" },
+  { re: /断られ|無理と言われ|敬遠/, kind: "problem", word: "one form carried past the line where every other form in the frame stops, alone beyond that line" },
+  { re: /交換|買い替え|全面改装/, kind: "problem", word: "a single element renewed inside an otherwise continuous field, its edges meeting the old field exactly" },
+  { re: /価格|相見積/, kind: "problem", word: "two forms of identical outline, one of them visibly denser in substance than the other" },
+  // ── 行為：何をしているか ──
+  /**
+   * **治具を描かせない。** 支持そのもの（薄い形を複数の点で安定させている関係）だけを描かせる。
+   * 実在の治具・機械部品として読まれないよう、打ち消しは `COMMON_WORLD` と `NEGATIVE_PROMPT` の側に置く。
+   */
+  { re: /治具|支持点|押さえ|固定/, kind: "act", word: "three abstract structural support nodes, rounded and minimal, rising from below to meet the form from underneath, so that the support relationship is visible: where a node touches, the form is perfectly flat, and between nodes it still lifts" },
+  { re: /削る順番|加工順序|工程間|段取り/, kind: "act", word: "the same form shown at successive stages, each stage thinner and more resolved than the one before it" },
+  { re: /休ませ|寝かせ|時間を置/, kind: "act", word: "two states of one form side by side, the second settled flat where the first was still under tension" },
+  { re: /図面|設計|意図/, kind: "act", word: "faint construction lines lying beneath the form, describing its shape before the form itself arrives" },
+  { re: /測定|検査|三次元/, kind: "act", word: "three reference planes meeting at a single corner, every other element positioned from that corner" },
+  { re: /在庫|すぐ|1時間|即日/, kind: "act", word: "every element already in place from the start, with no empty slot left waiting to be filled" },
+  { re: /修理|直す|探して/, kind: "act", word: "a continuous surface whose break has closed, the join readable only as a change of sheen" },
   /**
    * ── ものを作らない会社の手がかり ──────────────
    * **業種で決めているのではない。** 上と同じで、**その会社が話した言葉**を拾っている。
    * 汎用の会社（士業・美容・工務店）で手がかりが0〜1件しか拾えず、
    * **プロンプトが9割一致した**ので足した（検査が先に見つけた）。
    */
-  { re: /規則|条文|協定|法改正|制度/, kind: "form", word: "layered translucent sheets, one aligned over another" },
-  { re: /履歴|記録|カルテ|経過/, kind: "form", word: "a faint trace of every earlier state, still readable" },
-  { re: /築[0-9]+年|old|古い家|住まい|住宅/, kind: "form", word: "a surface that has weathered evenly over a long time" },
-  { re: /髪|施術|薬剤|矯正/, kind: "form", word: "fine filaments falling in one direction, soft and even" },
-  { re: /建て替え|葺き替え|全面|やり直し/, kind: "problem", word: "something whole, kept whole, instead of begun again" },
-  { re: /断られ|対応できない|前例が無い/, kind: "problem", word: "a case no one else would take, held calmly" },
-  { re: /不安|分からな|判断が/, kind: "problem", word: "a blur that resolves as it is looked at longer" },
-  { re: /要らない|不要|勧めてこな|押し売り/, kind: "act", word: "restraint: only the part that needed touching is different" },
-  { re: /現地|現場|見に来|訪問/, kind: "act", word: "attention paid at close range before anything is decided" },
-  { re: /切り分け|原因|見立て/, kind: "act", word: "one true cause separated from what merely looked like it" },
+  { re: /規則|条文|協定|法改正|制度/, kind: "form", word: "translucent sheets stacked and aligned, each one offset from the sheet below it by the same small amount" },
+  { re: /履歴|記録|カルテ|経過/, kind: "form", word: "every earlier position of the form still faintly present behind the position it holds now" },
+  { re: /築[0-9]+年|old|古い家|住まい|住宅/, kind: "form", word: "one surface weathered evenly across its whole area, with no sharp new patch anywhere on it" },
+  { re: /髪|施術|薬剤|矯正/, kind: "form", word: "fine filaments falling in one direction, evenly spaced, not one of them crossing another" },
+  { re: /建て替え|葺き替え|全面|やり直し/, kind: "problem", word: "one whole form kept whole, with a single small area inside it renewed and the rest untouched" },
+  { re: /断られ|対応できない|前例が無い/, kind: "problem", word: "one form held steady well beyond the point where the forms around it have already come to rest" },
+  { re: /不安|分からな|判断が/, kind: "problem", word: "an edge that is soft and unreadable at the margin and resolves into one sharp line toward the centre" },
+  { re: /要らない|不要|勧めてこな|押し売り/, kind: "act", word: "one area of the field visibly changed while everything around it is left exactly as it was" },
+  { re: /現地|現場|見に来|訪問/, kind: "act", word: "the surface held close enough to fill the frame before any other element is allowed in" },
+  { re: /切り分け|原因|見立て/, kind: "act", word: "one strand lifted clear of a bundle and laid apart from the rest, still parallel to them" },
   // ── 続いてきた時間（会社の帯だけが使う） ──
-  { re: /創業|創立|明治|大正|昭和|19[0-9]{2}年/, kind: "time", word: "many thin layers settled one on another over decades" },
-  { re: /代替わり|二代目|三代目|承継|先代/, kind: "time", word: "two surfaces of different age meeting without a seam" },
-  { re: /続け|変わらず|守っ|以来/, kind: "time", word: "an unchanged surface, worn only by use" },
-  { re: /家族|社員[0-9]+名|少人数/, kind: "time", word: "a small number of elements, each one distinct" },
+  { re: /創業|創立|明治|大正|昭和|19[0-9]{2}年/, kind: "time", word: "many thin layers settled one on another, the oldest of them compressed thinnest at the bottom" },
+  { re: /代替わり|二代目|三代目|承継|先代/, kind: "time", word: "two surfaces of different age meeting edge to edge with no seam between them" },
+  { re: /続け|変わらず|守っ|以来/, kind: "time", word: "one unchanged surface whose only variation is the polish left by long use" },
+  { re: /家族|社員[0-9]+名|少人数/, kind: "time", word: "a small number of distinct elements, each a different size, not one of them repeated" },
 ];
 
 /** 公差の桁から、絵の「距離」を決める。**数字は絵に書かせない**（言うのは距離だけ） */
@@ -209,7 +226,10 @@ export function companySignals(project: Project): CompanySignals {
     ...(P?.cases ?? []).flatMap((c: any) => [c?.title, c?.challenge, c?.solution]),
     ...(P?.capability?.materials ?? []),
     P?.inquiry?.wantMoreOf, P?.inquiry?.wantLessOf,
-    P?.basics?.summary, P?.basics?.history, P?.basics?.founded, P?.executive?.vision,
+    /** **書いてある欄の名前で読む。** `basics.summary` は存在しない欄で、ずっと空を読んでいた（D-197） */
+    P?.basics?.businessSummary, P?.basics?.founded,
+    ...(P?.basics?.history ?? []).map((h: any) => h?.event),
+    P?.executive?.vision, P?.executive?.messageToStaff,
   ].filter((x): x is string => typeof x === "string");
   const joined = texts.join("　");
 
@@ -225,10 +245,36 @@ export function companySignals(project: Project): CompanySignals {
 }
 
 /** 用途ごとの置き場所と、構図の方針。**全帯には入れない**（4つだけ） */
-const PURPOSE: Record<GeneratedPurpose, {
+export const PURPOSE: Record<GeneratedPurpose, {
   page: string; slot: string; role: GeneratedVisual["placement"]["role"];
   aspect: string; cropSafe: string; textSafe: GeneratedVisual["mobile"]["textSafeArea"];
   focal: { x: number; y: number }; composition: string; why: string;
+  /**
+   * **そのページだけの視覚的な出来事**（第9段階③）。
+   * 会社の手がかりが「何が写っているか」を決め、こちらが「**それを何個、どう並べるか**」を決める。
+   * ここを分けたので、同じ会社でも hero と strength と peak で**画面の構造そのものが変わる。**
+   */
+  arrangement: string;
+  /** 奥行き。**視点だけでなく、光がその構造をどう読ませるか**まで書く */
+  depth: string;
+  /**
+   * 主役の手がかりを何本立てるか／背景の手がかりを何本添えるか。
+   *
+   * **会社の帯だけ 1 + 2 にしてある。** 続いてきた時間の手がかり（創業・代替わり・家族）は
+   * **どの会社でも似た言葉が拾える**ので、ここを2本にすると
+   * 「1972年創業・三代目・家族経営」の会社どうしで**同じ絵の注文になる**（検査が実測92%で見つけた）。
+   * 時間は1本にして、残りはその会社が実際にやっていること（形・行為）から埋める。
+   */
+  leadCount: number; secondCount: number;
+  /**
+   * 背景の手がかりをどの種類から借りるか。**順に見て、足りるまで取る。**
+   *
+   * ここを固定順（形→行為→課題）にしていたら、どの会社も**背景がその会社の最初の「形」**になり、
+   * 似た業種の2社で**strengthの出来事が76%一致した**（検査が見つけた）。
+   * 技術の帯なら「やっていること（行為）＋解いている課題」、
+   * 会社の帯なら「時間＋扱っているもの」——**帯の話に合う種類から借りる。**
+   */
+  secondFrom: ("form" | "act" | "problem" | "time")[];
   /**
    * **その絵が担う視覚的役割**（第9段階②）。
    * 同じ会社でも、ページの目的が違えば**主役にする手がかりが変わる。**
@@ -245,7 +291,13 @@ const PURPOSE: Record<GeneratedPurpose, {
      *  「見出しが乗るので空ける」は「空ける」とだけ書く */
     composition: "wide asymmetric composition, interest on the right third, "
       + "large calm empty area across the left third",
-    lead: "form", viewpoint: "shallow oblique view, long lens, almost flat perspective",
+    arrangement: "one continuous element alone in the frame, nothing supporting it and nothing else beside it, "
+      + "so that it rests on nothing and sags very slightly under its own weight, "
+      + "shown at its full extent",
+    lead: "form", leadCount: 2, secondCount: 0, secondFrom: [],
+    viewpoint: "shallow oblique view, long lens, almost flat perspective",
+    depth: "the near edge sharp and the far edge falling very slightly soft, "
+      + "thickness rather than shadow separating near from far",
     why: "最初の画面。**扱っているものの形**を、いちばん静かに出す。見出しと札が上に乗るので左は空ける",
   },
   strength: {
@@ -253,21 +305,39 @@ const PURPOSE: Record<GeneratedPurpose, {
     aspect: "16:9", cropSafe: "1:1", textSafe: "bottom", focal: { x: 0.5, y: 0.35 },
     composition: "directional composition reading left to right, change of state across the frame, "
       + "quiet empty lower half",
-    lead: "act", viewpoint: "close raking view along the surface, shallow depth",
+    arrangement: "the same element repeated five times in a row from left to right, "
+      + "read as five ordered stages of one process, "
+      + "the difference from each stage to the next small and always in the same direction",
+    lead: "act", leadCount: 2, secondCount: 1, secondFrom: ["problem", "form"],
+    viewpoint: "close raking view along the surface, shallow depth",
+    depth: "light skimming almost parallel to the surface, so that every lift away from a contact point "
+      + "reads as a soft elongated shadow and every flat area reads as one unbroken tone",
     why: "技術の帯。**その会社が何をしているか（工程・行為）**を主役にする。下半分は文章に空ける",
   },
   company: {
     page: "company", slot: "history", role: "background",
     aspect: "16:9", cropSafe: "1:1", textSafe: "none", focal: { x: 0.5, y: 0.5 },
     composition: "very quiet full-frame texture, layered and settled, no focal object, even distribution",
-    lead: "time", viewpoint: "straight-on view, flat and frontal",
+    arrangement: "no single dominant element, the whole frame evenly filled by one accumulation, "
+      + "every part of it the same distance away and none of it nearer the edge than another, "
+      + "the whole of it already settled rather than still changing",
+    lead: "time", leadCount: 1, secondCount: 2, secondFrom: ["form", "act"],
+    viewpoint: "straight-on view, flat and frontal",
+    depth: "deep focus throughout, light without direction, "
+      + "the layers separating only as faint steps of value",
     why: "会社の帯。**積み重なった時間**を出す。焦点を作らず、地に沈める",
   },
   peak: {
     page: "index", slot: "declined", role: "background",
     aspect: "16:9", cropSafe: "4:5", textSafe: "top", focal: { x: 0.5, y: 0.6 },
     composition: "single tense form off-centre, generous margin, upper area kept empty",
-    lead: "problem", viewpoint: "low oblique view, slight tension in the horizon",
+    arrangement: "one element alone in a wide calm field, most of its area completely at rest "
+      + "and one local area, off centre, that is not, "
+      + "the imbalance staying local and never spreading across the whole form",
+    lead: "problem", leadCount: 2, secondCount: 1, secondFrom: ["form", "act"],
+    viewpoint: "low oblique view, slight tension in the horizon",
+    depth: "the resting area in even focus, the one area that is not at rest catching "
+      + "a fractionally brighter reflection than everything around it",
     why: "中盤の山。**その会社が解決している課題**を主役にする。実写があるときは作らない",
   },
 };
@@ -275,20 +345,49 @@ const PURPOSE: Record<GeneratedPurpose, {
 const SUBJECT_FOR = (lang: ReturnType<typeof getVisualLanguage>, i: number): AssetSubject =>
   lang.subjects[i % Math.max(lang.subjects.length, 1)] ?? "geometry";
 
+/** プロンプトの4節。**この順で読ませる**（何が写るか → 枠 → 奥行き → 世界） */
+export const PROMPT_SECTIONS = ["SUBJECT", "FRAME", "DEPTH", "WORLD"] as const;
+export type PromptSection = (typeof PROMPT_SECTIONS)[number];
+
 /**
- * プロンプトを組む（第9段階②で作り直した）。
+ * **会社にもページにも依らない部分。**
  *
- * **汎用の一文にしない**（ご指示）。入れるのは次の13で、
- * **そのうち3つ（役割の手がかり・尺度・材質）は、その会社の言葉から来ている。**
+ * 3枚を見たうえでのご判断で、`pale aluminium` などの共通世界観は今回変えない。
+ * 変えるのは SUBJECT の作り方だけである。ここに置くのは**どの会社でも同じ打ち消し**——
+ * 支持を描かせるときに、**実在の治具・機械部品として読まれないための歯止め**を含む。
+ */
+export const COMMON_WORLD = "abstract non-representational image, used as a quiet background layer "
+  + "on a company website, purely abstract, not a fixture, "
+  + "not a recognisable manufactured component, no readable mark of any kind";
+
+/** 4節に切り分ける。**検査が「どこが会社固有で、どこが共通か」を別々に測れるように**（ご指示） */
+export function promptSections(prompt: string): Record<PromptSection, string> {
+  const out = { SUBJECT: "", FRAME: "", DEPTH: "", WORLD: "" };
+  for (const line of prompt.split("\n")) {
+    const m = /^(SUBJECT|FRAME|DEPTH|WORLD)\.\s*(.*)$/.exec(line);
+    if (m) out[m[1] as PromptSection] = m[2] ?? "";
+  }
+  return out;
+}
+
+/**
+ * プロンプトを組む（第9段階③で4節に作り直した）。
  *
- *   visual purpose ／ subject ／ **会社固有の手がかり** ／ material ／ composition ／
- *   focal point ／ negative space ／ text-safe area ／ lighting ／ visual density ／
- *   viewpoint ／ aspect ratio ／ mobile crop
+ * 【なぜ作り直したか】
+ * 3枚を実際に生成してみると、**会社固有の言葉は入っているのに、絵が同じ顔**になった。
+ * 「薄い淡色のアルミ面が曲がっている」に3枚とも収束していた。
+ * 足りなかったのは会社の言葉ではなく、**その意味を画面の構造へ翻訳する段**である。
  *
- * 【1枚目を作って分かったこと】
- * 勝ち筋そのままの言葉（`material transformation`）は**抽象すぎて絵にならず、
- * アルミを扱うどの会社でも成立する絵**が返ってきた。
- * **絵にするのは、その会社が実際に話したことのほう**である。
+ * そこで、平らなカンマ列をやめて4節にした。
+ *
+ *   SUBJECT  **何が、何個、どう置かれ、どこで接し、どう変わるか。**
+ *            ここだけが会社固有＋ページ固有で、ここが絵の違いを作る。
+ *   FRAME    構図・焦点・空ける側・比・スマホの切り取り。
+ *   DEPTH    視点と、**光がその構造をどう読ませるか。**
+ *   WORLD    材質・光・気分・密度と、共通の打ち消し。**ここは今回変えない。**
+ *
+ * 変換の鎖は 会社の事実 → 会社の合図 → 視覚的な出来事 → 画面に見える構造。
+ * **会社固有の単語を大量に入れるのではない。**
  */
 function promptOf(
   plan: VisualLanguagePlan, subject: AssetSubject,
@@ -307,13 +406,16 @@ function promptOf(
     : spec.lead === "problem" ? sig.problem
     : sig.time;
   /** 主役が空なら、次に厚いところから1つだけ借りる。**無ければ足さない** */
-  const borrowed = lead.length ? lead.slice(0, 2)
+  const borrowed = lead.length ? lead.slice(0, spec.leadCount)
     : [...sig.act, ...sig.form, ...sig.problem].slice(0, 1);
-  /** 会社の話は主役にするが、**背景の手がかりも1つだけ添える**（絵に厚みを出す） */
-  const second = [...sig.form, ...sig.act, ...sig.problem].filter((w) => !borrowed.includes(w)).slice(0, 1);
+  /**
+   * 背景の手がかりを添える。**hero では添えない**——
+   * hero の並べ方は「何も支えていない、ただ1つ」なので、
+   * ここで支持や工程の手がかりが混ざると**画面の中で矛盾する。**
+   */
+  const second = spec.secondFrom.flatMap((k) => sig[k])
+    .filter((w) => !borrowed.includes(w)).slice(0, spec.secondCount);
 
-  const focal = `focal point at ${Math.round(spec.focal.x * 100)}% from the left, `
-    + `${Math.round(spec.focal.y * 100)}% from the top`;
   /**
    * **「文字が乗る」と書けない。** `text` は打ち消しに入れている語なので、
    * 注文書の側に書くと `assertGenerated` が弾く（実際に2度弾かれた）。
@@ -323,25 +425,32 @@ function promptOf(
     ? "no single area needs to stay clear, keep the whole frame quiet"
     : `keep the ${spec.textSafe} area of the frame clear and low in contrast, page copy is overlaid there`;
 
-  return [
-    "abstract non-representational image, used as a quiet background layer on a company website",
+  /** ① 何が、何個、どう置かれ、どう変わるか。**ここだけが絵の違いを作る** */
+  const SUBJECT = [
     SUBJECT_WORDS[subject] ?? SUBJECT_WORDS.geometry,
+    spec.arrangement,
     ...borrowed,
     ...second,
-    plan.material,
-    sig.scale,
+  ].join(". ");
+
+  /** ② 枠。**画面に置くための指定**（生成の出来ではなく、サイトでの使い勝手を決める） */
+  const FRAME = [
     spec.composition,
-    focal,
+    `focal point at ${Math.round(spec.focal.x * 100)}% from the left, `
+      + `${Math.round(spec.focal.y * 100)}% from the top`,
     safe,
-    "generous negative space",
-    spec.viewpoint,
-    plan.lighting,
-    plan.mood,
-    plan.density,
+    "generous negative space, nothing touching the outer edge",
     `aspect ratio ${spec.aspect}`,
     `must still read when cropped to ${spec.cropSafe} on a phone`,
-    "no recognisable object, no readable mark of any kind",
   ].join(", ");
+
+  /** ③ 奥行き。**どこから見て、光がその構造をどう読ませるか。** 距離は公差の桁から来る */
+  const DEPTH = [spec.viewpoint, spec.depth, sig.scale].join(", ");
+
+  /** ④ 世界。**会社の材質と型の光。共通の打ち消しは最後に置く**（今回は変更しない） */
+  const WORLD = [plan.material, plan.lighting, plan.mood, plan.density, COMMON_WORLD].join(", ");
+
+  return [`SUBJECT. ${SUBJECT}.`, `FRAME. ${FRAME}.`, `DEPTH. ${DEPTH}.`, `WORLD. ${WORLD}.`].join("\n");
 }
 
 /**

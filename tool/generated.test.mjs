@@ -14,7 +14,10 @@ import { composeTop, composePage } from "./lib/design/sections.ts";
 import { composeVisual } from "./lib/design/visual.ts";
 import { composeAssets } from "./lib/design/assets.ts";
 import { sanitizeProject } from "./lib/sanitize.ts";
-import { planGeneratedVisuals, visualLanguageOf, storedPlan, companySignals } from "./lib/design/generated-brief.ts";
+import {
+  planGeneratedVisuals, visualLanguageOf, storedPlan, companySignals,
+  promptSections, PROMPT_SECTIONS, COMMON_WORLD, PURPOSE,
+} from "./lib/design/generated-brief.ts";
 import {
   assertGenerated, assertVisualLanguages, isReady, generatedPath, DRAWABLE, EVIDENTIAL,
   ALLOWED, MAX_GENERATED, VISUAL_LANGUAGES, LANGUAGE_OF, NEGATIVE_PROMPT, FORBIDDEN_IN_PROMPT,
@@ -121,14 +124,20 @@ console.log("\n━━━ 会社ごとに、絵の方針が変わるか ━━━
   }
 }
 
-console.log("\n━━━ 会社固有性：別の会社のプロンプトとして成立しないか（第9段階②）━━━");
+console.log("\n━━━ 会社固有性：会社の出来事 / ページの出来事 / 共通の世界を、別々に測る（第9段階③）━━━");
 {
   /**
    * **ここがこの段のいちばん重要な検査である。**
    *
-   * 1枚目を実際に生成して分かったのは、「アルミを扱うどの会社でも成立する絵」だったこと。
-   * 勝ち筋そのままの言葉は抽象すぎて絵にならないので、**その会社が話した言葉**を拾うようにした。
-   * ここでは「拾えているか」ではなく、**別の会社と入れ替えて成立しないか**を見る。
+   * 3枚を実際に生成して分かったのは、**会社の言葉はプロンプトに入っていたのに、
+   * 絵が同じ顔になった**こと。原因は「言葉が足りない」ではなく、
+   * **意味を画面の構造へ翻訳する段が無かった**ことだった。
+   *
+   * だから、文字列が一致するかだけを見ない（ご指示）。
+   * プロンプトを4節に分け、**節ごとに別のことを確かめる。**
+   *   SUBJECT … 会社の出来事＋ページの出来事。**ここだけが絵の違いを作る**
+   *   FRAME / DEPTH … ページの出来事（並べ方・視点・光の当て方）
+   *   WORLD … 共通の世界。**会社の中では1つに揃い、ページで揺れないこと**
    */
   const words = (s) => new Set(s.toLowerCase().split(/[,\s]+/).filter((w) => w.length > 3));
   const overlap = (a, b) => {
@@ -140,22 +149,81 @@ console.log("\n━━━ 会社固有性：別の会社のプロンプトとし�
     const p = load(f);
     return { name, sig: companySignals(p), plan: planGeneratedVisuals(p, analyze(p), "standard") };
   });
+  const all = plans.flatMap((x) => x.plan.visuals.map((v) => ({ co: x.name, sig: x.sig, v, sec: promptSections(v.prompt) })));
 
-  /** ① その会社の言葉から、手がかりを拾えているか */
+  /** 節が4つとも揃っていないと、以下の検査はすべて意味を失う。**先に確かめる** */
+  check("全プロンプトが SUBJECT / FRAME / DEPTH / WORLD の4節になっている",
+    all.every((x) => PROMPT_SECTIONS.every((k) => x.sec[k].trim().length > 0)),
+    all.filter((x) => PROMPT_SECTIONS.some((k) => !x.sec[k].trim())).map((x) => `${x.co}/${x.v.purpose}`).join(" "));
+
+  console.log("\n  ── ① 会社の出来事（company-specific visual event）──");
+  /** その会社の言葉から、手がかりを拾えているか */
   const thin = plans.filter((x) => x.sig.from.length < 2);
   check("6社とも、会社の言葉から手がかりを2つ以上拾えている", thin.length === 0,
     thin.map((x) => `${x.name}:${x.sig.from.length}`).join(" "));
 
+  /** **拾った手がかりが、SUBJECT節に出来事として入っているか**（拾って捨てていない） */
+  const dropped = all.filter((x) => {
+    const events = [...x.sig.form, ...x.sig.problem, ...x.sig.act, ...x.sig.time];
+    return !events.some((e) => x.sec.SUBJECT.includes(e));
+  });
+  check("どのプロンプトでも、会社から拾った出来事が SUBJECT に入っている", dropped.length === 0,
+    dropped.map((x) => `${x.co}/${x.v.purpose}`).join(" "));
+
   /**
-   * ② 会社どうしで、同じ絵の注文になっていないか。
-   *
-   * **測るのは「会社から来た部分」だけ**である。
-   * プロンプトの後半（構図・光・比・モバイル・打ち消し）は**用途ごとの共通文**で、
-   * 同じ用途なら一致していて当たり前——そこを混ぜて数えると、
-   * **中身が違うのに「似ている」と出る**（実測：A精度とC短納期が89%。
-   * 中身は「極小の平面／等間隔に並ぶ同形」で、まったく別の絵だった）。
-   * 測りたいものに、測り方を合わせる（D-192）。
+   * **別の会社のプロンプトとして、そのまま成立しないか。**
+   * 測るのは SUBJECT 節だけである。FRAME / DEPTH / WORLD は用途と型で決まる共通文で、
+   * そこを混ぜて数えると**中身が違うのに「似ている」と出る**（D-372・実測89%）。
    */
+  /**
+   * **並べ方を混ぜて数えない。** SUBJECT には「会社の出来事」と「ページの並べ方」が両方入っていて、
+   * 並べ方は同じ用途なら一致していて当たり前である。混ぜると**中身が違うのに似ていると出る**
+   * （D-372と同じ罠を、ここでもう一度踏んだ。実測92%の中身は共通の並べ方だった）。
+   * 数えるのは、**会社から来た出来事だけ**——SUBJECT の3文目以降である。
+   */
+  const eventsOf = (x) => x.sec.SUBJECT.split(". ").slice(2).join(". ");
+  let worstSub = { r: 0, pair: "" };
+  for (const purpose of ["firstView", "strength", "company", "peak"]) {
+    const here = all.filter((x) => x.v.purpose === purpose);
+    for (let i = 0; i < here.length; i++) {
+      for (let j = i + 1; j < here.length; j++) {
+        const r = overlap(eventsOf(here[i]), eventsOf(here[j]));
+        if (r > worstSub.r) worstSub = { r, pair: `${purpose}：${here[i].co} × ${here[j].co}` };
+      }
+    }
+  }
+  /**
+   * **しきい値は 8割。** 7割で一度赤くしてみたが、赤くなったのは
+   * 「どちらも治具を自社で作り、どちらも加工順序を組み直す」2社の技術の帯だった。
+   * それは**測り方の誤りでも実装の欠陥でもなく、その2社が実際に似ている**という正しい読みである。
+   * 割合だけに頼らず、下の「組み合わせが潰れていないか」と**2本立てで見る。**
+   */
+  check("同じ用途で会社を入れ替えても、会社から来た出来事が8割以上は一致しない", worstSub.r < 0.8,
+    `最も似ている組：${worstSub.pair} ${(worstSub.r * 100).toFixed(0)}%`);
+  /**
+   * **割合より、こちらのほうが効く。** 6社ぶんの出来事の組み合わせが、
+   * 用途ごとに**1つも重なっていないこと**——重なったら、その2社は絵を取り違えても気づけない。
+   */
+  const same = [];
+  for (const purpose of ["firstView", "strength", "company", "peak"]) {
+    const here = all.filter((x) => x.v.purpose === purpose);
+    const set = new Set(here.map(eventsOf));
+    if (set.size !== here.length) same.push(`${purpose} ${set.size}/${here.length}`);
+  }
+  check("用途ごとに、6社の「会社から来た出来事」の組み合わせが1つも重なっていない",
+    same.length === 0, same.join(" "));
+  /** **会社の出来事が空でないこと。** 空どうしは一致0%になり、上の検査をすり抜ける */
+  check("どのプロンプトにも、会社から来た出来事が1つ以上ある",
+    all.every((x) => eventsOf(x).trim().length > 0));
+  /** 同じ用途で、6社ぶんの SUBJECT が1つも重なっていないこと（丸ごと流用できない） */
+  const collide = [];
+  for (const purpose of ["firstView", "strength", "company", "peak"]) {
+    const here = all.filter((x) => x.v.purpose === purpose).map((x) => x.sec.SUBJECT);
+    if (new Set(here).size !== here.length) collide.push(purpose);
+  }
+  check("同じ用途で、SUBJECT が完全一致する会社の組が無い", collide.length === 0, collide.join(" "));
+
+  /** 安全網。**会社から来た部分**（手がかり＋尺度＋材質）どうしと、全文の両方を見る */
   const own = (x) => [...x.sig.form, ...x.sig.problem, ...x.sig.act, ...x.sig.time, x.sig.scale,
     x.plan.language.material].join(", ");
   let worst = { r: 0, pair: "" }, worstAll = { r: 0, pair: "" };
@@ -171,43 +239,81 @@ console.log("\n━━━ 会社固有性：別の会社のプロンプトとし�
   }
   check("どの2社を並べても、会社から来た部分が8割以上は一致しない", worst.r < 0.8,
     `最も似ている組：${worst.pair} ${(worst.r * 100).toFixed(0)}%`);
-  /** 安全網。**全文が丸ごと同じなら、それは会社を見ていない** */
   check("どの2社を並べても、プロンプト全文が同一ではない", worstAll.r < 0.95,
     `最も似ている組：${worstAll.pair} ${(worstAll.r * 100).toFixed(0)}%`);
 
-  /** ③ 同じ会社でも、ページ目的が違えば別のプロンプトになるか */
+  console.log("\n  ── ② ページの出来事（page-specific visual event）──");
+  /** **並べ方は用途のもの。** その用途のプロンプトにだけ入っていること */
+  const misplaced = [];
+  for (const x of all) {
+    if (!x.sec.SUBJECT.includes(PURPOSE[x.v.purpose].arrangement)) misplaced.push(`欠:${x.co}/${x.v.purpose}`);
+    for (const [k, spec] of Object.entries(PURPOSE)) {
+      if (k !== x.v.purpose && x.sec.SUBJECT.includes(spec.arrangement)) misplaced.push(`混:${x.co}/${x.v.purpose}←${k}`);
+    }
+  }
+  check("並べ方（要素数・位置・状態変化）が、その用途のプロンプトにだけ入っている",
+    misplaced.length === 0, misplaced.slice(0, 3).join(" "));
+
+  /** **画面に見える言葉になっているか。** 「精密」「誠実」では絵にならない（第9段階③の眼目） */
+  const NEEDS = [
+    ["要素数", /\b(one|two|three|four|five|many|each|every|identical|single)\b/],
+    ["位置関係", /\b(left|right|above|below|beneath|underneath|behind|beside|between|centre|corner|edge|apart|bottom)\b/],
+    ["接触・状態変化", /\b(meet|meets|meeting|touch|touches|rest|rests|resting|lift|lifts|settled|stage|stages|change|changes|changing|renewed|resolved|unbroken)\b/],
+  ];
+  const vague = [];
+  for (const x of all) for (const [label, re] of NEEDS) if (!re.test(x.sec.SUBJECT)) vague.push(`${x.co}/${x.v.purpose}:${label}`);
+  check("SUBJECT に、要素数・位置関係・接触／状態変化がすべて書かれている", vague.length === 0,
+    vague.slice(0, 4).join(" "));
+
+  /** 同じ会社でも、ページ目的が違えば別の絵になるか */
   const one = plans.find((x) => x.plan.visuals.length >= 3);
   if (one) {
-    const ps = one.plan.visuals.map((v) => v.prompt);
-    const uniq = new Set(ps).size;
-    check("同じ会社でも、ページ目的ごとにプロンプトが違う", uniq === ps.length, `${uniq}/${ps.length}`);
+    const secs = one.plan.visuals.map((v) => promptSections(v.prompt));
+    check("同じ会社でも、ページ目的ごとにプロンプトが違う",
+      new Set(one.plan.visuals.map((v) => v.prompt)).size === one.plan.visuals.length);
+    check("同じ会社でも、用途ごとに SUBJECT が違う", new Set(secs.map((s) => s.SUBJECT)).size === secs.length);
+    check("同じ会社でも、用途ごとに DEPTH（視点と光の当て方）が違う",
+      new Set(secs.map((s) => s.DEPTH)).size === secs.length);
     let sim = 0;
-    for (let i = 1; i < ps.length; i++) sim = Math.max(sim, overlap(ps[0], ps[i]));
-    check("同じ会社の中でも、用途どうしが9割以上は一致しない", sim < 0.9, `${(sim * 100).toFixed(0)}%`);
-    /** **用途ごとに主役が違う**（同じ絵を4枚作らない） */
+    for (let i = 1; i < secs.length; i++) sim = Math.max(sim, overlap(secs[0].SUBJECT, secs[i].SUBJECT));
+    check("同じ会社の中でも、用途どうしの SUBJECT が8割以上は一致しない", sim < 0.8, `${(sim * 100).toFixed(0)}%`);
     /** **用途ごとに主役の手がかりが違う**（同じ会社に似た絵を4枚作らない） */
-    const leads = one.plan.visuals.map((v) => v.prompt.split(", ")[2]);
+    const leads = secs.map((s) => s.SUBJECT.split(". ")[2]);
     check("用途ごとに、主役にしている手がかりが違う", new Set(leads).size >= 3,
-      leads.map((x) => (x ?? "").slice(0, 24)).join(" / "));
-    check("用途ごとに、視点（viewpoint）が違う",
-      new Set(one.plan.visuals.map((v) => /view[^,]*/.exec(v.prompt)?.[0])).size >= 2);
+      leads.map((x) => (x ?? "").slice(0, 28)).join(" / "));
   }
 
-  /** ④ 画像生成に渡して意味のある項目が、すべて入っているか */
+  console.log("\n  ── ③ 共通の世界（common world）──");
+  /** **世界観はページで揺れない。** 1社のサイトの中で光と材質が変わると、4枚がばらける */
+  const wobble = plans.filter((x) => new Set(x.plan.visuals.map((v) => promptSections(v.prompt).WORLD)).size > 1);
+  check("1つの会社の中では、WORLD が全用途で完全に一致する", wobble.length === 0,
+    wobble.map((x) => x.name).join(" "));
+  check("共通の打ち消し（COMMON_WORLD）が、全プロンプトに入っている",
+    all.every((x) => x.sec.WORLD.includes(COMMON_WORLD)));
+  /** **共通なのは打ち消しだけ。** 材質と光は会社と型のものなので、会社が違えば WORLD も変わる */
+  check("会社が違えば、WORLD（材質・光）も1種類には潰れていない",
+    new Set(plans.map((x) => promptSections(x.plan.visuals[0]?.prompt ?? "").WORLD)).size >= 3);
+  /** **支持を描かせるときの歯止め**（ご指示）。治具そのものを描かせない */
+  check("支持の出来事を出す会社でも、実在の治具として描かせない歯止めが入っている",
+    all.every((x) => !/support node/.test(x.sec.SUBJECT)
+      || (/not a fixture/.test(x.sec.WORLD) && /abstract structural support nodes/.test(x.sec.SUBJECT))));
+  check("打ち消しの側にも、治具・工具が入っている", /jigs, fixtures/.test(NEGATIVE_PROMPT));
+
+  console.log("\n  ── ④ 生成に渡して意味のある項目 ──");
   const need = [/focal point at \d+%/, /aspect ratio/, /cropped to/, /negative space/, /view/, /composition/];
   const missing = [];
-  for (const x of plans) for (const v of x.plan.visuals) {
-    for (const re of need) if (!re.test(v.prompt)) missing.push(`${x.name}/${v.purpose}:${re}`);
-  }
+  for (const x of all) for (const re of need) if (!re.test(x.v.prompt)) missing.push(`${x.co}/${x.v.purpose}:${re}`);
   check("焦点・比・モバイル・余白・視点・構図が、全プロンプトに入っている", missing.length === 0,
     missing.slice(0, 3).join(" "));
 
-  /** ⑤ **数値も固有名詞も絵に渡していない**（事実を捏造させない） */
-  const leaked = [];
-  for (const x of plans) for (const v of x.plan.visuals) {
-    if (/\d+\s*mm|±|ISO\s*\d|\bJIS\b/i.test(v.prompt)) leaked.push(`${x.name}/${v.purpose}`);
-  }
-  check("公差・規格・型番などの数値が、プロンプトに漏れていない", leaked.length === 0, leaked.join(" "));
+  /** **数値も固有名詞も絵に渡していない**（事実を捏造させない） */
+  const leaked = all.filter((x) => /\d+\s*mm|±|ISO\s*\d|\bJIS\b/i.test(x.v.prompt));
+  check("公差・規格・型番などの数値が、プロンプトに漏れていない", leaked.length === 0,
+    leaked.map((x) => `${x.co}/${x.v.purpose}`).join(" "));
+  /** **禁じた主題を描かせる指示が無い**（打ち消しに書くだけにしない・再掲） */
+  const forbid = all.filter((x) => FORBIDDEN_IN_PROMPT.some((w) => new RegExp(`\\b${w}\\b`).test(x.v.prompt.toLowerCase())));
+  check("実在設備・人・製品・文字を描かせる言葉が、どのプロンプトにも無い", forbid.length === 0,
+    forbid.map((x) => `${x.co}/${x.v.purpose}`).join(" "));
 }
 
 console.log("\n━━━ 絵が無いとき、画面が動かないか ━━━");

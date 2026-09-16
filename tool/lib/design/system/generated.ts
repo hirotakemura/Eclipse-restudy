@@ -103,6 +103,8 @@ export const FORBIDDEN_IN_PROMPT = [
 export const NEGATIVE_PROMPT = [
   "photorealistic factory interior", "generic corporate illustration", "stock photo look",
   "any machinery or equipment", "any product resembling a real manufactured good",
+  /** **支持を描かせるときの歯止め**（第9段階③）。関係だけを描かせ、治具そのものを描かせない */
+  "jigs, fixtures, clamps, tooling, mounts, mechanical hardware",
   "people, workers, hands, faces", "logos, brand marks, signage",
   "text, letters, numbers, measurements, certificates",
   "fake technical specification", "watermark", "3d render clichés, lens flare, bokeh overload",
