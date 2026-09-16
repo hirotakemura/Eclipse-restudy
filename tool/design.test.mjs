@@ -188,15 +188,26 @@ console.log("\n━━━ 動きの原則 ━━━");
   const css = fs.readFileSync("site-template/src/styles/site.css", "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, "");
 
-  /** `@media (prefers-reduced-motion: no-preference) { … }` の中身を取り出す */
-  const start = css.indexOf("@media (prefers-reduced-motion: no-preference)");
-  let depth = 0, i = css.indexOf("{", start), from = i + 1, end = -1;
-  for (; i < css.length; i++) {
-    if (css[i] === "{") depth++;
-    else if (css[i] === "}" && --depth === 0) { end = i; break; }
+  /**
+   * `@media (prefers-reduced-motion: no-preference) { … }` の中身を取り出す。
+   *
+   * **1つとは限らない**（第8段階⑤でスマホのメニューの分が増えた）。
+   * 最初の1つだけを見ていたとき、**本体の動きが「外側」に見えて3件落ちた**
+   * ——製品ではなく検査の側の誤りだったので、全部の塊を集めるようにした。
+   */
+  const blocks = [];
+  for (let at = css.indexOf("@media (prefers-reduced-motion: no-preference)"); at >= 0;
+       at = css.indexOf("@media (prefers-reduced-motion: no-preference)", at + 1)) {
+    let depth = 0, i = css.indexOf("{", at), from = i + 1, end = -1;
+    for (; i < css.length; i++) {
+      if (css[i] === "{") depth++;
+      else if (css[i] === "}" && --depth === 0) { end = i; break; }
+    }
+    blocks.push({ at, from, end });
   }
-  const inside = css.slice(from, end);
-  const outside = css.slice(0, start) + css.slice(end + 1);
+  const inside = blocks.map((b) => css.slice(b.from, b.end)).join("\n");
+  let outside = css;
+  for (const b of [...blocks].reverse()) outside = outside.slice(0, b.at) + outside.slice(b.end + 1);
 
   check("動きは prefers-reduced-motion の中だけに書いてある",
     !/animation-timeline/.test(outside),
@@ -206,8 +217,17 @@ console.log("\n━━━ 動きの原則 ━━━");
    * 最初に書いた検査は、自分で付けた除外処理のせいで**何も検査していなかった。**
    * わざと `opacity: 0` を入れて、落ちることを確かめてある。
    */
+  /**
+   * **ただし「そもそも表示していないもの」は数えない。**
+   * スマホの畳んだメニューは `display: none` と同じ規則で `opacity: 0` にしてある
+   * （開くときだけ透明度で出すため）。**表示していないものは、隠していない。**
+   */
+  const shown = inside
+    /** `@starting-style` は**現れはじめの値**で、止まっている状態ではない */
+    .replace(/@starting-style\s*\{[\s\S]*?\}\s*\}/g, "")
+    .split("}").filter((r) => !/display:\s*none/.test(r)).join("}");
   check("本文を opacity:0 で隠していない",
-    !/opacity:\s*0(?![.\d%])/.test(inside),
+    !/opacity:\s*0(?![.\d%])/.test(shown),
     "動きの中に opacity:0 があります");
   check("動きの中に「見た目の修正」を紛れ込ませていない（D-238）",
     !/data-surface="dark"/.test(inside),

@@ -38,6 +38,14 @@
    * ここを広げても読みにくくならない。効くのは表・カード・写真のほう。
    */
   --max: 1200px;
+  /**
+   * 動きの時間（第8段階⑤・D-363）。
+   * **新しい値は作っていない。** すでにCSSに散っていた 0.18 / 0.5 / 0.7 秒を、
+   * 名前の付いた3つにまとめただけである（書き写した数字を1箇所にする・D-197）。
+   */
+  --m-fast: .18s;   /* 操作に応える（hover / focus） */
+  --m-rise: .5s;    /* 現れる（帯・並んだもの） */
+  --m-peak: .7s;    /* 山・写真 */
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -258,6 +266,21 @@ thead th { width: auto; }
   }
   .site-nav { display: none; }
   .site-nav.open { display: block; }
+  /**
+   * **開閉は透明度だけ**（第8段階⑤・D-363）。
+   * 高さを動かすと、開くたびに下の内容が押し下げられて**読んでいた位置が飛ぶ。**
+   * `allow-discrete` と `@starting-style` は、`display` の切り替えを待たせるための
+   * 指定である。対応していないブラウザでは**いまと同じ瞬時の開閉**になる（壊れない）。
+   */
+  @media (prefers-reduced-motion: no-preference) {
+    /** **`display: none` と同じ規則に書く。** 閉じている間は、そもそも中身が無い */
+    .site-nav {
+      display: none; opacity: 0;
+      transition: opacity var(--m-fast) ease-out, display var(--m-fast) allow-discrete;
+    }
+    .site-nav.open { opacity: 1; }
+    @starting-style { .site-nav.open { opacity: 0; } }
+  }
   .site-nav ul { display: block; padding: 0; }
   .site-nav li + li { border-top: 1px solid var(--line); }
   .site-nav a { padding: 14px 16px; }
@@ -850,6 +873,22 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
   background-size: auto;
 }
 
+/**
+ * ── 焦点（第8段階⑤・D-363）───────────────────
+ *
+ * **キーボードで操作している人にだけ、はっきり見せる。**
+ * これは動きではないので `prefers-reduced-motion` の**外**に置く。常に出す。
+ * 太さも色も、前からある入力欄の指定にそろえる（別の見え方を増やさない）。
+ *
+ * 白抜きの地（accent / dark）と、問い合わせの帯の上では**輪郭も白に倒す**
+ * ——濃い色の輪郭を濃い地に置くと、出ているのに見えない（D-358と同じ理屈）。
+ */
+:is(.btn, .logo, .tel, .site-nav a, .nav-toggle, .inner p a, .prose a, .site-footer a):focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 1px;
+}
+.band:is([data-surface="accent"],[data-surface="dark"]) :is(a, .btn):focus-visible,
+.cta :is(a, .btn):focus-visible { outline-color: #fff; }
+
 /* ── 動き ───────────────────────────────── */
 /*
   **素のHTMLは最初から見えている**（ご指示§16）。
@@ -877,13 +916,13 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
   @supports (animation-timeline: view()) {
     html[data-motion="subtle"] .band,
     html[data-motion="standard"] .band {
-      animation-name: kobo-rise; animation-duration: .5s;
+      animation-name: kobo-rise; animation-duration: var(--m-rise);
       animation-timing-function: ease-out; animation-fill-mode: both;
       animation-timeline: view(); animation-range: entry 0% entry 40%;
     }
 
     html[data-motion="standard"] .figures dd {
-      animation-name: kobo-rise; animation-duration: .6s;
+      animation-name: kobo-rise; animation-duration: var(--m-rise);
       animation-timing-function: ease-out; animation-fill-mode: both;
       animation-timeline: view();
     }
@@ -897,7 +936,7 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
      * **見えている範囲のどこまで来たか**で決まる。時間では決めない。
      */
     html[data-motion="standard"] :is(.cards, .machines, .points, .chips, .process, .gallery, .offer-list) > * {
-      animation-name: kobo-rise; animation-duration: .5s;
+      animation-name: kobo-rise; animation-duration: var(--m-rise);
       animation-timing-function: ease-out; animation-fill-mode: both;
       animation-timeline: view(); animation-range: entry 0% entry 35%;
     }
@@ -922,7 +961,7 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
      * **こちらが値を作ること**になる（D-181）。
      */
     html[data-motion="standard"] .band[data-motif="process"] > .inner > .band-body::before {
-      animation-name: kobo-grow; animation-duration: .6s;
+      animation-name: kobo-grow; animation-duration: var(--m-rise);
       animation-timing-function: ease-out; animation-fill-mode: both;
       animation-timeline: view(); animation-range: entry 0% entry 50%;
       transform-origin: top;
@@ -936,7 +975,7 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
      * 骨格は変わらない。**写真が無ければ、この指定は誰にも当たらない。**
      */
     html[data-motion="standard"] :is(.gallery, .hero-photo, .photo) img {
-      animation-name: kobo-reveal; animation-duration: .7s;
+      animation-name: kobo-reveal; animation-duration: var(--m-peak);
       animation-timing-function: ease-out; animation-fill-mode: both;
       animation-timeline: view(); animation-range: entry 0% entry 45%;
     }
@@ -947,7 +986,7 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
      * **新しい動きは足していない。** 同じ `kobo-rise` を、長い範囲で使うだけ。
      */
     html[data-motion="standard"] .band[data-peak] {
-      animation-duration: .7s; animation-range: entry 0% entry 55%;
+      animation-duration: var(--m-peak); animation-range: entry 0% entry 55%;
     }
   }
 
@@ -956,8 +995,25 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
    * **動きを減らす設定の人には、色の変化だけが残る**（下の hover は外にある）。
    * ここは `animation-timeline` を使わないので `@supports` の外に置く。
    */
-  .case-card, .machine, .offer { transition: transform .18s ease-out, background .18s ease-out; }
+  .case-card, .machine, .offer { transition: transform var(--m-fast) ease-out, background var(--m-fast) ease-out; }
   .case-card:hover, .machine:hover { transform: translateY(-2px); }
+
+  /**
+   * **操作に応える。ただし動かさない**（第8段階⑤・D-363）。
+   *
+   * 押せるものが押せると分かればよいので、変えるのは**色と下線だけ**である。
+   * 位置を動かすと、指とカーソルの下で対象がずれる。
+   *
+   * 色を変えるのは電話番号だけにしてある。本文のリンクの色を変えると、
+   * **白抜きの地（accent / dark）の上で白い文字が濃い色に落ちて読めなくなる**（D-358）。
+   * 下線の太さなら `currentColor` のままなので、どの地の上でも成り立つ。
+   */
+  :is(.btn, .site-nav a, .tel, .inner p a, .prose a, .site-footer a) {
+    transition: color var(--m-fast) ease-out, background-color var(--m-fast) ease-out,
+      text-decoration-thickness var(--m-fast) ease-out;
+  }
+  :is(.inner p, .prose, .site-footer) a:hover { text-decoration-thickness: 2px; }
+  .tel:hover .tel-num { color: var(--accent-dark); }
 }
 @keyframes kobo-grow {
   from { transform: scaleY(0); }

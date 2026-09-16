@@ -655,6 +655,45 @@ console.log("\n━━━ 動きの安全装置（ご指示§16）━━━");
   }
   check("謳っていない動きを、こっそり実装していない",
     !/countUp|parallax/i.test(css));
+
+  /**
+   * ── 仕上げ（第8段階⑤・D-363）────────────────
+   * 足したのは「操作に応える」「焦点を見せる」「メニューは透明度だけ」の3つ。
+   * ここで見るのは**足したものではなく、足さなかったもの**である。
+   */
+  check("動きの時間は、名前の付いた3つから来ている（生の秒数を動きの中に書かない）",
+    !/(animation|transition)-duration:\s*\.\d|transition:[^;]*\s\.\d+s/.test(motion.replace(/@media print[\s\S]*/, "")),
+    (motion.match(/(animation|transition)-duration:\s*\.\d+s/g) ?? []).join(" / "));
+  /** **焦点は動きではない。** 動きを減らす設定の人にも、キーボードの居場所は見えていること */
+  const focusIdx = css.indexOf(":focus-visible {");
+  check("焦点の指定は、動きの外にある（常に出る）",
+    focusIdx >= 0 && focusIdx < css.indexOf("/* ── 動き ──"),
+    `focus ${focusIdx} / motion ${css.indexOf("/* ── 動き ──")}`);
+  /** 押せるものは色と下線だけで応える。**位置は動かさない** */
+  check("リンクとボタンの応答に、位置を動かす指定が無い",
+    !/:is\(\.btn,[^}]*transition:[^}]*transform/.test(motion));
+  /** メニューの開閉は透明度だけ。**高さを動かすと読み位置が飛ぶ** */
+  const nav = css.slice(css.indexOf(".site-nav.open { display: block; }"), css.indexOf(".site-nav ul { display: block;"));
+  check("スマホのメニューは、高さを動かしていない",
+    /transition:\s*opacity/.test(nav) && !/(height|max-height|transform)/.test(nav), nav.slice(0, 80));
+  /** 設計で「やらない」と決めたもの（第8段階④） */
+  /**
+   * **ページが開いた瞬間には、何も動かない。**
+   * 動きの時間軸は `view()`（画面に入ったとき）だけで、時間任せの動きは1つも無い。
+   */
+  /** `@supports` の条件文にも同じ語が出るので、先に外す（それは宣言ではない） */
+  const decls = motion.replace("@supports (animation-timeline: view()) {", "{");
+  const timelines = [...decls.matchAll(/animation-timeline:\s*([^;]+);/g)].map((m) => m[1].trim());
+  check("動きは画面に入ったときだけ（ページが開いた瞬間には動かない）",
+    timelines.length > 0 && timelines.every((x) => x === "view()"), timelines.join(" / "));
+  for (const [word, bad] of [
+    ["ずっと動き続けるもの", /animation-iteration-count:\s*infinite|infinite/],
+    ["指を乗せたときの拡大", /:hover[^}]*transform:\s*scale/],
+    ["指を乗せたときの影", /:hover[^}]*box-shadow/],
+  ]) check(`「${word}」を実装していない`, !bad.test(css), word);
+  /** **大きく動かさない。** 20pxを超える移動は、読み位置を持っていかれる */
+  const moves = [...css.matchAll(/translateY\((-?\d+)px\)/g)].map((m) => Math.abs(Number(m[1])));
+  check("20pxを超える移動が無い", moves.every((x) => x <= 20), moves.join(","));
 }
 
 console.log("\n━━━ 山は、画面で本当に大きくなるか（第7段階③）━━━");
