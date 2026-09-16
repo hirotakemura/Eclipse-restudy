@@ -101,9 +101,22 @@ export interface LibraryAsset {
 /**
  * **最小セット。**
  *
- * 2枚しかない。増やすことを目的にしない（ご指示・原則①）。
- * どちらも**KOBOが作ったもの**なので、権利の確認が要らず、
+ * 4枚しかない。増やすことを目的にしない（ご指示・原則①）。
+ * どれも**KOBOが作ったもの**なので、権利の確認が要らず、
  * **会社の物も人も写っていない**ので、お客様の実績と取り違えられない。
+ *
+ * 【2枚から4枚にした理由】（第8段階②）
+ * 実測すると、**紙の目1枚を4つの型で共有**していた（product / classic / editorial / luxury）。
+ * 型ごとに色も書体も余白も変えているのに、**地の目だけが全部同じ**になる。
+ * 足したのは2枚だけで、**主題は `texture` のまま**（新しい subject も面も地紋も作っていない）。
+ *
+ *   紙 paper-grain　　… 読み物（editorial）
+ *   布 linen-grain　　… 老舗・職人（craft）
+ *   木 wood-grain　　 … 落ち着き・信頼（classic）
+ *   金属 metal-hairline… 静か・上質（luxury）／製品・開発（product）
+ *
+ * **4枚とも、並べて撮って目で確かめてある。** 向きと細かさが違うので、
+ * 拡大しなくても別のものとして読める（横の繊維／縦のうねり／規則的な筋／均一な粒）。
  */
 export const LIBRARY: LibraryAsset[] = [
   {
@@ -113,21 +126,14 @@ export const LIBRARY: LibraryAsset[] = [
     role: "background",
     subject: "texture",
     /**
-     * **紙の地を使わない型で、素材の目を求めている型だけ。**
+     * **読み物の型だけ。** 文章が主役のページの地は、紙でよい。
      *
      * ここが「graphic で満たせるなら library に行かない」の、表の側の現れである。
-     * 老舗（craft）と落ち着き（classic）も `texture` を求めているが、
-     * **その2つは帯の地そのものが紙（`surface="paper"`）**なので、
-     * 実測すると**空いている帯が必ず紙の帯の隣**になり、ここまで降りてこない。
-     * つまり**すでにCSSが紙の目を出している。** 足すと二重になる。
-     *
-     * `product`（製品・開発）は `texture` を挙げているのに、**構成が紙の地を使わない。**
-     * 沿革・素材の帯（内容そのものが「素材の目」を求める帯）が
-     * 無地の上に置かれるので、**CSSでは出せない紙の目が、そこで初めて要る。**
-     * 読み物（editorial）と静か（luxury）も同じ理由で挙げてあるが、
-     * 実測では空いた帯が出ていない——**出番が無いのが正しい状態**である。
+     * 型が `texture` を挙げていても、**帯の地そのものが紙（`surface="paper"`）**なら
+     * すでにCSSが目を出しているので、ここまで降りてこない（足すと二重になる）。
+     * 降りてくるのは、**構成が紙の地を使わない型**だけである。
      */
-    directions: ["product", "classic", "editorial", "luxury"],
+    directions: ["editorial"],
     license: {
       holder: "KOBO",
       terms: "自社制作・自社保有。商用可・改変可・クレジット不要",
@@ -155,6 +161,49 @@ export const LIBRARY: LibraryAsset[] = [
     usage: { as: "background", maxPerPage: 1, surfaces: ["plain", "soft"] },
     path: "/library/linen-grain.svg",
     note: "布の目。会社の物・人・製品は写っていない",
+  },
+  {
+    id: "wood-grain",
+    source: "library",
+    intent: "atmosphere",
+    role: "background",
+    subject: "texture",
+    /**
+     * 落ち着き・信頼の型だけ。**縦に流れる**ので、横に流れる布とは向きで見分けられる。
+     * 木そのもの（板・什器）を描いているのではない。**目だけ**である。
+     */
+    directions: ["classic"],
+    license: {
+      holder: "KOBO",
+      terms: "自社制作・自社保有。商用可・改変可・クレジット不要",
+      origin: "KOBO内製（SVG・feTurbulence）",
+      checked: "2026-09-16 社長",
+    },
+    usage: { as: "background", maxPerPage: 1, surfaces: ["plain", "soft"] },
+    path: "/library/wood-grain.svg",
+    note: "木の目。会社の物・人・製品は写っていない",
+  },
+  {
+    id: "metal-hairline",
+    source: "library",
+    intent: "atmosphere",
+    role: "background",
+    subject: "texture",
+    /**
+     * 静か・上質（luxury）と、製品・開発（product）。
+     * どちらも**構成が紙の地を使わない**型で、かつ紙の目では硬さが出ない。
+     * **仕上げの筋**であって、金属板や製品を写したものではない。
+     */
+    directions: ["luxury", "product"],
+    license: {
+      holder: "KOBO",
+      terms: "自社制作・自社保有。商用可・改変可・クレジット不要",
+      origin: "KOBO内製（SVG・矩形の繰り返し）",
+      checked: "2026-09-16 社長",
+    },
+    usage: { as: "background", maxPerPage: 1, surfaces: ["plain", "soft"] },
+    path: "/library/metal-hairline.svg",
+    note: "金属の仕上げの筋。会社の物・人・製品は写っていない",
   },
 ];
 

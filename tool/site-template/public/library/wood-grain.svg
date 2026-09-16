@@ -1,0 +1,23 @@
+<!--
+  KOBO 内製の素材。木の目。落ち着き・信頼の型（classic）向け。
+
+  **自社で作ったので権利の確認が要らない**（license.holder = KOBO）。
+  **会社の物・人・製品は写っていない**ので、お客様の実績と取り違えられない。
+
+  【布の目との描き分け】
+  布（linen-grain）は `fractalNoise` の細かい繊維で、**横に流れている。**
+  木も同じ向きに流すと、**画面では「粗い布」にしか見えなかった**（並べて撮って気づいた）。
+  木は**縦に流す。** 立てた材の木口のように、長いうねりが縦に走る。
+  向きが違えば、目の細かさを見なくても別のものとして読める。
+  年輪そのものを線で描くことはしない——**線で描くと「木の絵」になる。**
+  ここで要るのは絵ではなく地である。
+
+  地が透けるように、白い下地は敷いていない。
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">
+  <filter id="k" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="turbulence" baseFrequency="0.16 0.006" numOctaves="3" seed="19" stitchTiles="stitch"/>
+    <feColorMatrix type="saturate" values="0"/>
+  </filter>
+  <rect width="240" height="240" filter="url(#k)" opacity="0.11"/>
+</svg>

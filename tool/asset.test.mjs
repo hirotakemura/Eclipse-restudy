@@ -498,7 +498,22 @@ console.log("\n━━━ 素材ライブラリ（第5段階）━━━");
   /** **代わりを探しにいかない。** 見つからなければ `undefined` で終わる */
   check("登録外の主題では、素材を返さない", findLibraryAsset("facility", "classic") === undefined);
   check("登録外の型では、素材を返さない", findLibraryAsset("texture", "technical") === undefined);
-  check("挙げてある型でだけ、素材を返す", findLibraryAsset("texture", "classic")?.id === "paper-grain");
+  check("挙げてある型でだけ、素材を返す", findLibraryAsset("texture", "classic")?.id === "wood-grain",
+    findLibraryAsset("texture", "classic")?.id);
+  /**
+   * **型ごとに、地の目が変わる**（第8段階②）。
+   * 前は紙の目1枚を4つの型で共有していた。**色も書体も余白も型ごとに変えているのに、
+   * 地の目だけが全部同じ**という状態だったので、ここで見張る。
+   */
+  {
+    const four = ["craft", "classic", "editorial", "luxury"].map((d) => findLibraryAsset("texture", d)?.id);
+    check("老舗・落ち着き・読み物・静かの4型が、それぞれ別の地の目を持つ",
+      new Set(four).size === 4 && four.every(Boolean), four.join(" / "));
+  }
+  /** **表に書いた素材が、実在すること。** 書き写した表はいつかずれる（D-197） */
+  for (const x of LIBRARY) {
+    check(`素材「${x.id}」の実体がある`, fs.existsSync(`site-template/public${x.path}`), x.path);
+  }
 
   /**
    * **生成画像に到達する経路が無い**（ご指示）。
