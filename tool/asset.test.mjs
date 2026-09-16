@@ -664,5 +664,48 @@ console.log("\n━━━ 素材ライブラリ（第5段階）━━━");
   }
 }
 
+console.log("\n━━━ 地紋の間隔（第8段階③）━━━");
+{
+  /**
+   * **同じ地紋を隣どうしに置かない**（D-362）。
+   * その型で選ばれる地紋は1つなので、強い帯（`lead`）が続くと
+   * **まったく同じ模様が隣に並ぶ。** 2度目は模様として読まれない。
+   * 装飾どうしに課した「2本以上離す」（D-324）と同じ規則を、地紋にも当てている。
+   */
+  const FIXES = [
+    ["design-diversity", "a-precision.json"], ["design-diversity", "b-difficulty.json"],
+    ["design-diversity", "c-speed.json"], ["visual-general", "g-a-service.json"],
+    ["visual-general", "g-b-brand.json"], ["visual-general", "g-c-people.json"],
+  ];
+  const PG = ["strengths", "capability", "equipment", "cases", "case", "company", "message", "recruit", "contact"];
+  const bad = [];
+  let withMotif = 0;
+  for (const [dir, f] of FIXES) {
+    const pj = JSON.parse(fs.readFileSync(`fixtures/${dir}/${f}`, "utf8"));
+    for (const photos of [[], pj.photos ?? []]) {
+      const p2 = { ...pj, photos };
+      const a2 = analyze(p2);
+      for (const d of DIRECTIONS) {
+        const sets = [["index", composeTop(p2, a2, { direction: d.id, hasProse: false })],
+          /** **型は下層ページにも渡す。** 渡さないと、この検査は型を1つも見ていないことになる */
+          ...PG.map((pg) => { try { return [pg, composePage(pg, p2, a2, { direction: d.id })]; } catch { return [pg, []]; } })];
+        for (const [nm, secs] of sets) {
+          const body = secs.filter((x) => x.kind !== "hero");
+          withMotif += body.filter((x) => x.motif !== "none").length;
+          for (let i = 1; i < body.length; i++) {
+            if (body[i].motif !== "none" && body[i].motif === body[i - 1].motif) {
+              bad.push(`${d.id}/${nm} ${body[i].motif}`);
+            }
+          }
+        }
+      }
+    }
+  }
+  check("同じ地紋が隣どうしに出ない（6社 × 全15型 × 写真0/あり）", bad.length === 0,
+    `${bad.length}件 ${[...new Set(bad)].slice(0, 4).join(" / ")}`);
+  /** **落としすぎていないこと。** 地紋そのものが消えたら、規則ではなく削除である */
+  check("地紋は残っている（間隔を空けただけで、消してはいない）", withMotif > 0, `${withMotif}本`);
+}
+
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);
 process.exit(ng ? 1 : 0);

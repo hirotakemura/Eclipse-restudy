@@ -332,6 +332,23 @@ function decorate(
  * **可否表と材料の条件を必ず通す**（D-206）。
  * 例：精度が強みでも、具体的な精度の値が無ければ「大きな数字」を強制しない。
  */
+/**
+ * **同じ地紋を隣どうしに置かない**（第8段階③・D-362）。
+ *
+ * 地紋は「強い帯にだけ敷く」（`emphasis === "lead"` のとき `pickMotif`）が、
+ * **その型で選ばれる地紋は1つ**なので、強い帯が続くと**まったく同じ模様が隣に並ぶ。**
+ * 実測：老舗の会社概要で「素材の目」が2本続き、製品・開発の事例と会社概要で
+ * 「断面」が2本続いていた。**2度出た模様は、2度目には模様として読まれない。**
+ *
+ * 第2段階で装飾どうしに課した「2本以上離す」（D-324）と同じ規則を、地紋にも当てる。
+ * **足すのではなく、2本目を落とす**（装飾は増やさない）。
+ * 最初の画面（hero）は `.band` ではなく地紋を描かないので、数に入れない。
+ */
+function spaceMotif(sec: Section, prev: Section | undefined): Section {
+  if (sec.motif === "none" || !prev || prev.kind === "hero") return sec;
+  return prev.motif === sec.motif ? { ...sec, motif: "none" } : sec;
+}
+
 function repress(
   sec: Omit<Section, "why">, project: Project, a: Analysis, hero: string,
   used: Map<ContentId, Set<PresentationId>>,
@@ -571,7 +588,7 @@ export function composeTop(
     if (INVERTED.includes(decorated.surface)) invertedDone = true;
     const { sec, note } = repress(decorated, project, a, hero, used, brief);
     prev = sec.surface;
-    out.push({ ...sec, why: why + note });
+    out.push({ ...spaceMotif(sec, out[out.length - 1]), why: why + note });
   };
   const out: Section[] = [];
   out.push({
@@ -777,7 +794,7 @@ export function composePage(
     if (INVERTED.includes(decorated.surface)) invertedDone = true;
     const { sec, note } = repress(decorated, project, a, "headline", used);
     prev = sec.surface;
-    out.push({ ...sec, why: why + note });
+    out.push({ ...spaceMotif(sec, out[out.length - 1]), why: why + note });
   };
 
   if (hasProse) add({ kind: "prose", width: "narrow", emphasis: "normal", slug }, "生成した本文");
