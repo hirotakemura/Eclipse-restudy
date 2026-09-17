@@ -20,3 +20,7 @@ projects/*/.build/
 # **お客様の写真そのものなので、絶対にコミットしない。**
 # 一度 Git に入ってしまっていた（D-186）
 site-template/public/photos/
+# 生成ビジュアルの配り先。**書き出しのたびに作られる**ので、中身は追跡しない
+# （第9段階で build-site.mjs に配布を足したとき、この1行を足し忘れていた——
+#   写真の側（上の行）と同じ扱いにする。お客様の絵を git に載せない）
+site-template/public/generated/
