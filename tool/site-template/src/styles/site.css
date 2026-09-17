@@ -946,119 +946,61 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
  * 両方とも `inset: 0` ＋ 同じ `cover` ＋ 同じ焦点なので、**絵は袖と上下で連続する。**
  */
 @supports (mask-image: linear-gradient(#000, #000)) and (clip-path: inset(0px)) {
+  /**
+   * 画像は**帯の全面に連続させる。** 文字のために消さない。
+   *
+   * 直す前は逆だった——`::before`（左右の袖）と `::after`（上下の端）の
+   * **マスクが中央で両方とも透明**になり、そこだけ帯の地の色がむき出しになっていた。
+   * 白いパネルを置いていたのではなく、**画像を中央から消していた。**
+   * 実物のキャプチャでは、それが「画像の上に白い箱を乗せた」ように見えていた（社長のご指摘）。
+   *
+   * 直したあとの役割分担——
+   *   `::before` … **画像。帯の全面。マスクしない。**
+   *   `::after`  … **地の色のごく薄い覆い。** 文字のある位置を中心に、外へ向かって 0 へ。
+   *
+   * 覆いは**不透明にしない**（`--asset-veil` < 1）。文字の後ろにも画像の明暗が残る。
+   * 輪郭が出ないよう、**大きさの違う2枚を重ねて**なだらかに落とす
+   * （`mask-composite` は使わない。ただの背景の重ね）。
+   */
   .band[data-asset-source="generated"],
   .hero[data-asset-source="generated"] {
-    /**
-     * **掃引して決めた値**（第9段階④・由来は docs/36 §12）。
-     *
-     * 0.2〜0.9 まで動かして、画像領域（最大画素差・標準偏差・局所勾配）と
-     * 文字領域（最大画素差・実画素のコントラスト比）を別々に測った。
-     * **文字領域はどの値でも 0/255・コントラスト 6.16:1 で一定**だった——
-     * 領域を分けたので、強さを上げても文字に一切かからない。
-     * つまり上限は読みやすさではなく「**背景でいられる範囲**」で決まる。
-     *
-     * だから**目標を満たす最小の値**を採る。目標は
-     * 「最大画素差 ≥ 24／標準偏差 ≥ 6」——**一様に沈むだけでは形が見えない**ので、
-     * 最大だけでなく標準偏差を見る（4/255 を「入っている」と数えていた失敗の反省）。
-     *
-     * 帯は、いちばん条件の悪い会社沿革（高さ272pxしかない）が満たす値に合わせて .5。
-     * 最初の画面は見える面積が広く、.25 で目標の2倍を超える。
-     */
     --asset-strength: .5;
-    --asset-fade: 28px;
-    /** 縦の帯は、帯が低いときに潰れないよう高さの28%で止める */
-    --asset-strip: min(var(--asset-pad, 52px), 28%);
-    --asset-vfade: min(32px, 8%);
-    --asset-sleeve: 0px;
-    /**
-     * `.inner` の内側の余白。**減衰はここで 0 になっていること。**
-     *
-     * 最初は「袖の縁から内へ 56px かけて消す」と書いたが、
-     * 掃引したら**文字領域の画素差が 4→12 と強さに比例して増えた**——
-     * 文字は袖の縁のさらに 20px 内側から始まるので、**減衰の途中に文字が入っていた。**
-     * 減衰は袖の縁より**手前で始め**、文字が始まる位置で 0 にする。
-     */
-    --asset-gap: 20px;
+    /** 覆いの濃さ。**1 にしない**——しると文字の後ろで画像が消える */
+    --asset-veil: .72;
+    /** 覆いの中心と大きさ。文字がどこにあるかで決まる */
+    --asset-veil-x: 50%;
+    --asset-veil-y: 50%;
+    --asset-veil-w: 62%;
+    --asset-veil-h: 56%;
+    --asset-veil-w2: 100%;
+    --asset-veil-h2: 92%;
   }
-  /**
-   * 上下の帯の高さ＝その帯の padding。
-   * **数字は `[data-density]` の padding と同じもの**で、
-   * ずれたら `design.test.mjs` が落ちる（書き写した表は必ずいつかずれる・D-197）。
-   */
-  .band[data-density="tight"][data-asset-source="generated"] { --asset-pad: calc(var(--section) * .5); }
-  .band[data-density="normal"][data-asset-source="generated"] { --asset-pad: var(--section); }
-  .band[data-density="loose"][data-asset-source="generated"] { --asset-pad: calc(var(--section) * 1.5); }
-  .band[data-density="vast"][data-asset-source="generated"] { --asset-pad: calc(var(--section) * 2.2); }
-  /** 最初の画面は見える面積が広い。**帯と同じ値にすると絵が主役になってしまう** */
-  .hero[data-asset-source="generated"] { --asset-pad: 46px; --asset-strength: .25; }
+  .hero[data-asset-source="generated"] { --asset-strength: .3; }
 
-  /** ② 上下の帯。**スマホではこれだけが残る**（袖が0のため） */
+  /** ① 画像。**帯の全面**。切り取りと焦点は注文書のまま */
+  .band[data-asset-source="generated"]::before,
+  .hero[data-asset-source="generated"]::before {
+    opacity: var(--asset-strength);
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  /** ② 覆い。**画像ではない。** 地の色を、文字のある位置だけ薄く重ねる */
   .band[data-asset-source="generated"]::after,
   .hero[data-asset-source="generated"]::after {
     content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
-    background-image: var(--asset-image);
-    background-size: cover;
-    background-position: var(--asset-focal, 70% 45%);
-    background-repeat: no-repeat;
-    opacity: var(--asset-strength);
-    clip-path: inset(0 var(--asset-sleeve) 0 var(--asset-sleeve));
-    -webkit-mask-image: linear-gradient(to bottom,
-      #000 0, #000 calc(var(--asset-strip) - var(--asset-vfade)),
-      transparent var(--asset-strip),
-      transparent calc(100% - var(--asset-strip)),
-      #000 calc(100% - var(--asset-strip) + var(--asset-vfade)), #000 100%);
-    mask-image: linear-gradient(to bottom,
-      #000 0, #000 calc(var(--asset-strip) - var(--asset-vfade)),
-      transparent var(--asset-strip),
-      transparent calc(100% - var(--asset-strip)),
-      #000 calc(100% - var(--asset-strip) + var(--asset-vfade)), #000 100%);
+    background-image:
+      radial-gradient(ellipse var(--asset-veil-w) var(--asset-veil-h)
+        at var(--asset-veil-x) var(--asset-veil-y), var(--bg) 0 18%, transparent 100%),
+      radial-gradient(ellipse var(--asset-veil-w2) var(--asset-veil-h2)
+        at var(--asset-veil-x) var(--asset-veil-y), var(--bg) 0 6%, transparent 100%);
+    opacity: var(--asset-veil);
   }
-  /** 全面の一様な敷き込みはやめる。**絵は上の2領域にだけ出す** */
-  .band[data-asset-source="generated"]::before,
-  .hero[data-asset-source="generated"]::before { opacity: 0; }
 
-  /**
-   * ① 袖。**画面が広いときだけ。** 狭い画面では袖が細くなって用をなさないので、
-   * スマホ・タブレットでは上下の帯だけにする（M-1）。
-   */
   @media (min-width: 1000px) {
-    .band[data-asset-source="generated"] { --asset-col: var(--max); }
-    .band[data-width="narrow"][data-asset-source="generated"] { --asset-col: 720px; }
-    .band[data-width="normal"][data-asset-source="generated"] { --asset-col: 900px; }
-    .band[data-asset-source="generated"] { --asset-sleeve: max(0px, calc((100% - var(--asset-col)) / 2)); }
-    /** 全幅の帯は袖が無い。上下の帯だけにする */
-    .band[data-width="full"][data-asset-source="generated"] { --asset-sleeve: 0px; }
-
-    .band[data-asset-source="generated"]:not([data-width="full"])::before {
-      opacity: var(--asset-strength);
-      -webkit-mask-image: linear-gradient(to right,
-        #000 0, #000 calc(var(--asset-sleeve) - var(--asset-fade)),
-        transparent calc(var(--asset-sleeve) + var(--asset-gap)),
-        transparent calc(100% - var(--asset-sleeve) - var(--asset-gap)),
-        #000 calc(100% - var(--asset-sleeve) + var(--asset-fade)), #000 100%);
-      mask-image: linear-gradient(to right,
-        #000 0, #000 calc(var(--asset-sleeve) - var(--asset-fade)),
-        transparent calc(var(--asset-sleeve) + var(--asset-gap)),
-        transparent calc(100% - var(--asset-sleeve) - var(--asset-gap)),
-        #000 calc(100% - var(--asset-sleeve) + var(--asset-fade)), #000 100%);
-    }
-
     /**
-     * 最初の画面だけは、注文書の `textSafeArea` どおりに横で分ける。
-     * **注文した構図をここで初めて使う**——「左3分の1を空ける」と頼んだ絵なので、
-     * 文字の列を 62% に絞り、右を絵に明け渡す。
-     * **絵が ready の hero にだけかかる**ので、絵の無いサイトは1pxも変わらない。
-     */
-    /**
-     * **文字の列を、下の帯と同じ位置から始める。**
-     *
-     * 直す前は `margin-left: 0` で、文字が**帯の左端から 20px**（画面の1.6%）に貼りついていた。
-     * 下の帯は `normal` で 85px、`narrow` で 175px から始まるので、
-     * **最初の画面だけが1つ左にずれて見えていた**（社長のご指摘）。
-     *
-     * `--hero-gutter` は `normal` の帯とまったく同じ計算——`(帯の幅 − 900px) ÷ 2`。
-     * 幅はその分だけ詰めるので、**右端は 62% のまま動かない**＝絵の領域は1pxも変わらない。
-     * 画面が 900px より狭いときは余白が 0 になり、**下の帯と同じようにそのまま左端から**始まる。
+     * 最初の画面だけは、注文書の `textSafeArea` どおりに文字を片側へ寄せる。
+     * 覆いも同じ側へ寄せるので、**反対側の主役（面の曲がりと光る縁）は覆われない。**
      */
     .hero[data-asset-safe="left"] > .inner,
     .hero[data-asset-safe="right"] > .inner { --hero-gutter: max(0px, calc((100% - 900px) / 2)); }
@@ -1070,46 +1012,31 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
       max-width: calc(62% - var(--hero-gutter));
       margin-right: var(--hero-gutter); margin-left: 0;
     }
-    .hero[data-asset-safe="left"]::after,
-    .hero[data-asset-safe="right"]::after { clip-path: none; }
-    .hero[data-asset-safe="left"]::after {
-      -webkit-mask-image: linear-gradient(to right, transparent 0 62%, #000 72% 100%);
-      mask-image: linear-gradient(to right, transparent 0 62%, #000 72% 100%);
-    }
-    .hero[data-asset-safe="right"]::after {
-      -webkit-mask-image: linear-gradient(to left, transparent 0 62%, #000 72% 100%);
-      mask-image: linear-gradient(to left, transparent 0 62%, #000 72% 100%);
-    }
-    /** 上下で分ける指定のときは、その側だけを空ける（縦1本） */
-    .hero[data-asset-safe="top"]::after {
-      -webkit-mask-image: linear-gradient(to bottom, transparent 0 46%, #000 62% 100%);
-      mask-image: linear-gradient(to bottom, transparent 0 46%, #000 62% 100%);
-    }
-    .hero[data-asset-safe="bottom"]::after {
-      -webkit-mask-image: linear-gradient(to top, transparent 0 46%, #000 62% 100%);
-      mask-image: linear-gradient(to top, transparent 0 46%, #000 62% 100%);
-    }
+    .hero[data-asset-safe="left"] { --asset-veil-x: 26%; --asset-veil-w: 56%; --asset-veil-w2: 86%; }
+    .hero[data-asset-safe="right"] { --asset-veil-x: 74%; --asset-veil-w: 56%; --asset-veil-w2: 86%; }
+    .hero[data-asset-safe="top"] { --asset-veil-y: 30%; --asset-veil-h: 50%; --asset-veil-h2: 80%; }
+    .hero[data-asset-safe="bottom"] { --asset-veil-y: 70%; --asset-veil-h: 50%; --asset-veil-h2: 80%; }
   }
-  /** スマホ。**絵を消さない**（M-1）。上下の帯を主役にし、文字の下では十分に減衰させる */
+
+  /**
+   * スマホ。**画像を消さない。**
+   * 文字が帯のほぼ全面を占めるので、覆いを弱くして**文字の後ろにも画像を残す。**
+   * 地が白・文字が `#1b241f` と濃いので、薄い絵の上でも読める（実画素で測って決める）。
+   */
   @media (max-width: 720px) {
-    /**
-     * **スマホはPCより低い。** 画面に対して絵が大きくなり、文字との距離が近い。
-     * 掃引の実測では帯は .3 で「最大 27／標準偏差 7.9」となり目標を満たす。
-     */
-    .band[data-asset-source="generated"] { --asset-strength: .3; }
-    .hero[data-asset-source="generated"] { --asset-strength: .2; }
     .band[data-asset-source="generated"],
     .hero[data-asset-source="generated"] {
-      --asset-pad: 40px;
-      --asset-vfade: min(24px, 6%);
-      --asset-gap: 16px;
+      --asset-strength: .6;
+      --asset-veil: .46;
+      --asset-veil-w: 100%; --asset-veil-h: 62%;
+      --asset-veil-w2: 130%; --asset-veil-h2: 100%;
     }
-    .band[data-density="tight"][data-asset-source="generated"] { --asset-pad: calc(var(--section) * .6); }
-    .band[data-density="loose"][data-asset-source="generated"] { --asset-pad: calc(var(--section) * 1.3); }
-    .band[data-density="vast"][data-asset-source="generated"] { --asset-pad: calc(var(--section) * 1.7); }
+    .hero[data-asset-source="generated"] { --asset-strength: .46; }
   }
   @media print {
+    .band[data-asset-source="generated"]::before,
     .band[data-asset-source="generated"]::after,
+    .hero[data-asset-source="generated"]::before,
     .hero[data-asset-source="generated"]::after { display: none; }
   }
 }

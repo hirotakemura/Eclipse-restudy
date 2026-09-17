@@ -528,47 +528,46 @@ console.log("\n━━━ 文字の場所と、絵の場所を分ける（第9段
   check("最初の画面が、注文書の指定どおり left を持っている",
     gs.some((s) => s.kind === "hero" && s.asset.generated?.safe === "left"));
 
-  /** ② 2つの領域が重ならない（重なると不透明度が二重になり、継ぎ目が出る） */
-  check("上下の帯は clip-path で袖の内側に限られている",
-    /::after[\s\S]{0,600}?clip-path: inset\(0 var\(--asset-sleeve\) 0 var\(--asset-sleeve\)\)/.test(gen));
-  check("袖と上下で、同じ焦点・同じ cover を使っている（絵が継ぎ目でずれない）",
-    (gen.match(/background-position: var\(--asset-focal/g) ?? []).length >= 1
-    && (gen.match(/background-size: cover/g) ?? []).length >= 1);
+  /**
+   * ② **文字のために画像を消さない**（第9段階⑥）。
+   *
+   * 直す前は `::before`（袖）と `::after`（上下）のマスクが**中央で両方とも透明**になり、
+   * そこだけ帯の地の色がむき出しになっていた。実物のキャプチャでは
+   * **「画像の上に白い箱を乗せた」ように見えていた**（社長のご指摘）。
+   * いまは画像を全面に敷き、**文字の下だけを地の色でやわらげる。**
+   */
+  /**
+   * **`-webkit-` 側も見る。** 片方だけを見ていたとき、
+   * `-webkit-mask-image` にグラデーションを戻しても**赤くならなかった**（実測）。
+   * 画像を敷く規則の中に、グラデーションが1つも無いことを見る。
+   */
+  const beforeRule = /\.band\[data-asset-source="generated"\]::before,[\s\S]*?\{([\s\S]*?)\}/.exec(gen)?.[1] ?? "";
+  check("画像は帯の全面に出る（文字のためにマスクで消していない）",
+    beforeRule.includes("mask-image") && !/gradient\(/.test(beforeRule),
+    beforeRule.replace(/\s+/g, " ").slice(0, 90));
+  check("覆いは画像ではない（地の色でできている）",
+    /::after[\s\S]{0,700}?radial-gradient/.test(gen)
+    && !/::after[\s\S]{0,700}?var\(--asset-image\)/.test(gen));
+  /** **覆いを不透明にしない。** 1 にすると文字の後ろで画像が消える */
+  const veil = /--asset-veil:\s*\.?(\d*\.?\d+)/.exec(gen);
+  check("覆いは不透明にならない（文字の後ろにも画像が残る）",
+    veil !== null && Number("0" + veil[0].split(":")[1].trim()) < 1,
+    veil?.[0] ?? "--asset-veil が無い");
+  /** **輪郭を作らない。** 大きさの違う2枚を重ねてなだらかに落とす */
+  check("覆いは2段のグラデーションで、境界を作らない",
+    (gen.match(/radial-gradient/g) ?? []).length >= 2);
 
   /** ③ Safari で成立する書き方か（ご指示） */
   check("mask-composite に依存していない", !/mask-composite/.test(css));
   const masks = decl.match(/(?:^|[^-])mask-image:[^;]+;/g) ?? [];
-  check("マスクは1本の linear-gradient だけ（複数レイヤを重ねていない）",
-    masks.length > 0 && masks.every((m) => (m.match(/gradient\(/g) ?? []).length === 1),
-    masks.filter((m) => (m.match(/gradient\(/g) ?? []).length !== 1).slice(0, 1).join(""));
+  check("マスクを使うとしても1本のグラデーションだけ（複数レイヤを重ねていない）",
+    masks.every((m) => (m.match(/gradient\(/g) ?? []).length <= 1),
+    masks.filter((m) => (m.match(/gradient\(/g) ?? []).length > 1).slice(0, 1).join(""));
   check("すべての mask-image に -webkit- 版が対になっている",
     (decl.match(/-webkit-mask-image:/g) ?? []).length === (decl.match(/(?:^|[^-])mask-image:/gm) ?? []).length,
     `-webkit- ${(decl.match(/-webkit-mask-image:/g) ?? []).length}件 / 無印 ${(decl.match(/(?:^|[^-])mask-image:/gm) ?? []).length}件`);
   check("マスクが効かない環境では、いままでの敷き方のまま（@supports の外は変えていない）",
     /\.hero\[data-asset-source="generated"\]::before \{ opacity: \.28; \}/.test(css));
-
-  /**
-   * ④ **上下の帯の高さが、その帯の padding とずれていないか**（D-197）。
-   * 同じ数字を2箇所に書いてあるので、**片方だけ直したら落ちる**ようにしておく。
-   */
-  const mult = (re) => {
-    const m = re.exec(css);
-    if (!m) return null;
-    return m[1].trim();
-  };
-  const pads = [
-    ["tight", /\.band\[data-density="tight"\] \{ padding: calc\(var\(--section\) \* ([\d.]+)\)/],
-    ["loose", /\.band\[data-density="loose"\] \{ padding: calc\(var\(--section\) \* ([\d.]+)\)/],
-    ["vast", /\.band\[data-density="vast"\] \{ padding: calc\(var\(--section\) \* ([\d.]+)\)/],
-  ];
-  const bad = [];
-  for (const [id, re] of pads) {
-    const pad = mult(re);
-    const strip = mult(new RegExp(`\\.band\\[data-density="${id}"\\]\\[data-asset-source="generated"\\] \\{ --asset-pad: calc\\(var\\(--section\\) \\* ([\\d.]+)\\)`));
-    /** `0.5` と `.5` は同じ値である。**文字列ではなく数として比べる** */
-    if (pad === null || strip === null || Number(pad) !== Number(strip)) bad.push(`${id}: padding ${pad} / 帯 ${strip}`);
-  }
-  check("上下の帯の高さが、帯の padding と同じ倍率になっている（PC）", bad.length === 0, bad.join(" "));
 
   /** ⑤ 絵が無い帯には、何も足していない */
   /** 袖やマスクを持つ規則は、**すべて生成の帯に限定されていること** */
