@@ -27,6 +27,7 @@ import { findInternalLanguage, visibleText, contextFor } from "./lib/internal-la
 import { verifyDraft } from "./lib/verify.ts";
 import { writerView } from "./lib/generate/writer-view.ts";
 import { internalValues } from "./lib/form-definition.ts";
+import { assertWebText } from "./lib/schema.ts";
 import { analyze } from "./lib/design/analysis.ts";
 import { sanitizeProject } from "./lib/sanitize.ts";
 import { composeTop, explain, traceOf } from "./lib/design/sections.ts";
@@ -53,6 +54,17 @@ if (!fs.existsSync(projectFile)) {
 }
 
 const project = JSON.parse(fs.readFileSync(projectFile, "utf8"));
+
+/**
+ * **掲載文は、持ってよい欄にしか持てない**（第10段階①）。
+ * 表を持っているだけでは守られないので、読んだところで当てる。
+ */
+try {
+  assertWebText(project);
+} catch (err) {
+  console.error(`\n  ${err.message}\n`);
+  process.exit(1);
+}
 
 
 const templateDir = "site-template";
@@ -142,6 +154,21 @@ if (fs.existsSync(draftSrc)) {
  * 印は `draft/.reviewed` に**人が書く**——誰がいつ読んだか。こちらが勝手に置かない。
  * **原稿が0件のときは印を求めない**（データだけでもサイトは建つ。既存の挙動を変えない）。
  */
+/**
+ * **掲載文にも、原稿と同じ事実検証をかける**（D-380と同じ扱い）。
+ *
+ * 掲載文は人が書く。**人が書いたからといって、出典のない数値が許されるわけではない。**
+ * 見るのは「人が読んだ印の入っているもの」だけ——印が無いものは画面に出ないので、
+ * 下書き途中の文で書き出しを止めない。
+ */
+for (const [key, w] of Object.entries(project.webText ?? {})) {
+  if (!w?.reviewedAt?.trim() || !w?.text?.trim()) continue;
+  for (const v of verifyDraft(w.text, draftSource, { forPublish: true })) {
+    if (v.severity !== "error") continue;
+    draftBlocks.push([`webText/${key}`, `${v.message}：「${v.found}」  …${v.context}`]);
+  }
+}
+
 let reviewed = "";
 if (drafts) {
   reviewed = fs.existsSync(REVIEWED_MARK) ? fs.readFileSync(REVIEWED_MARK, "utf8").trim() : "";

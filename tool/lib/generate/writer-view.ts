@@ -26,5 +26,13 @@ import { stripInternal, type FormSetId } from "../form-definition.ts";
 
 export function writerView(project: Project): Project {
   const formSet: FormSetId = (project as any).formSet === "general" ? "general" : "manufacturing";
-  return stripInternal(sanitizeProject(project), formSet);
+  const out = stripInternal(sanitizeProject(project), formSet) as any;
+  /**
+   * **掲載用の文章は、原稿の材料ではない**（第10段階①）。
+   * 渡すと、すでに画面に出ている文章を散文でもう一度書くことになる
+   * （テンプレートが出すものを書かせない、と同じ理屈）。
+   * 出典としても認めていない（`verify.ts`）ので、材料にもしない。
+   */
+  delete out.webText;
+  return out as Project;
 }

@@ -26,7 +26,7 @@ import Gallery from "./Gallery.astro";
 import CaseCard from "./CaseCard.astro";
 import Prose from "./Prose.astro";
 import { cardGrid } from "../lib/cards";
-import { project, cases, rows, photosOf, photosOfCase, tel, telHref, email, serviceArea, isGeneral, reasonChosen, idealCustomer, offerings } from "../lib/site";
+import { project, cases, rows, photosOf, photosOfCase, tel, telHref, email, serviceArea, isGeneral, reasonChosen, idealCustomer, offerings, webOf } from "../lib/site";
 import InquiryForm from "./InquiryForm.astro";
 import { splitParts } from "../lib/text";
 
@@ -49,8 +49,25 @@ const only: any = caseNo ? cases[caseNo - 1] : undefined;
 const linkTo = (to: string) => (page === to ? undefined : `/${to}/`);
 
 const cap = (project as any).capability ?? {};
-const st = (project as any).strengths ?? {};
 const basics = (project as any).basics ?? {};
+/**
+ * 強みの文章。**掲載文があればそれを、無ければ取材原文を出す**（第10段階①）。
+ * ここで一度だけ当てておく——**画面に出す箇所ごとに `webOf` を書くと、必ず書き忘れる**（D-197）。
+ * 判定に使う `analysis` はこれを通らないので、**構成も型もモチーフも動かない。**
+ */
+const stRaw = (project as any).strengths ?? {};
+const ex = (project as any).executive ?? {};
+const st = {
+  ...stRaw,
+  wonAfterOthersDeclined: webOf("strengths.wonAfterOthersDeclined", stRaw.wonAfterOthersDeclined),
+  followUpFindings: webOf("strengths.followUpFindings", stRaw.followUpFindings),
+  workOthersAvoid: webOf("strengths.workOthersAvoid", stRaw.workOthersAvoid),
+  hardestJob: webOf("strengths.hardestJob", stRaw.hardestJob),
+  praiseFromClients: webOf("strengths.praiseFromClients", stRaw.praiseFromClients),
+};
+const vision = webOf("executive.vision", ex.vision);
+const messageToStaff = webOf("executive.messageToStaff", ex.messageToStaff);
+const businessSummary = webOf("basics.businessSummary", basics.businessSummary);
 
 /**
  * 事例を「ご相談 → 対応 → 結果」の工程として見せる。
@@ -237,17 +254,17 @@ const points = ((isGeneral
 )}
 
 {content === "executive" && presentation === "prose" && (
-  <People vision={(project as any).executive?.vision} representative={basics.representative} href={linkTo("message")} />
+  <People vision={vision} representative={basics.representative} href={linkTo("message")} />
 )}
-{content === "executive" && presentation === "quote" && <Declined text={quoteOf((project as any).executive?.messageToStaff ?? (project as any).executive?.vision)} />}
+{content === "executive" && presentation === "quote" && <Declined text={quoteOf(messageToStaff ?? vision)} />}
 {/**
   * **代表挨拶のページでは、すぐ上の帯が「これからの5年」を出している。**
   * ここで両方を出すと同じ文章が2度並ぶので、社員に伝えたいことだけにする（D-301）。
   */}
 {content === "executive" && presentation === "longform" && (
   <Longform text={(page === "message"
-    ? [(project as any).executive?.messageToStaff]
-    : [(project as any).executive?.vision, (project as any).executive?.messageToStaff]
+    ? [messageToStaff]
+    : [vision, messageToStaff]
   ).filter(Boolean).join("\n\n")} />
 )}
 
@@ -272,7 +289,7 @@ const points = ((isGeneral
     ["会社名", basics.name], ["代表者", basics.representative], ["創業", basics.founded],
     ["資本金", basics.capital], ["従業員数", basics.employees ? `${basics.employees}名` : ""],
     ["所在地", basics.address], ["電話番号", tel], ["メールアドレス", email],
-    ["事業内容", basics.businessSummary], ["主要取引先の業界", basics.clientIndustries],
+    ["事業内容", businessSummary], ["主要取引先の業界", basics.clientIndustries],
   ])} />
 )}
 {content === "profile" && presentation === "list" && (

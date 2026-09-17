@@ -19,7 +19,7 @@ import { composeVisual } from "../../../lib/design/visual.ts";
 import { composeAssets, willDraw, assetImageOf } from "../../../lib/design/assets.ts";
 /** **見出しの大きさは、中身の長さで決める**（D-277）。長文を巨大に組まない */
 import { fit } from "../../../lib/design/system/typography.ts";
-import { project, designBrief, companyName, cases, photoOf, realPhotoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen } from "../lib/site";
+import { project, designBrief, companyName, cases, photoOf, realPhotoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen, webOf } from "../lib/site";
 import { heroId, theme } from "../lib/theme";
 import { hasDraft } from "../lib/draft";
 
@@ -110,23 +110,23 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
               <p class="hero-kicker">{companyName}</p>
               <p class="hero-figure-label">{analysis.heroFigure.label}</p>
               <p class="hero-figure">{analysis.heroFigure.value}</p>
-              <h1 class="hero-sub" data-role={fit("statement", basics.businessSummary ?? "").id}>{basics.businessSummary}</h1>
+              <h1 class="hero-sub" data-role={fit("statement", basics.businessSummary ?? "").id}>{webOf("basics.businessSummary", basics.businessSummary)}</h1>
             </>
           ) : hero === "type" ? (
             <>
               <h1 class="hero-type">{companyName}</h1>
-              <p class="lead hero-type-lead">{basics.businessSummary}</p>
+              <p class="lead hero-type-lead">{webOf("basics.businessSummary", basics.businessSummary)}</p>
             </>
           ) : hero === "motif" ? (
             <>
               <p class="hero-kicker">{companyName}</p>
-              <h1 class="hero-motif" data-role={fit("heroTitle", basics.businessSummary ?? "").id}>{basics.businessSummary}</h1>
+              <h1 class="hero-motif" data-role={fit("heroTitle", basics.businessSummary ?? "").id}>{webOf("basics.businessSummary", basics.businessSummary)}</h1>
               {facts.length > 0 && <div class="facts">{facts.slice(0, 3).map((f) => <span>{f}</span>)}</div>}
             </>
           ) : (
             <>
               <h1>{companyName}</h1>
-              <p class="lead">{basics.businessSummary}</p>
+              <p class="lead">{webOf("basics.businessSummary", basics.businessSummary)}</p>
               {hero === "spec" && specs.length > 0 ? (
                 <dl class="spec-first">
                   {specs.map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}

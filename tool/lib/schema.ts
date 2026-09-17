@@ -401,6 +401,12 @@ export interface Project {
    */
   unconfirmedNotes?: Record<string, string>;
 
+  /**
+   * **Web掲載用の文章**（第10段階①）。キーは項目のドットパス。
+   * **既存の文章欄（＝取材原文）とは別物**で、無ければ原文がそのまま出る。
+   */
+  webText?: Record<string, WebText>;
+
   /** 取材の録音・文字起こしへの参照。原稿生成の補助素材 */
   transcriptPath?: string;
   /** 商談前調査の結果。提案書の「現状診断」にも使う */
@@ -409,6 +415,102 @@ export interface Project {
     competitors: { name: string; url: string; note?: string }[];
     currentSiteIssues: string[];
   };
+}
+
+// ── 掲載用の文章（第10段階①）──────────────────────────────
+
+/**
+ * 取材原文とは別に持つ、**Web掲載用の文章**。
+ *
+ * 【なぜ要るか】
+ * 取材入力欄の値は、**取材記録であると同時に掲載文章**だった。1つの欄が2役を負っているので、
+ * **整えると記録が消え、記録を守ると走り書きが公開される。**
+ * 実測：書き出したページに「…電話を受けてから1時間以内に着けることが多い**とのこと**。」
+ * という取材メモの地の文が出ていた（`build-site.mjs` が `△` で拾うが、止めてはいない）。
+ *
+ * 【どう分けるか】
+ * **既存の欄は1文字も変えない。** それが取材原文（raw）であり、単一の正である。
+ * 掲載文はここに**ドットパスをキーにして**別に持つ。
+ * `{raw, web}` の形にしない——既存の案件・試験データ・設計層のコードが
+ * すべて「その欄は文字列である」ことを前提にしており、型を変えると全部が壊れる。
+ *
+ * 【どこまで効くか】
+ * **表示だけ。** 構成・型・モチーフ・素材・山の位置・ページの有無を決める層は、
+ * 常に raw を読む（`analysis` / `materials` / `motif` / `architecture` / `sections` /
+ * `generated-brief`）。**掲載文を直しても、サイトの組み立ては1つも動かない。**
+ */
+export interface WebText {
+  /** 掲載する文章。**空なら無いのと同じ** */
+  text: string;
+  /** 誰が書いたか。**AI整形はまだ無い**（第10段階②以降） */
+  source?: "human" | "ai";
+  /** 読んだ人。**こちらが埋めない** */
+  reviewedBy?: string;
+  /**
+   * 読んだ日時。**ここが空なら、掲載文があっても raw を出す。**
+   * 「人が確認するまで公開しない」を、判定ではなく**読み出しの既定**で守る（D-381と同じ考え方）。
+   */
+  reviewedAt?: string;
+}
+
+/**
+ * **掲載文を持ってよい欄。**
+ *
+ * ここに無いパスが `webText` にあれば、読み込みで落とす（`assertWebText`）。
+ * **事実の欄を掲載文で上書きさせないため**である——`capability.tolerance` に
+ * 掲載文を置けてしまうと、公差を「読みやすく」書き換える道ができる。
+ * 許すのは**説明の文章だけ**で、数値・型番・認証・連絡先は1つも入っていない。
+ *
+ * 配列の要素は `cases[].challenge` のように書く。実際のキーは `cases[0].challenge`。
+ */
+export const WEB_TEXT_PATHS = [
+  "basics.businessSummary",
+  "strengths.wonAfterOthersDeclined",
+  "strengths.followUpFindings",
+  "strengths.workOthersAvoid",
+  "strengths.hardestJob",
+  "strengths.praiseFromClients",
+  "executive.vision",
+  "executive.messageToStaff",
+  "general.reasonChosen",
+  "general.idealCustomer",
+  "general.offerings[].detail",
+  "cases[].partDescription",
+  "cases[].challenge",
+  "cases[].solution",
+  "cases[].result",
+] as const;
+
+/** `cases[0].challenge` → `cases[].challenge`。**添字を消して表と突き合わせる** */
+export const webTextShape = (key: string): string => key.replace(/\[\d+\]/g, "[]");
+
+/**
+ * **登録の時点で弾く**（`assertLibrary` / `assertGenerated` と同じ思想）。
+ * 表を持っているだけでは守られない。案件データを読んだところで当てる。
+ */
+export function assertWebText(project: unknown): void {
+  const map = (project as any)?.webText;
+  if (map === undefined || map === null) return;
+  if (typeof map !== "object" || Array.isArray(map)) {
+    throw new Error("webText: 項目のパスをキーにした表で持ってください");
+  }
+  const allowed = new Set<string>(WEB_TEXT_PATHS as readonly string[]);
+  for (const [key, value] of Object.entries(map as Record<string, unknown>)) {
+    if (!allowed.has(webTextShape(key))) {
+      throw new Error(`webText: 「${key}」に掲載文は持てません。掲載文を持ってよいのは説明の文章だけで、数値・型番・認証・連絡先の欄は対象外です`);
+    }
+    const v = value as WebText;
+    if (!v || typeof v !== "object" || typeof v.text !== "string") {
+      throw new Error(`webText: 「${key}」の text が文字列ではありません`);
+    }
+    if (v.source !== undefined && v.source !== "human" && v.source !== "ai") {
+      throw new Error(`webText: 「${key}」の source は human か ai です`);
+    }
+    /** **読んだ印があるのに中身が空**、を通さない。空を公開してしまう */
+    if (v.reviewedAt?.trim() && !v.text.trim()) {
+      throw new Error(`webText: 「${key}」は確認済みなのに掲載文が空です`);
+    }
+  }
 }
 
 // ── 生成の安全装置 ────────────────────────────────────────

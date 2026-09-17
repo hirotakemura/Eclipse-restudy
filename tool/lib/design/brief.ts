@@ -243,6 +243,12 @@ export function projectHashOf(project: unknown): string {
    * 数えると、注文書を保存した瞬間に印が変わり、**同じ会社データなのに `visualId` が変わる。**
    * 実測：注文書を作り直したら、届いていた絵の状態（`ready`）が引き継げなくなった。
    */
-  const { designBrief, designBriefProposal, visualPlan, ...bare } = (project ?? {}) as Record<string, unknown>;
+  /**
+   * **掲載用の文章も数えない**（第10段階①）。
+   * 数えると、掲載文を直しただけで印が変わり、**生成ビジュアルの `visualId` が変わる**——
+   * 届いている絵の `ready` が引き継げなくなる（D-369で一度踏んだ罠）。
+   * 掲載文は**見せ方の前提を1つも変えない**ので、印の材料にしない。
+   */
+  const { designBrief, designBriefProposal, visualPlan, webText, ...bare } = (project ?? {}) as Record<string, unknown>;
   return projectHash(bare);
 }

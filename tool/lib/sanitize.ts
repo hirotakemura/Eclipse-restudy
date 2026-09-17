@@ -44,6 +44,15 @@ function strip(value: any): any {
 
 function dropUnconfirmed(obj: any, paths: string[]) {
   for (const path of paths) {
+    /**
+     * **未確認の項目は、掲載文の側も落とす**（第10段階①）。
+     * 値を消して掲載文だけ残ると、**聞けていない項目が文章としてだけ生き残る。**
+     */
+    if (obj?.webText) {
+      for (const key of Object.keys(obj.webText)) {
+        if (key === path || key.replace(/\[\d+\]/g, "[]") === path) delete obj.webText[key];
+      }
+    }
     const keys = path.split(".");
     let cur = obj;
     for (const k of keys.slice(0, -1)) {

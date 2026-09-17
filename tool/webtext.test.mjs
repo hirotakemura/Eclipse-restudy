@@ -1,0 +1,225 @@
+/**
+ * KOBO — 取材原文とWeb掲載文の分離（第10段階①）
+ *
+ * **確かめたいのは「掲載文が出るか」だけではない。**
+ *   ① 掲載文が無い既存データで、**画面が1バイトも変わらない**こと
+ *   ② 人が読んだ印が無ければ、**取材原文が出る**こと
+ *   ③ 印があれば、掲載文が出ること
+ *   ④ 掲載文を足しても、**構成・型・モチーフ・素材が1つも動かない**こと（いちばん重要）
+ *   ⑤ 掲載文を足しても、**案件データの印（`projectHashOf`）が変わらない**こと
+ *   ⑥ 持ってよい欄の表に無いパスは、読み込みで落ちること
+ *   ⑦ 掲載文が、**事実検証の出典に入っていない**こと
+ */
+import fs from "node:fs";
+import childProcess from "node:child_process";
+import { analyze } from "./lib/design/analysis.ts";
+import { composeTop, composePage } from "./lib/design/sections.ts";
+import { composeVisual } from "./lib/design/visual.ts";
+import { composeAssets } from "./lib/design/assets.ts";
+import { materialsOf } from "./lib/design/materials.ts";
+import { composeSite } from "./lib/design/architecture.ts";
+import { sanitizeProject } from "./lib/sanitize.ts";
+import { projectHashOf } from "./lib/design/brief.ts";
+import { buildSourceText, verifyDraft } from "./lib/verify.ts";
+import { writerView } from "./lib/generate/writer-view.ts";
+import { planGeneratedVisuals } from "./lib/design/generated-brief.ts";
+import { assertWebText, WEB_TEXT_PATHS, webTextShape } from "./lib/schema.ts";
+import { DIRECTIONS } from "./lib/design/direction.ts";
+
+let ok = 0, ng = 0;
+const check = (name, cond, detail = "") => {
+  if (cond) { ok++; console.log(`  ✓ ${name}`); }
+  else { ng++; console.log(`  ✗ ${name}${detail ? `\n      → ${detail}` : ""}`); }
+};
+const load = (f) => JSON.parse(fs.readFileSync(f, "utf8"));
+const FIXTURES = [
+  ["A 精度", "fixtures/design-diversity/a-precision.json"],
+  ["B 難加工", "fixtures/design-diversity/b-difficulty.json"],
+  ["C 短納期", "fixtures/design-diversity/c-speed.json"],
+  ["汎用A", "fixtures/visual-general/g-a-service.json"],
+  ["汎用B", "fixtures/visual-general/g-b-brand.json"],
+  ["汎用C", "fixtures/visual-general/g-c-people.json"],
+];
+const PAGES = ["strengths", "capability", "equipment", "cases", "company", "contact"];
+const REVIEWED = "2026-09-17T00:00:00.000Z";
+
+/** 掲載文を「まったく違う文章」で全欄に入れる。**違いが出るなら、必ずここで出る** */
+const withWeb = (p, reviewedAt = REVIEWED) => {
+  const webText = {};
+  const put = (path, v) => { if (v) webText[path] = { text: `【掲載文】${path}`, source: "human", reviewedBy: "検査", reviewedAt }; };
+  put("basics.businessSummary", p.basics?.businessSummary);
+  for (const k of ["wonAfterOthersDeclined", "followUpFindings", "workOthersAvoid", "hardestJob", "praiseFromClients"]) {
+    put(`strengths.${k}`, p.strengths?.[k]);
+  }
+  put("executive.vision", p.executive?.vision);
+  put("executive.messageToStaff", p.executive?.messageToStaff);
+  put("general.reasonChosen", p.general?.reasonChosen);
+  put("general.idealCustomer", p.general?.idealCustomer);
+  (p.general?.offerings ?? []).forEach((o, i) => put(`general.offerings[${i}].detail`, o?.detail));
+  (p.cases ?? []).forEach((c, i) => {
+    for (const k of ["partDescription", "challenge", "solution", "result"]) put(`cases[${i}].${k}`, c?.[k]);
+  });
+  return { ...p, webText };
+};
+
+console.log("\n━━━ ④ 掲載文を足しても、サイトの組み立てが1つも動かない ━━━");
+{
+  /**
+   * **この段のいちばん重要な検査である。**
+   * 掲載文は表示だけのもので、**構成・型・モチーフ・素材・ページの有無を決める層は
+   * いっさい通らない**——通ってしまうと、文章を直すたびにレイアウトが動く。
+   */
+  let moved = 0, checked = 0;
+  const diffs = [];
+  for (const [name, f] of FIXTURES) {
+    const rawP = sanitizeProject(load(f));
+    const webP = sanitizeProject(withWeb(load(f)));
+    const a1 = analyze(rawP), a2 = analyze(webP);
+    checked++;
+    if (JSON.stringify(a1) !== JSON.stringify(a2)) { moved++; diffs.push(`${name}/analyze`); }
+    if (JSON.stringify(composeSite(rawP, a1)) !== JSON.stringify(composeSite(webP, a2))) { moved++; diffs.push(`${name}/composeSite`); }
+    for (const c of ["declined", "technique", "praise", "executive", "cases", "people"]) {
+      if (JSON.stringify(materialsOf(rawP, c, a1.hasRealPhotos)) !== JSON.stringify(materialsOf(webP, c, a2.hasRealPhotos))) {
+        moved++; diffs.push(`${name}/materials:${c}`);
+      }
+    }
+    if (JSON.stringify(planGeneratedVisuals(rawP, a1, "standard")) !== JSON.stringify(planGeneratedVisuals(webP, a2, "standard"))) {
+      moved++; diffs.push(`${name}/generated`);
+    }
+    for (const d of DIRECTIONS) {
+      for (const page of ["index", ...PAGES]) {
+        const base = (p, a) => page === "index" ? composeTop(p, a, { direction: d.id }) : composePage(page, p, a, { direction: d.id });
+        const of = (p, a) => composeAssets(composeVisual(base(p, a), p, a, { direction: d.id }), p, a, { direction: d.id, page });
+        checked++;
+        if (JSON.stringify(of(rawP, a1)) !== JSON.stringify(of(webP, a2))) { moved++; diffs.push(`${name}/${d.id}/${page}`); }
+      }
+    }
+  }
+  check(`掲載文を全欄に入れても、見立て・構成・帯・型・モチーフ・素材・注文書が1つも動かない（${checked}通り）`,
+    moved === 0, diffs.slice(0, 5).join(" "));
+}
+
+console.log("\n━━━ ⑤ 案件データの印が変わらない ━━━");
+{
+  /**
+   * 変わると `visualId` が変わり、**届いている絵の `ready` が引き継げなくなる**（D-369）。
+   * 掲載文を直しただけで画像が消える、という壊れ方をする。
+   */
+  const bad = [];
+  for (const [name, f] of FIXTURES) {
+    const before = projectHashOf(load(f));
+    const after = projectHashOf(withWeb(load(f)));
+    if (before !== after) bad.push(`${name}: ${before} → ${after}`);
+  }
+  check("掲載文を足しても projectHashOf が変わらない", bad.length === 0, bad.join(" "));
+}
+
+console.log("\n━━━ ⑦ 掲載文は、事実検証の出典にならない ━━━");
+{
+  /**
+   * 認めると、**掲載文に混ざった数値が自分自身を出典にして通る。**
+   * `unconfirmedNotes` を外しているのと同じ理由である。
+   */
+  const p = load(FIXTURES[0][1]);
+  const withFake = { ...p, webText: { "strengths.hardestJob": { text: "公差は ±0.0003μm まで対応します", source: "human", reviewedBy: "検査", reviewedAt: REVIEWED } } };
+  check("掲載文の中身が、出典の文字列に入っていない",
+    !buildSourceText(withFake).includes("0.0003"));
+  const f = verifyDraft("公差は ±0.0003μm まで対応します", withFake);
+  check("掲載文にある数値でも、原稿に書けば出典なしとして捕まる",
+    f.some((x) => x.severity === "error"), f.map((x) => x.kind).join(" "));
+  /** **原稿を書くAIにも渡していない**（渡すと、画面に出ている文章を散文で書き直す） */
+  check("原稿を書く側に、掲載文を渡していない", writerView(withFake).webText === undefined);
+}
+
+console.log("\n━━━ ⑥ 持ってよい欄の表 ━━━");
+{
+  check("表は15パス", WEB_TEXT_PATHS.length === 15, `${WEB_TEXT_PATHS.length}パス`);
+  /** **事実の欄に掲載文を置けない。** 置けると、公差を「読みやすく」書き換える道ができる */
+  const FACTS = ["capability.tolerance", "capability.lotSize", "basics.tel", "basics.address",
+    "capability.equipment[].model", "strengths.defectRate", "recruitment.terms.salary"];
+  check("公差・型番・連絡先などの事実の欄が、表に1つも入っていない",
+    FACTS.every((x) => !WEB_TEXT_PATHS.includes(x)));
+  /** **社内向けの欄が入っていない**（掲載文の形で社内の本音を出す道を作らない） */
+  const INTERNAL = ["inquiry.wantLessOf", "inquiry.wantMoreOf", "inquiry.mostProfitableWork",
+    "inquiry.outlookConcern", "recruitment.retentionNotes", "cases[].confidentialityNotes"];
+  check("社内向けの欄が、表に1つも入っていない",
+    INTERNAL.every((x) => !WEB_TEXT_PATHS.includes(x)));
+  check("添字は表と突き合わせる前に落ちる", webTextShape("cases[12].challenge") === "cases[].challenge");
+
+  const throws = (webText) => { try { assertWebText({ webText }); return false; } catch { return true; } };
+  check("表に無いパスは落ちる", throws({ "capability.tolerance": { text: "±1μm", reviewedAt: REVIEWED } }));
+  check("表に無い配列のパスも落ちる", throws({ "cases[0].title": { text: "x", reviewedAt: REVIEWED } }));
+  check("text が文字列でないと落ちる", throws({ "executive.vision": { text: 3 } }));
+  check("source が語彙外だと落ちる", throws({ "executive.vision": { text: "x", source: "robot" } }));
+  check("確認済みなのに中身が空だと落ちる", throws({ "executive.vision": { text: "   ", reviewedAt: REVIEWED } }));
+  check("表にあるパスは通る", !throws({ "cases[3].solution": { text: "x", source: "human", reviewedAt: REVIEWED } }));
+  check("掲載文が無いデータは通る", !throws(undefined));
+}
+
+console.log("\n━━━ 未確認の項目は、掲載文の側も落とす ━━━");
+{
+  /** 値を消して掲載文だけ残ると、**聞けていない項目が文章としてだけ生き残る** */
+  const p = load(FIXTURES[0][1]);
+  const x = sanitizeProject({
+    ...p, unconfirmed: ["strengths.hardestJob"],
+    webText: { "strengths.hardestJob": { text: "掲載文", reviewedAt: REVIEWED } },
+  });
+  check("未確認にした項目の掲載文が、落ちている", x.webText?.["strengths.hardestJob"] === undefined);
+}
+
+console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
+{
+  /**
+   * **実際に書き出して比べる。** 読み出し関数の単体では、
+   * 「テンプレートのどこかが直参照のまま」を見逃す（D-197）。
+   */
+  const dir = "projects/_webtext-test";
+  const site = `${dir}/site`;
+  const base = sanitizeProject(load("fixtures/design-diversity/b-difficulty.json"));
+  const build = (project) => {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(`${dir}/project.json`, JSON.stringify(project, null, 2));
+    const r = childProcess.spawnSync("node", ["build-site.mjs", "_webtext-test"], { encoding: "utf8" });
+    const out = fs.existsSync(site) ? site : `${dir}/site-draft`;
+    const html = {};
+    if (fs.existsSync(out)) {
+      for (const f of fs.readdirSync(out, { recursive: true })) {
+        if (String(f).endsWith(".html")) html[String(f)] = fs.readFileSync(`${out}/${f}`, "utf8");
+      }
+    }
+    return { html, log: r.stdout + r.stderr };
+  };
+
+  const before = build(base);
+  const none = build({ ...base, webText: {} });
+  const pending = build(withWeb(base, ""));          // 印なし
+  const live = build(withWeb(base));                 // 印あり
+
+  check(`掲載文の欄が空でも、HTMLが1バイトも変わらない（${Object.keys(before.html).length}ページ）`,
+    Object.keys(before.html).length > 0
+    && Object.keys(before.html).every((k) => none.html[k] === before.html[k]),
+    Object.keys(before.html).filter((k) => none.html[k] !== before.html[k]).join(" "));
+  check("人が読んだ印が無ければ、HTMLが1バイトも変わらない（＝取材原文が出る）",
+    Object.keys(before.html).every((k) => pending.html[k] === before.html[k]),
+    Object.keys(before.html).filter((k) => pending.html[k] !== before.html[k]).slice(0, 3).join(" "));
+  const shown = Object.values(live.html).join("");
+  check("印があれば、掲載文が画面に出る", shown.includes("【掲載文】strengths.wonAfterOthersDeclined"));
+  check("印があれば、事例の掲載文も画面に出る", shown.includes("【掲載文】cases[0].challenge"));
+  check("印があれば、トップの事業内容も掲載文になる", shown.includes("【掲載文】basics.businessSummary"));
+  /** **ご指示（c）**：見出しの段は原文の長さで決める。掲載文を直しても見た目が動かない */
+  const roleOf = (h) => (/<h1 class="hero-(?:sub|motif)" data-role="([^"]+)"/.exec(h) ?? [])[1];
+  check("掲載文を入れても、トップの見出しの段が変わらない（fit は原文の長さで固定）",
+    roleOf(before.html["index.html"] ?? "") === roleOf(live.html["index.html"] ?? ""),
+    `${roleOf(before.html["index.html"] ?? "")} → ${roleOf(live.html["index.html"] ?? "")}`);
+  /** **掲載文にも事実検証がかかる**（人が書いても、出典のない数値は通さない） */
+  const bad = build({ ...base, webText: { "strengths.hardestJob": { text: "公差は ±0.0003μm まで対応します", reviewedBy: "検査", reviewedAt: REVIEWED } } });
+  check("掲載文に出典のない数値を書くと、公開判定が止める", /webText\/strengths\.hardestJob/.test(bad.log));
+  /** **表に無いパスは、読み込みで落ちる** */
+  const worse = build({ ...base, webText: { "capability.tolerance": { text: "±1μm", reviewedAt: REVIEWED } } });
+  check("事実の欄に掲載文を置くと、書き出しが始まらない", /掲載文は持てません/.test(worse.log));
+
+  fs.rmSync(dir, { recursive: true, force: true });
+}
+
+console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過\n`);
+process.exit(ng ? 1 : 0);

@@ -34,6 +34,36 @@ export const project = sanitizeProject(raw) as Project;
  */
 export const designBrief = (project as any).designBrief as StoredBrief | undefined;
 
+/**
+ * ── 掲載用の文章（第10段階①）──────────────────────────────
+ *
+ * **ここだけが掲載文を読む。** 取材原文（既存の欄）は単一の正のままで、
+ * 構成・型・モチーフ・素材・ページの有無を決める層は、いっさいこれを通らない。
+ * **掲載文を直しても、サイトの組み立ては1つも動かない。**
+ *
+ * **人が読んだ印（`reviewedAt`）が無ければ、原文を出す。**
+ * 「確認するまで公開しない」を判定ではなく読み出しの既定にしてあるので、
+ * 印を忘れても壊れず、整形前の文章が出るだけである（D-381と同じ考え方）。
+ */
+const webTextMap = ((project as any).webText ?? {}) as Record<string, { text?: string; reviewedAt?: string }>;
+
+export function webOf(path: string, fallback: any): any {
+  const w = webTextMap[path];
+  if (w?.reviewedAt?.trim() && w.text?.trim()) return w.text;
+  return fallback;
+}
+
+/** 配列の要素ぶん。`cases[2].challenge` のように添字で引く */
+const webRow = <T extends Record<string, any>>(prefix: string, row: T, fields: string[], i: number): T => {
+  if (!row) return row;
+  let out: T = row;
+  for (const f of fields) {
+    const v = webOf(`${prefix}[${i}].${f}`, row[f]);
+    if (v !== row[f]) out = { ...out, [f]: v };
+  }
+  return out;
+};
+
 export const companyName = project.basics?.name ?? "";
 export const tel = project.basics?.tel ?? "";
 export const address = project.basics?.address ?? "";
@@ -62,17 +92,23 @@ export const formSet = (project as any).formSet ?? "manufacturing";
 export const isGeneral = formSet === "general";
 
 /** 汎用：主なサービス・商品。中身のあるものだけ */
-export const offerings = ((project as any).general?.offerings ?? []).filter(
-  (o: any) => o && (o.name || o.detail),
-);
+/**
+ * **表示用に掲載文を当ててから配る。**
+ * 個々のテンプレートで1項目ずつ差し替えると、必ずどこかを差し替え忘れる（D-197）。
+ * 当てるのは中身だけで、**件数も並び順も変えない**——構成の判断が動かないようにするため。
+ */
+export const offerings = ((project as any).general?.offerings ?? [])
+  .filter((o: any) => o && (o.name || o.detail))
+  .map((o: any, i: number) => webRow("general.offerings", o, ["detail"], i));
 export const serviceArea = (project as any).general?.serviceArea ?? "";
-export const idealCustomer = (project as any).general?.idealCustomer ?? "";
-export const reasonChosen = (project as any).general?.reasonChosen ?? "";
+export const idealCustomer = webOf("general.idealCustomer", (project as any).general?.idealCustomer ?? "");
+export const reasonChosen = webOf("general.reasonChosen", (project as any).general?.reasonChosen ?? "");
 
 const goals = new Set(project.inquiry?.goals ?? []);
 export const hasRecruit = goals.has("採用") && Boolean(project.recruitment);
 export const hasMessage = (goals.has("採用") || goals.has("信用構築")) && Boolean(project.executive?.vision);
-export const cases = project.cases ?? [];
+export const cases = (project.cases ?? []).map((c: any, i: number) =>
+  webRow("cases", c, ["partDescription", "challenge", "solution", "result"], i));
 
 export interface NavItem {
   href: string;
@@ -215,7 +251,10 @@ export function descriptionOf(id: PageId): string {
     }
     case "strengths": {
       const st = p.strengths ?? {};
-      const one = String(st.wonAfterOthersDeclined ?? st.followUpFindings ?? "").trim();
+      const one = String(
+        webOf("strengths.wonAfterOthersDeclined", st.wonAfterOthersDeclined)
+        ?? webOf("strengths.followUpFindings", st.followUpFindings) ?? "",
+      ).trim();
       return trim(one ? `${companyName}が選ばれている理由。${one}` : `${companyName}が選ばれている理由`);
     }
     case "cases": {

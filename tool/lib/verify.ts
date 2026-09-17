@@ -76,7 +76,12 @@ export function buildSourceText(project: Project): string {
   const parts: string[] = [];
 
   const walk = (node: unknown, path: string) => {
-    if (path === "unconfirmedNotes" || unconfirmed.has(path)) return;
+    /**
+     * **掲載用の文章を出典にしない**（第10段階①）。
+     * 認めると、掲載文に混ざった数値が**自分自身を出典にして通る。**
+     * `unconfirmedNotes` を外しているのと同じ理由である。
+     */
+    if (path === "unconfirmedNotes" || path === "webText" || unconfirmed.has(path)) return;
     if (node === null || node === undefined) return;
     if (typeof node === "string" || typeof node === "number") {
       parts.push(String(node));
