@@ -1049,8 +1049,27 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
      * 文字の列を 62% に絞り、右を絵に明け渡す。
      * **絵が ready の hero にだけかかる**ので、絵の無いサイトは1pxも変わらない。
      */
-    .hero[data-asset-safe="left"] > .inner { max-width: 62%; margin-left: 0; }
-    .hero[data-asset-safe="right"] > .inner { max-width: 62%; margin-right: 0; }
+    /**
+     * **文字の列を、下の帯と同じ位置から始める。**
+     *
+     * 直す前は `margin-left: 0` で、文字が**帯の左端から 20px**（画面の1.6%）に貼りついていた。
+     * 下の帯は `normal` で 85px、`narrow` で 175px から始まるので、
+     * **最初の画面だけが1つ左にずれて見えていた**（社長のご指摘）。
+     *
+     * `--hero-gutter` は `normal` の帯とまったく同じ計算——`(帯の幅 − 900px) ÷ 2`。
+     * 幅はその分だけ詰めるので、**右端は 62% のまま動かない**＝絵の領域は1pxも変わらない。
+     * 画面が 900px より狭いときは余白が 0 になり、**下の帯と同じようにそのまま左端から**始まる。
+     */
+    .hero[data-asset-safe="left"] > .inner,
+    .hero[data-asset-safe="right"] > .inner { --hero-gutter: max(0px, calc((100% - 900px) / 2)); }
+    .hero[data-asset-safe="left"] > .inner {
+      max-width: calc(62% - var(--hero-gutter));
+      margin-left: var(--hero-gutter); margin-right: 0;
+    }
+    .hero[data-asset-safe="right"] > .inner {
+      max-width: calc(62% - var(--hero-gutter));
+      margin-right: var(--hero-gutter); margin-left: 0;
+    }
     .hero[data-asset-safe="left"]::after,
     .hero[data-asset-safe="right"]::after { clip-path: none; }
     .hero[data-asset-safe="left"]::after {
