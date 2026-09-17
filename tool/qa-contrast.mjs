@@ -23,7 +23,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { createServer } from "node:http";
-import pw from "/opt/node22/lib/node_modules/playwright/index.js";
+import { launchChromium, INSTALL_HINT } from "./lib/browser.mjs";
 import { DIRECTIONS } from "./lib/design/direction.ts";
 
 /** 本文として読ませる文字の下限。小さい文字・太い文字で分けない（4.5:1 に揃える） */
@@ -61,7 +61,9 @@ const server = createServer((req, res) => {
 });
 await new Promise((r) => server.listen(0, r));
 const port = server.address().port;
-const browser = await pw.chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+const browser = await launchChromium();
+if (!browser) { console.error(`
+${INSTALL_HINT}`); server.close(); process.exit(1); }
 
 const measure = () => {
   const lum = (c) => {

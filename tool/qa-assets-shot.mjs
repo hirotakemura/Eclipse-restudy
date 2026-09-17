@@ -27,8 +27,8 @@ const CHECK_PAGES = ["/", "/strengths/", "/capability/", "/equipment/", "/cases/
   "/company/", "/message/", "/recruit/", "/contact/"];
 const MIME = { ".html": "text/html", ".css": "text/css", ".js": "text/javascript", ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".webp": "image/webp" };
 let chromium;
-try { chromium = (await import("/opt/node22/lib/node_modules/playwright/index.js")).default.chromium; }
-catch { console.log("  （playwright が無いので撮影は飛ばします）"); process.exit(0); }
+const { launchChromium } = await import("./lib/browser.mjs");
+chromium = { launch: launchChromium };
 const serve = (root, port) => new Promise((r) => { const s = http.createServer((q, res) => {
   let f = path.join(root, decodeURIComponent(q.url.split("?")[0]));
   if (fs.existsSync(f) && fs.statSync(f).isDirectory()) f = path.join(f, "index.html");
@@ -36,7 +36,8 @@ const serve = (root, port) => new Promise((r) => { const s = http.createServer((
   res.writeHead(200, { "content-type": MIME[path.extname(f)] ?? "application/octet-stream" }); res.end(fs.readFileSync(f));
 }); s.listen(port, () => r(s)); });
 fs.mkdirSync(OUT, { recursive: true });
-const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+const b = await chromium.launch();
+if (!b) { console.log("  （playwright が無いので撮影は飛ばします）"); process.exit(0); }
 let n = 0, measured = 0;
 const checks = [];
 /**

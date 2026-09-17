@@ -17,7 +17,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import http from "node:http";
-import pw from "/opt/node22/lib/node_modules/playwright/index.js";
+import { launchChromium, INSTALL_HINT } from "./lib/browser.mjs";
 
 const args = process.argv.slice(2);
 const id = args.find((a) => !a.startsWith("--"));
@@ -52,7 +52,8 @@ for (const f of fs.readdirSync(ROOT, { recursive: true })) {
 }
 if (!pages.length) { console.error("\n  生成ビジュアルが入ったページがありません（status が ready の絵がない）\n"); server.close(); process.exit(1); }
 
-const browser = await pw.chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" });
+const browser = await launchChromium();
+if (!browser) { console.error(`\n${INSTALL_HINT}`); server.close(); process.exit(1); }
 
 /** 画面を撮って、絵のある/なしの差を領域ごとに集計する */
 const shoot = async (page, el) => {
