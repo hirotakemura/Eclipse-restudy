@@ -12,7 +12,7 @@ import path from "node:path";
 import { analyze } from "./lib/design/analysis.ts";
 import { composeTop, composePage } from "./lib/design/sections.ts";
 import { composeVisual } from "./lib/design/visual.ts";
-import { composeAssets } from "./lib/design/assets.ts";
+import { composeAssets, explainGenerated } from "./lib/design/assets.ts";
 import { sanitizeProject } from "./lib/sanitize.ts";
 import {
   planGeneratedVisuals, visualLanguageOf, storedPlan, companySignals,
@@ -370,6 +370,113 @@ console.log("\n━━━ 絵があるとき、決めた場所にだけ入るか 
   /** **すでに描かれている帯は触らない**（装飾を重ねない・D-324） */
   check("graphic / library の帯を上書きしていない",
     secs.every((s) => s.asset.source !== "generated" || s.asset.library === undefined));
+}
+
+console.log("\n━━━ 競合の順序：customer → generated → library → graphic → none（第9段階⑤）━━━");
+{
+  /**
+   * **「4枚頼んだ＝4枚出る」ではない。**
+   * 実案件で、注文書4件のうち**2件しか画面に出ていなかった**（社長が気づかれた）。
+   * `graphic` が先に帯を取っていたためで、**誰も何も言わなかった。**
+   *
+   * 直した方針：**会社固有の絵は、全社共通のCSS装飾より強い。**
+   * ただし奪うのは `graphic` だけで、**お客様の写真と素材ライブラリからは奪わない。**
+   * `graphic` のうち**面の地紋（`data-surface="grid"/"paper"`）が描かれている帯**も取らない——
+   * 背景が二重になり、D-324（装飾を重ねない）に反するため。
+   */
+  const p = load(FIXTURES[1][1]);
+  const a = analyze(p);
+  const plan = planGeneratedVisuals(p, a, "standard");
+  const ready = plan.visuals.map((v) => ({
+    ...v, status: "ready",
+    provenance: { provider: "fixture（検査用）", generatedAt: "2026-09-16T00:00:00.000Z", commercialUse: "自社検査用", file: `${v.visualId}.png` },
+  }));
+  const withImg = { ...p, visualPlan: { language: plan.language, visuals: ready, sourceProjectHash: "x", generatedAt: "x" } };
+  const heroV = ready.find((v) => v.placement.slot === "hero");
+  const techV = ready.find((v) => v.placement.slot === "technique");
+
+  /** 帯を手で作って、**条件を1つずつ**確かめる */
+  const band = (content, source, surface = "plain", extra = {}) => ({
+    kind: "band", content, surface, motif: "none",
+    asset: { source, intent: "atmosphere", role: "background", subject: "geometry" }, ...extra,
+  });
+  const only = (secs, v) => explainGenerated(secs, { visualPlan: { visuals: [v] } }, v.placement.page);
+
+  /** ① graphic の帯には入る（＝見送りにならない） */
+  check("① graphic の帯は、生成ビジュアルが取れる",
+    techV ? only([band("technique", "graphic")], techV).length === 0 : false);
+  /** ② お客様の写真からは奪わない */
+  check("② customer の帯は、生成ビジュアルが奪わない",
+    techV ? only([band("technique", "customer")], techV)[0]?.reason === "customer asset already occupies band" : false,
+    JSON.stringify(techV ? only([band("technique", "customer")], techV) : []));
+  /** ③ 素材ライブラリからも奪わない */
+  check("③ library の帯は、生成ビジュアルが奪わない",
+    techV ? only([band("technique", "library")], techV)[0]?.reason === "library asset already occupies band" : false);
+  /** ④ 帯そのものが無ければ、無理に入れない */
+  check("④ 帯が無ければ、無理に入れない",
+    techV ? only([band("cases", "none")], techV)[0]?.reason === "band unavailable" : false);
+  /** 面の地紋が描かれている帯も取らない（背景が二重になる） */
+  check("面の地紋（grid / paper）が描かれている帯は取らない",
+    techV ? only([band("technique", "graphic", "paper")], techV)[0]?.reason === "band surface is already patterned" : false);
+  /** 証拠の帯には、そもそも構造として届かない */
+  check("証拠の帯は、生成ビジュアルが取れない",
+    techV ? only([{ ...band("technique", "none"), asset: { source: "none", intent: "evidence", role: "background", subject: "geometry" } }], techV)[0]
+      ?.reason === "incompatible placement" : false);
+  /** 最初の画面は、地紋を名乗っていても実際には何も描かれていないので取れる */
+  check("最初の画面は、graphic を名乗っていても取れる（CSSが何も描いていない）",
+    heroV ? only([{ kind: "hero", content: "hero", surface: "paper", motif: "grain",
+      asset: { source: "graphic", intent: "atmosphere", role: "background", subject: "geometry" } }], heroV).length === 0 : false);
+
+  /** ⑧ 15方向すべてで、順序が守られているか（**「全部4/4」は条件にしない**） */
+  const stolen = [], counts = [];
+  for (const d of DIRECTIONS) {
+    for (const page of ["index", "company"]) {
+      const base = () => page === "index" ? composeTop(p, a, { direction: d.id }) : composePage(page, p, a, { direction: d.id });
+      const before = composeAssets(composeVisual(base(), p, a, { direction: d.id }), p, a, { direction: d.id, page });
+      const after = composeAssets(composeVisual(base(), withImg, a, { direction: d.id }), withImg, a, { direction: d.id, page });
+      for (let i = 0; i < after.length; i++) {
+        if (after[i].asset.source !== "generated") continue;
+        const was = before[i]?.asset;
+        /** **奪ってよいのは none と graphic だけ** */
+        if (!["none", "graphic"].includes(was?.source)) stolen.push(`${d.id}/${page}/${after[i].content}:${was?.source}`);
+        if (was?.intent !== "atmosphere") stolen.push(`${d.id}/${page}/${after[i].content}:${was?.intent}`);
+      }
+      counts.push(after.filter((x) => x.asset.source === "generated").length);
+    }
+  }
+  check("15方向すべてで、奪うのは none と graphic だけ（customer / library / 証拠は奪わない）",
+    stolen.length === 0, stolen.slice(0, 4).join(" "));
+  check("15方向すべてで、雰囲気の帯以外には入らない", stolen.length === 0);
+  /** **「全方向で4/4」は条件にしない**（型ごとに置ける帯が違う）。潰れていないことだけ見る */
+  check("どの方向でも、少なくとも1枚は置けている", Math.min(...counts.filter((_, i) => i % 2 === 0)) >= 1,
+    `index の最小 ${Math.min(...counts.filter((_, i) => i % 2 === 0))}枚`);
+
+  /** ⑤ 注文と配置が一致しないケースを、理由つきで検出できる */
+  const patterned = composeAssets(composeVisual(composeTop(p, a, { direction: "craft" }), withImg, a, { direction: "craft" }),
+    withImg, a, { direction: "craft", page: "index" });
+  const notes = explainGenerated(patterned, withImg, "index");
+  check("⑤ 置けなかった注文書を、理由つきで報告できる",
+    notes.every((n) => n.visualId && n.purpose && n.page && n.slot && n.reason),
+    notes.map((n) => `${n.purpose}:${n.reason}`).join(" "));
+  check("理由は決めた語彙の中だけ",
+    notes.every((n) => ["band unavailable", "customer asset already occupies band",
+      "library asset already occupies band", "band surface is already patterned",
+      "incompatible placement"].includes(n.reason)));
+  /** **置いた側と説明する側が、同じ判定を使っていること**（別々だといつかずれる・D-197） */
+  const placedIds = new Set(patterned.filter((x) => x.asset.generated).map((x) => x.asset.generated.id));
+  check("置いた結果と、置けなかった理由が、重複も欠落もしない",
+    notes.every((n) => !placedIds.has(n.visualId))
+    && placedIds.size + notes.length === ready.filter((v) => v.placement.page === "index").length,
+    `placed ${placedIds.size} + skipped ${notes.length} / index の注文 ${ready.filter((v) => v.placement.page === "index").length}`);
+
+  /** ⑥ 書き出しが、HTMLを見て数えているか（配ったファイル数と混ぜない） */
+  const build = fs.readFileSync("build-site.mjs", "utf8");
+  check("⑥ 画面に出た数を、書き出したHTMLから数えている",
+    /data-asset-generated="\(\[\^"\]\+\)"/.test(build) && /genPlaced\.add/.test(build));
+  check("「画面に出る絵」を、配ったファイル数で言わなくなった",
+    !/画面に出る絵 \$\{genCount\}/.test(build));
+  check("requested / placed / skipped を分けて出している",
+    /requested /.test(build) && /placed /.test(build) && /skipped /.test(build));
 }
 
 console.log("\n━━━ 文字の場所と、絵の場所を分ける（第9段階④）━━━");

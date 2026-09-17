@@ -30,7 +30,9 @@ import { internalValues } from "./lib/form-definition.ts";
 import { assertWebText } from "./lib/schema.ts";
 import { analyze } from "./lib/design/analysis.ts";
 import { sanitizeProject } from "./lib/sanitize.ts";
-import { composeTop, explain, traceOf } from "./lib/design/sections.ts";
+import { composeTop, composePage, explain, traceOf } from "./lib/design/sections.ts";
+import { composeVisual } from "./lib/design/visual.ts";
+import { composeAssets, explainGenerated } from "./lib/design/assets.ts";
 import { projectHashOf } from "./lib/design/brief.ts";
 import { resolveTheme } from "./lib/theme.ts";
 import { DIRECTIONS } from "./lib/design/direction.ts";
@@ -333,6 +335,14 @@ const NEEDS_REVIEW = "{{要確認}}";
 /** 原稿の再検証と、人の確認の印。**書き出しの前に済んでいる**ので、ここでは合流させるだけ */
 const leaked = [...draftBlocks];
 const suspect = [];
+/**
+ * **画面に出た絵は、書き出したHTMLを見て数える**（第9段階⑤）。
+ *
+ * 直す前は「配ったファイル数」を「画面に出る絵」と呼んでいた。
+ * 実際には**型によって置ける帯が違い、4件注文して2件しか出ていなかった**のに、
+ * 画面には「4枚」と出ていた。**注文した数と、出た数は別のものである。**
+ */
+const genPlaced = new Set();
 const notes = Object.values(project.unconfirmedNotes ?? {}).filter(Boolean);
 /**
  * **社内向けの欄（`internal: true`）の中身が、ページに出ていないか。**
@@ -341,6 +351,7 @@ const notes = Object.values(project.unconfirmedNotes ?? {}).filter(Boolean);
 const internal = internalValues(project, project.formSet);
 for (const f of html) {
   const body = fs.readFileSync(path.join(outDir, String(f)), "utf8");
+  for (const m of body.matchAll(/data-asset-generated="([^"]+)"/g)) genPlaced.add(m[1]);
   if (body.includes(NEEDS_REVIEW)) leaked.push([String(f), "未確認マーカーが残っている"]);
   for (const n of notes) {
     if (n.length > 6 && body.includes(n)) leaked.push([String(f), `未確認欄の控えが出ている：「${n}」`]);
@@ -395,9 +406,43 @@ if (!project.terms?.inquiryNotifyEmail) missing.push("問い合わせの通知�
 if (placeholders.length) missing.push(`実物の写真（仮の画像が${placeholders.length}枚のまま）`);
 
 if (project.visualPlan?.visuals?.length) {
-  console.log(`\n  ── 生成ビジュアル ── 注文書 ${project.visualPlan.visuals.length}件／画面に出る絵 ${genCount}枚`
-    + (genDropped ? `／**画像が見つからないので下ろした ${genDropped}件**` : ""));
-  if (!genCount) console.log("     絵はまだありません。サイトはいままでと同じです（npm run visual -- <案件ID> で注文書を見る）");
+  /**
+   * **「4枚頼んだ＝4枚出る」と読ませない。**
+   * 注文した数・絵が届いている数・**実際に画面へ出た数**は、それぞれ別である。
+   */
+  const requested = project.visualPlan.visuals;
+  const ready = requested.filter((v) => v.status === "ready" && v.provenance?.file);
+  const placed = ready.filter((v) => genPlaced.has(v.visualId));
+  const skipped = ready.filter((v) => !genPlaced.has(v.visualId));
+
+  console.log(`\n  ── 生成ビジュアル ──`);
+  console.log(`     requested ${requested.length}　／　絵が届いている ${ready.length}　／　**placed ${placed.length}**　／　skipped ${skipped.length}`
+    + (genDropped ? `　／　画像が見つからないので下ろした ${genDropped}` : ""));
+  if (!ready.length) {
+    console.log("     絵はまだありません。サイトはいままでと同じです（npm run visual -- <案件ID> で注文書を見る）");
+  }
+  for (const v of placed) {
+    console.log(`     ○ ${v.visualId}　${v.purpose}　→ ${v.placement.page}/${v.placement.slot}`);
+  }
+  if (skipped.length) {
+    /** **なぜ置けなかったかを、必ず言う。** 黙って捨てない */
+    const clean2 = sanitizeProject(project);
+    const a2 = analyze(clean2);
+    const r2 = resolveTheme(project.theme, project.formSet === "general" ? "general" : "manufacturing");
+    const reasonOf = (v) => {
+      const page = v.placement.page;
+      const base = page === "index"
+        ? composeTop(clean2, a2, { hero: r2.hero.id, direction: r2.direction, hasProse: drafts > 0, brief: project.designBrief })
+        : composePage(page, clean2, a2, { direction: r2.direction, hasProse: drafts > 0 });
+      if (!base.length) return "band unavailable";
+      const secs = composeAssets(composeVisual(base, project, a2, { direction: r2.direction }), project, a2, { direction: r2.direction, page });
+      return explainGenerated(secs, project, page).find((k) => k.visualId === v.visualId)?.reason ?? "band unavailable";
+    };
+    for (const v of skipped) {
+      console.log(`     ✗ ${v.visualId}　${v.purpose}　→ ${v.placement.page}/${v.placement.slot}　${reasonOf(v)}`);
+    }
+    console.log(`     **注文した数と、画面に出た数は違います。** 型によって置ける帯が変わります`);
+  }
 }
 
 const move = (to) => {

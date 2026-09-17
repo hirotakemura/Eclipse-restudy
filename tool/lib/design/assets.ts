@@ -319,18 +319,89 @@ export function composeAssets(
  * `intent === "atmosphere"` の帯しか見ない。事例・設備・外観・代表・採用は
  * `intentOf()` が `evidence` を返すので、**構造として届かない。**
  */
+/**
+ * 注文書が指す帯を探す。**`adoptGenerated` と `explainGenerated` で同じものを使う**——
+ * 別々に書くと、置いた結果と「なぜ置けなかったか」の説明がいつかずれる（D-197）。
+ */
+const slotIndexOf = (out: AssetSection[], v: GeneratedVisual): number =>
+  out.findIndex((s) => (v.placement.slot === "hero"
+    ? s.kind === "hero"
+    : s.kind !== "hero" && s.content === v.placement.slot));
+
+/**
+ * その帯を、生成ビジュアルが取ってよいか。
+ *
+ * 【優先順位】customer → generated → library → graphic → none
+ *
+ * **お客様の写真と素材ライブラリからは奪わない。** 譲らせるのは `graphic` だけである。
+ * `graphic` に譲らせる理由は、**会社固有の絵のほうが、全社共通のCSS装飾より強いから**——
+ * 手間と費用をかけて会社を見て作った絵が、どの会社でも同じ飾りに負けるのは順序が逆である。
+ *
+ * ただし `graphic` には2種類あり、**片方は本当に描かれている。**
+ *   ① 地紋（`motif`）… `.band[data-motif=…]` が**見出しや一覧の内側**に線を引く。
+ *      背景ではないので、絵を地に敷いても**背景が二重にはならない。**
+ *   ② 面の地紋（`data-surface="grid"/"paper"`）… **背景そのもの**を描いている。
+ *      ここに絵を敷くと**背景が二重**になる。D-324（装飾を重ねない）に反するので取らない。
+ *
+ * **最初の画面は常に取れる。** `.hero` には `data-surface` が付かず、
+ * `.hero[data-motif=…]` を見るCSSも1つも無い——つまり `graphic` を名乗っていても
+ * **実際には何も描かれていなかった**（「描いていない帯が名乗っていた」の再発）。
+ */
+const takeableByGenerated = (s: AssetSection): boolean =>
+  s.asset.intent === "atmosphere"
+  && (s.asset.source === "none"
+    || (s.asset.source === "graphic" && (s.kind === "hero" || !PATTERNED[s.surface])));
+
+/** なぜ置けなかったか。**「4枚頼んだ＝4枚出る」と読ませないための欄** */
+export type GeneratedSkipReason =
+  | "band unavailable"
+  | "customer asset already occupies band"
+  | "library asset already occupies band"
+  | "band surface is already patterned"
+  | "incompatible placement";
+
+export interface GeneratedSkip {
+  visualId: string;
+  purpose: string;
+  page: string;
+  slot: string;
+  reason: GeneratedSkipReason;
+}
+
+/**
+ * そのページで、置けなかった注文書とその理由を返す。
+ * **置いた側と同じ判定**（`slotIndexOf` / `takeableByGenerated`）を通す。
+ */
+export function explainGenerated(out: AssetSection[], project: Project, page: string): GeneratedSkip[] {
+  const visuals = (project as any)?.visualPlan?.visuals as GeneratedVisual[] | undefined;
+  const skips: GeneratedSkip[] = [];
+  for (const v of visuals ?? []) {
+    if (!isReady(v) || v.placement.page !== page) continue;
+    const base = { visualId: v.visualId, purpose: v.purpose, page, slot: v.placement.slot };
+    const i = slotIndexOf(out, v);
+    if (i < 0) { skips.push({ ...base, reason: "band unavailable" }); continue; }
+    const s = out[i]!;
+    if (takeableByGenerated(s) || s.asset.source === "generated") continue;
+    skips.push({
+      ...base,
+      reason: s.asset.intent !== "atmosphere" ? "incompatible placement"
+        : s.asset.source === "customer" ? "customer asset already occupies band"
+        : s.asset.source === "library" ? "library asset already occupies band"
+        : s.asset.source === "graphic" ? "band surface is already patterned"
+        : "incompatible placement",
+    });
+  }
+  return skips;
+}
+
 function adoptGenerated(out: AssetSection[], project: Project, page: string): AssetSection[] {
   const visuals = (project as any)?.visualPlan?.visuals as GeneratedVisual[] | undefined;
   if (!visuals?.length) return out;
 
   for (const v of visuals) {
     if (!isReady(v) || v.placement.page !== page) continue;
-    /** 置ける帯を探す。**空いている帯だけ**（すでに描かれている帯は触らない） */
-    const i = out.findIndex((s) =>
-      (v.placement.slot === "hero" ? s.kind === "hero" : s.kind !== "hero" && s.content === v.placement.slot)
-      && s.asset.intent === "atmosphere"
-      && s.asset.source === "none");
-    if (i < 0) continue;
+    const i = slotIndexOf(out, v);
+    if (i < 0 || !takeableByGenerated(out[i]!)) continue;
     out[i] = {
       ...out[i]!,
       asset: {
