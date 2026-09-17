@@ -158,7 +158,13 @@ console.log(`\n  ${id}　${pages.length}ページ　${ROOT}\n`);
 for (const level of LEVELS) {
   if (level !== null) console.log(`\n━━━ --asset-strength: ${level} ━━━`);
   for (const [label, w, h] of VIEWS) {
-    const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1 });
+    /**
+ * **動きを止めてから測る。**
+ * `animation-timeline: view()` のスクロール駆動アニメーションが効いていると、
+ * 絵あり／絵なしの2枚が**別の動作位置**で撮られ、ずれた画素どうしを比べてしまう。
+ * 実測：ページが短くなっただけで、同じ帯の「最大画素差」が 54 → 131 に跳ねた（D-392と同じ罠）。
+ */
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, reducedMotion: "reduce" });
     const page = await ctx.newPage();
     const rows = [];
     let worstContrast = Infinity, worstText = "";
