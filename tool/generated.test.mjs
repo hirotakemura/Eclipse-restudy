@@ -372,6 +372,107 @@ console.log("\n━━━ 絵があるとき、決めた場所にだけ入るか 
     secs.every((s) => s.asset.source !== "generated" || s.asset.library === undefined));
 }
 
+console.log("\n━━━ 文字の場所と、絵の場所を分ける（第9段階④）━━━");
+{
+  /**
+   * **実測で分かったこと。**
+   * 帯の全面に 22% で敷いていたとき、淡い絵の画素差は**最大 4/255**——
+   * 圧縮ノイズと同じ水準で、**人間には形として見えていなかった。**
+   * 不透明度を上げるだけにはできない。**上げれば文字の下も濃くなる**うえ、
+   * `qa:contrast` は地の色しか見ないので**検査が素通りする。**
+   * だから場所を分ける。ここでは、その仕掛けが壊れていないかだけを見る。
+   */
+  const raw = fs.readFileSync("site-template/src/styles/site.css", "utf8");
+  /** **注釈を外してから見る。** 外さないと、説明文に書いた語まで「使っている」と数える */
+  const css = raw.replace(/\/\*[\s\S]*?\*\//g, "");
+  /**
+   * **@supports の中だけを切り出す。**
+   * 単純に「ここから最後まで」にすると、後ろにある `@keyframes` の `to { … }` まで
+   * 拾ってしまい、**関係のない規則を「生成の帯に限定されていない」と報告した。**
+   * 括弧を数えて、その塊の終わりで止める。
+   */
+  const gen = (() => {
+    const at = css.indexOf("@supports (mask-image");
+    let depth = 0;
+    for (let i = css.indexOf("{", at); i < css.length; i++) {
+      if (css[i] === "{") depth++;
+      else if (css[i] === "}" && --depth === 0) return css.slice(at, i + 1);
+    }
+    return css.slice(at);
+  })();
+  /** `@supports (...)` の中は宣言ではなく**条件**。数えない */
+  const decl = gen.replace(/@supports \([^{]*\)/g, "");
+
+  /** ① 注文書の「文章が乗る側」が、画面まで届いているか */
+  const p = load(FIXTURES[1][1]);
+  const a = analyze(p);
+  const plan = planGeneratedVisuals(p, a, "standard");
+  const ready = plan.visuals.map((v) => ({
+    ...v, status: "ready",
+    provenance: { provider: "fixture（検査用）", generatedAt: "2026-09-16T00:00:00.000Z", commercialUse: "自社検査用", file: `${v.visualId}.png` },
+  }));
+  const withImg = { ...p, visualPlan: { language: plan.language, visuals: ready, sourceProjectHash: "x", generatedAt: "x" } };
+  const secs = composeAssets(composeVisual(composeTop(p, a, { direction: "standard" }), withImg, a, { direction: "standard" }),
+    withImg, a, { direction: "standard", page: "index" });
+  const gs = secs.filter((s) => s.asset.source === "generated");
+  check("注文書の「文章が乗る側」が、参照として画面まで届いている",
+    gs.length > 0 && gs.every((s) => ["left", "right", "top", "bottom", "none"].includes(s.asset.generated?.safe)),
+    gs.map((s) => `${s.content}:${s.asset.generated?.safe}`).join(" "));
+  check("最初の画面が、注文書の指定どおり left を持っている",
+    gs.some((s) => s.kind === "hero" && s.asset.generated?.safe === "left"));
+
+  /** ② 2つの領域が重ならない（重なると不透明度が二重になり、継ぎ目が出る） */
+  check("上下の帯は clip-path で袖の内側に限られている",
+    /::after[\s\S]{0,600}?clip-path: inset\(0 var\(--asset-sleeve\) 0 var\(--asset-sleeve\)\)/.test(gen));
+  check("袖と上下で、同じ焦点・同じ cover を使っている（絵が継ぎ目でずれない）",
+    (gen.match(/background-position: var\(--asset-focal/g) ?? []).length >= 1
+    && (gen.match(/background-size: cover/g) ?? []).length >= 1);
+
+  /** ③ Safari で成立する書き方か（ご指示） */
+  check("mask-composite に依存していない", !/mask-composite/.test(css));
+  const masks = decl.match(/(?:^|[^-])mask-image:[^;]+;/g) ?? [];
+  check("マスクは1本の linear-gradient だけ（複数レイヤを重ねていない）",
+    masks.length > 0 && masks.every((m) => (m.match(/gradient\(/g) ?? []).length === 1),
+    masks.filter((m) => (m.match(/gradient\(/g) ?? []).length !== 1).slice(0, 1).join(""));
+  check("すべての mask-image に -webkit- 版が対になっている",
+    (decl.match(/-webkit-mask-image:/g) ?? []).length === (decl.match(/(?:^|[^-])mask-image:/gm) ?? []).length,
+    `-webkit- ${(decl.match(/-webkit-mask-image:/g) ?? []).length}件 / 無印 ${(decl.match(/(?:^|[^-])mask-image:/gm) ?? []).length}件`);
+  check("マスクが効かない環境では、いままでの敷き方のまま（@supports の外は変えていない）",
+    /\.hero\[data-asset-source="generated"\]::before \{ opacity: \.28; \}/.test(css));
+
+  /**
+   * ④ **上下の帯の高さが、その帯の padding とずれていないか**（D-197）。
+   * 同じ数字を2箇所に書いてあるので、**片方だけ直したら落ちる**ようにしておく。
+   */
+  const mult = (re) => {
+    const m = re.exec(css);
+    if (!m) return null;
+    return m[1].trim();
+  };
+  const pads = [
+    ["tight", /\.band\[data-density="tight"\] \{ padding: calc\(var\(--section\) \* ([\d.]+)\)/],
+    ["loose", /\.band\[data-density="loose"\] \{ padding: calc\(var\(--section\) \* ([\d.]+)\)/],
+    ["vast", /\.band\[data-density="vast"\] \{ padding: calc\(var\(--section\) \* ([\d.]+)\)/],
+  ];
+  const bad = [];
+  for (const [id, re] of pads) {
+    const pad = mult(re);
+    const strip = mult(new RegExp(`\\.band\\[data-density="${id}"\\]\\[data-asset-source="generated"\\] \\{ --asset-pad: calc\\(var\\(--section\\) \\* ([\\d.]+)\\)`));
+    /** `0.5` と `.5` は同じ値である。**文字列ではなく数として比べる** */
+    if (pad === null || strip === null || Number(pad) !== Number(strip)) bad.push(`${id}: padding ${pad} / 帯 ${strip}`);
+  }
+  check("上下の帯の高さが、帯の padding と同じ倍率になっている（PC）", bad.length === 0, bad.join(" "));
+
+  /** ⑤ 絵が無い帯には、何も足していない */
+  /** 袖やマスクを持つ規則は、**すべて生成の帯に限定されていること** */
+  const rules = [...gen.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+    .filter(([, , body]) => /--asset-(sleeve|strip|strength|pad|col)|mask-image|clip-path/.test(body))
+    .map(([, sel]) => sel.trim())
+    .filter((sel) => !sel.startsWith("@") && !/data-asset-source="generated"|data-asset-safe/.test(sel));
+  check("袖・マスク・強さを持つ規則は、すべて生成の帯にだけ当たっている",
+    rules.length === 0, rules.slice(0, 3).join(" / "));
+}
+
 console.log("\n━━━ 画像の場所 ━━━");
 {
   check("公開のパスは /generated/ の下", generatedPath("a.png") === "/generated/a.png");

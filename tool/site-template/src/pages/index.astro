@@ -99,6 +99,7 @@ const desc = [basics.address, cap.processes?.join("ãƒ»"), cap.materials?.join("ã
       <section class="hero" data-motif={s.motif !== "none" ? s.motif : undefined}
         data-asset-source={assetImageOf(s.asset) ? s.asset?.source : undefined}
         data-asset-generated={s.asset?.generated?.id}
+        data-asset-safe={s.asset?.generated?.safe}
         style={s.asset?.generated ? `--asset-image:url(${s.asset.generated.path});--asset-focal:${s.asset.generated.focal}` : undefined}>
         <div class="inner">
           {/*

@@ -340,6 +340,8 @@ function adoptGenerated(out: AssetSection[], project: Project, page: string): As
         generated: {
           id: v.visualId, path: generatedPath(v.provenance.file!),
           focal: `${Math.round(v.mobile.focalPoint.x * 100)}% ${Math.round(v.mobile.focalPoint.y * 100)}%`,
+          /** **注文書が指定した「文章が乗る側」を、画面まで運ぶ**（第9段階④） */
+          safe: v.mobile.textSafeArea,
         },
       },
     };

@@ -37,7 +37,8 @@
     "qa:assets": "node qa-assets.mjs",
     "qa:contrast": "node qa-contrast.mjs",
     "test:architecture": "node architecture.test.mjs",
-    "test:webtext": "node webtext.test.mjs"
+    "test:webtext": "node webtext.test.mjs",
+    "qa:visible": "node qa-visible.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.3"
