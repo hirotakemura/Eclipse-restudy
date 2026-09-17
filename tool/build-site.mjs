@@ -24,6 +24,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { findInternalLanguage, visibleText, contextFor } from "./lib/internal-language.ts";
+import { verifyDraft } from "./lib/verify.ts";
+import { writerView } from "./lib/generate/writer-view.ts";
 import { internalValues } from "./lib/form-definition.ts";
 import { analyze } from "./lib/design/analysis.ts";
 import { sanitizeProject } from "./lib/sanitize.ts";
@@ -107,12 +109,43 @@ if (project.visualPlan?.visuals?.length) {
 }
 
 const draftSrc = path.join(projectDir, "draft");
+/**
+ * **原稿は、書き出しのたびに検証し直す。**
+ *
+ * `verifyDraft` が走るのは、これまで**原稿を生成したその1回だけ**だった。そのため——
+ *   ① `npm run generate` が「出典なし」で止まっても、**原稿はディスクに残る**（generate.mjs）。
+ *      次に `npm run build:site` を叩けば、**止まった原稿がそのまま公開に回る。**
+ *   ② 人が `draft/*.md` を手で直しても、**誰も照合しない。**
+ * 出典は生成時と同じ `writerView`——**渡していない欄を出典に使わせない**（D-253）。
+ * `forPublish` なので、`{{要確認}}` の残りもここで止まる。
+ */
+const REVIEWED_MARK = path.join(draftSrc, ".reviewed");
+const draftSource = writerView(project);
+const draftBlocks = [];
 let drafts = 0;
 if (fs.existsSync(draftSrc)) {
   for (const f of fs.readdirSync(draftSrc).filter((f) => f.endsWith(".md"))) {
+    const md = fs.readFileSync(path.join(draftSrc, f), "utf8");
+    /** **中身は消さない。** 確認できるように配ったうえで、公開判定のほうで止める */
     fs.copyFileSync(path.join(draftSrc, f), path.join(draftDst, f));
     drafts++;
+    for (const v of verifyDraft(md, draftSource, { forPublish: true })) {
+      if (v.severity !== "error") continue;
+      draftBlocks.push([`draft/${f}`, `${v.message}：「${v.found}」  …${v.context}`]);
+    }
   }
+}
+/**
+ * **人が読んでから公開する**（D-013「生成物は原稿の第1稿であって、商品ではない」）。
+ *
+ * 原稿があるのに確認の印が無ければ、`site/` には出さず `site-draft/` で止める。
+ * 印は `draft/.reviewed` に**人が書く**——誰がいつ読んだか。こちらが勝手に置かない。
+ * **原稿が0件のときは印を求めない**（データだけでもサイトは建つ。既存の挙動を変えない）。
+ */
+let reviewed = "";
+if (drafts) {
+  reviewed = fs.existsSync(REVIEWED_MARK) ? fs.readFileSync(REVIEWED_MARK, "utf8").trim() : "";
+  if (!reviewed) draftBlocks.push(["draft/", "人が原稿を読んだ印がありません（draft/.reviewed が無い、または空）"]);
 }
 
 const productLabel = (project.formSet ?? "manufacturing") === "general"
@@ -270,7 +303,8 @@ if (!domain) console.log(`  ※ ドメイン未定のため ${siteUrl} で書き
  * 原稿生成を通さない経路には verify.ts の検証がかからないので、ここが最後の関所になる。
  */
 const NEEDS_REVIEW = "{{要確認}}";
-const leaked = [];
+/** 原稿の再検証と、人の確認の印。**書き出しの前に済んでいる**ので、ここでは合流させるだけ */
+const leaked = [...draftBlocks];
 const suspect = [];
 const notes = Object.values(project.unconfirmedNotes ?? {}).filter(Boolean);
 /**
@@ -356,6 +390,10 @@ if (leaked.length || missing.length) {
     if (!b.tel) console.log("     電話番号のないBtoB製造業サイトは、作った意味がありません。");
   }
   for (const [f, why] of suspect) console.log(`  △ ${f}  ${why}`);
+  if (drafts && !reviewed) {
+    console.log(`\n  原稿を読んだら、印を置いてください（誰がいつ読んだかを1行で）：`);
+    console.log(`    echo "$(date +%F) 竹村が全ページ確認" > ${path.join(draftSrc, ".reviewed")}`);
+  }
   console.log("\n  KOBOで該当の項目を埋めてから、もう一度実行してください。");
   console.log(`\n  中身の確認はできます：  npm run preview:site -- ${id}`);
   console.log(`  （確認用の書き出し: ${path.relative(process.cwd(), draftDir)}）\n`);
@@ -364,6 +402,7 @@ if (leaked.length || missing.length) {
 
 // 検査を通った。公開してよいものとして site/ に置き、古い確認用は消す
 move(siteDir);
+if (reviewed) console.log(`\n  原稿の確認：${reviewed}`);
 fs.rmSync(draftDir, { recursive: true, force: true });
 // 止めるほどではないが、人の目で見てほしいもの。**黙って通さない**
 if (suspect.length) {
