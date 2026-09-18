@@ -1089,10 +1089,22 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
       animation-timeline: view(); animation-range: entry 0% entry 40%;
     }
 
+    /**
+     * **数字は、読んでいる最中に薄いままではいけない**（P-1・実測で見つけた不具合）。
+     *
+     * `animation-range` が**書かれていなかった**ので、既定の `cover`
+     * （入り始めてから抜けきるまで）で動いていた。実際に測ると——
+     *
+     *   画面の中ほど（y=428）　opacity **0.80**　／　3px 漂っている
+     *   完全に 1.00 になるのは　**画面から出た後**（y=−39）
+     *
+     * **いちばん読ませたい数字が、読んでいる間ずっと8割の濃さだった。**
+     * 帯と同じ `entry 0% entry 40%` に揃える。**新しい動きは足していない。**
+     */
     html[data-motion="standard"] .figures dd {
       animation-name: kobo-rise; animation-duration: var(--m-rise);
       animation-timing-function: ease-out; animation-fill-mode: both;
-      animation-timeline: view();
+      animation-timeline: view(); animation-range: entry 0% entry 40%;
     }
 
     /**
@@ -1153,18 +1165,44 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
      * 山はそのページで最も見てほしい場所なので、ほかの帯と同じ速さで通り過ぎさせない。
      * **新しい動きは足していない。** 同じ `kobo-rise` を、長い範囲で使うだけ。
      */
+    html[data-motion="subtle"] .band[data-peak],
     html[data-motion="standard"] .band[data-peak] {
       animation-duration: var(--m-peak); animation-range: entry 0% entry 55%;
+    }
+
+    /**
+     * **間は、動かして作るのではなく、止めて作る**（P-2・docs/37 G-3②）。
+     *
+     * ここまで、1ページの帯は**全部が同じ `kobo-rise` を同じ範囲で**行っていた。
+     * トップページなら同じ出来事が5回起きるだけで、**山が山に見えない。**
+     * 山の直前の帯を止めると、次に来る山が山になる。
+     *
+     * **新しい動きは1つも足していない。** 足したのは「動かさない」である。
+     * 止めた帯は素の HTML のまま（透明度1・移動なし）なので、見えなくなる恐れが無い。
+     *
+     * 山が先頭にあるページ（13中11）では前の帯が無いので、ここは当たらない。
+     * **山の位置は動かさない**（ページ構成の判断であって、動きの仕事ではない）。
+     *
+     * `:has()` を解さないブラウザではこの規則ごと落ちる。そのときは
+     * **前からの見え方（帯が現れる）に戻るだけ**で、情報は何も失われない。
+     */
+    html[data-motion="subtle"] .band:not([data-peak]):has(+ .band[data-peak]),
+    html[data-motion="standard"] .band:not([data-peak]):has(+ .band[data-peak]) {
+      animation-name: none;
     }
   }
 
   /**
-   * 指を乗せたときだけ、わずかに浮く。
-   * **動きを減らす設定の人には、色の変化だけが残る**（下の hover は外にある）。
+   * **押せるものは、色で応える。位置は動かさない**（P-6・D-363）。
+   *
+   * ここには `translateY(-2px)` があった。しかし**5行下の D-363 には
+   * 「位置を動かすと、指とカーソルの下で対象がずれる」と書いてある。**
+   * 同じファイルの中で方針が食い違っていたので、**設計意図のほうを正とした。**
+   *
+   * 動くものが無くなったので `transform` の遷移も外す（当たる先が無い）。
    * ここは `animation-timeline` を使わないので `@supports` の外に置く。
    */
-  .case-card, .machine, .offer { transition: transform var(--m-fast) ease-out, background var(--m-fast) ease-out; }
-  .case-card:hover, .machine:hover { transform: translateY(-2px); }
+  .case-card, .machine, .offer { transition: background var(--m-fast) ease-out; }
 
   /**
    * **操作に応える。ただし動かさない**（第8段階⑤・D-363）。
