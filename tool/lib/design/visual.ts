@@ -82,6 +82,18 @@ function draws(id: PeakId, presentation: PresentationId): boolean {
 
 /** その帯に置ける山を選ぶ。**無ければ `none`** */
 function peakFor(sec: Section, project: Project, a: Analysis, tone: string): PeakId {
+  /**
+   * **本体でない帯を、そのページの山にしない**（Owner / Reference）。
+   *
+   * 実測で見つけた。`repress()` が参照の帯の `emphasis` を `lead` から落としても、
+   * ここが `emphasis` を見ていないので**同じ帯を山に選び直していた。**
+   * その結果、お問い合わせのページは**参照にしたのに高さが1pxも変わらず**、
+   * 「他社様で難しいと言われた案件」が本体（強み・技術）とまったく同じ大きさで出ていた。
+   *
+   * **山は「このページで最も見てほしい場所」である。** 本体が別ページにあるものは、
+   * 定義上そのページで最も見てほしいものではない。
+   */
+  if (sec.reference) return "none";
   const m = materialsOf(project, sec.content, a.hasRealPhotos);
   for (const id of PEAK_ORDER[tone] ?? PEAK_ORDER.spec!) {
     const peak = getPeak(id);
@@ -192,6 +204,23 @@ export function composeVisual(
       const s = body[i]!;
       /** **「控えめに」と決めた帯を、山にしない**（D-302。主役と同じ理屈） */
       if (s.emphasis === "quiet") continue;
+      /**
+       * **本体でない帯は、2つ目の山にもしない**（Owner / Reference）。
+       *
+       * ★両方を作って画面で見くらべて決めた。
+       * 2つ目の山を許すと、「他社様で難しいと言われた案件」の53字が
+       * **トップと強み・技術で、まったく同じ大きさで両ページの頭に出る**
+       * （実測：トップ 3621px／許さない場合 3331px）。
+       * **同じ文が同じ大きさで2ページを開くこと**が、いちばん「自動生成」に見える印である。
+       *
+       * 引き換えに、要約ページは山のあと軽い帯が続く（docs/34 第7段階⑤の減衰）。
+       * ただし要約ページの仕事は**留めることではなく送ること**なので、
+       * 締めが軽いのは欠点ではない。**重複のほうが重い。**
+       *
+       * 【撤回の条件】本体ページと参照ページで、同じ内容の見た目が
+       * はっきり違えられるようになったとき（例：参照専用の短い見せ方を持ったとき）。
+       */
+      if (s.reference) continue;
       const m = materialsOf(project, s.content, a.hasRealPhotos);
       for (const id of ["number", "statement", "spec"] as PeakId[]) {
         if (id === peakId) continue;

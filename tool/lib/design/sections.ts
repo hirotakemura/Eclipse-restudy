@@ -22,6 +22,9 @@ import { getDirection, type Tone } from "./direction.ts";
 import type { SurfaceId, LayoutId, MotifId, MediaId, ContentId, PresentationId } from "./system/index.ts";
 import { MOTIFS } from "./system/index.ts";
 import { canPresent, hasMaterial, keepsAll, widthFor } from "./system/index.ts";
+import { labelOf } from "./system/page.ts";
+import type { PageId } from "./system/page.ts";
+import { isOwner, REFERENCE_AS, canListTechnique } from "./system/owner.ts";
 import type { WidthId } from "./system/index.ts";
 import { choosePresentation, PLAYBOOK, LABEL } from "./playbook.ts";
 import { materialsOf } from "./materials.ts";
@@ -96,6 +99,13 @@ export interface Section {
    * 変えてよいのは、その上にある「対応できる条件」「主な設備」のほうである。
    */
   form?: PresentationId;
+  /**
+   * **この帯は、その内容の本体ではない**（Owner / Reference の実証）。
+   *
+   * 本体は別のページにあるので、ここでは**見出し＋短い情報＋本体へのリンク**にする。
+   * 判定は `system/owner.ts` の表だけが持ち、**Astro 側には散らさない。**
+   */
+  reference?: true;
   /**
    * **この帯は、その内容の全件を見せる帯である**（第6.5段階）。
    *
@@ -352,10 +362,13 @@ function spaceMotif(sec: Section, prev: Section | undefined): Section {
 function repress(
   sec: Omit<Section, "why">, project: Project, a: Analysis, hero: string,
   used: Map<ContentId, Set<PresentationId>>,
+  /** **この帯を描くページ。** 本体（Owner）かどうかの判定に使う */
+  page: PageId,
   brief?: DesignBrief | StoredBrief,
 ): { sec: Omit<Section, "why">; note: string } {
   if (sec.kind === "hero" || sec.content === "draft") return { sec, note: "" };
   const m = materialsOf(project, sec.content, a.hasRealPhotos);
+
   const isLead = PLAYBOOK[a.primaryStrength].lead === sec.content;
   /**
    * **最初の画面が出しているものを、すぐ下で同じ形で繰り返さない**（D-183）。
@@ -378,6 +391,59 @@ function repress(
    * **消すのではなく、2つ目の形を変える**（D-204）。
    */
   const avoid: PresentationId[] = [...byHero, ...(used.get(sec.content) ?? [])];
+
+  /**
+   * ── 本体でないページでは、短く出す（Owner / Reference の実証）──────
+   *
+   * **帯そのものは消さない**（D-204）。消すと導線ごと無くなる。
+   * 変えるのは**見せ方と強さ**だけで、文章には一切手を入れていない。
+   *
+   * 【なぜ `avoid` のあとに置くか】★実装中に検査が3本落ちて分かった
+   * 最初はこの判断を関数の先頭に置き、そこで `return` していた。すると
+   *   ・**D-183 の関所を素通り**した（最初の画面が数字なのに、条件の帯も大きな数字になった）
+   *   ・**材料の2重の関所を素通り**した（材料の無い表現がそのまま画面に出た）
+   * **短くするための近道が、既存の安全装置を飛び越えていた。**
+   * 短い見せ方も `avoid` を通し、使えなければ**規則版の選択に戻す**（AIの指定は通さない）。
+   */
+  /**
+   * **トップページは、その会社の勝ち筋だけを本体として持つ**（Owner / Reference）。
+   *
+   * ★検査が教えてくれた：「全15型・6社とも、トップに山が1つ以上ある」が落ちた。
+   * すべての内容を別ページの参照にしたので、**トップに山が1つも立たなくなった。**
+   * トップが何も所有しないのは、要約ではなく**目次**である。
+   *
+   * `PLAYBOOK[勝ち筋].lead` は「この会社を一言で言うとこれ」という内容で、
+   * それだけは**トップで全文**、残りは参照にする。
+   * 難加工の会社ならトップの主役は実際に受けた仕事、精度の会社なら条件になる。
+   */
+  const ownsAsLead = page === "index" && isLead;
+  if (!isOwner(sec.content, page) && !ownsAsLead) {
+    const st: any = (project as any).strengths ?? {};
+    /** **候補を順に見て、関所を全部通った最初のものを使う。** 通らなければ規則版に戻す */
+    const refAs = (REFERENCE_AS[sec.content] ?? []).find((x) =>
+      canPresent(sec.content, x) && hasMaterial(x, m) && !avoid.includes(x)
+      && (sec.content !== "technique" || canListTechnique(st.followUpFindings)));
+    const fallback = choosePresentation(sec.content, a, m, { isLead: false, avoid, keepAll: sec.keepAll });
+    const presentation = refAs ?? fallback.presentation;
+    const ok = Boolean(refAs);
+    /** **本体でない帯を、そのページの山にしない。** 同じ文が3ページで山になっていた */
+    const emphasis = sec.emphasis === "lead" ? "normal" as const : sec.emphasis;
+    (used.get(sec.content) ?? used.set(sec.content, new Set()).get(sec.content)!).add(presentation);
+    /**
+     * **AIが何か言っていたのに採らなかったなら、そう記録する**（検査が教えてくれた）。
+     * ここは Brief を読まずに決める場所だが、**「読まなかった」のと
+     * 「読んで落とした」のを同じ `rules` にすると、誰が決めたかの記録が嘘になる。**
+     */
+    const said = usable(brief)?.blocks.find((b) => b.content === sec.content);
+    const decidedBy: BriefSource =
+      said && said.presentation !== presentation ? "ai-fallback" : "rules";
+    return {
+      sec: { ...sec, presentation, reference: true, emphasis, width: widthFor(presentation),
+             decidedBy, ruleChoice: { presentation, emphasis } },
+      note: ok ? `／本体は別ページなので「${presentation}」で短く出す`
+               : `／本体は別ページだが、短い見せ方が使えないので規則版の「${presentation}」で出す`,
+    };
+  }
 
   /**
    * 形の決まっている帯は、ここで終わり。**強みでも Brief でも動かさない。**
@@ -586,7 +652,7 @@ export function composeTop(
     const named = { ...base, heading: headingFor(base.heading, isGeneral) };
     const decorated = decorate(applyTone(weaken(named, project, a), tone), d, a, n++, prev, invertedDone);
     if (INVERTED.includes(decorated.surface)) invertedDone = true;
-    const { sec, note } = repress(decorated, project, a, hero, used, brief);
+    const { sec, note } = repress(decorated, project, a, hero, used, "index", brief);
     prev = sec.surface;
     out.push({ ...spaceMotif(sec, out[out.length - 1]), why: why + note });
   };
@@ -788,11 +854,34 @@ export function composePage(
   let invertedDone = false;
   /** **下層ページの見出しも、商品ごとに出し分ける**（D-276）。トップだけ直しても片手落ち */
   const isGeneral = (project as any).formSet === "general";
+  /**
+   * **ページの見出しと同じ言葉を、すぐ下でもう一度出さない。**
+   *
+   * 実測：会社概要のページは `会社概要`（ページ見出し）→ `会社概要`（節の見出し）、
+   * 設備一覧のページは `設備一覧` → `保有設備一覧` と、**同じ言葉が続けて2回**出ていた。
+   * 上の見出しがもう言っているので、下は言い直しでしかない。
+   * **人が作ったページでは起きない重なり方**で、自動生成に見えるいちばん安い印である。
+   *
+   * ★最初は「ページの1本目だけ」にしたが、**会社概要で効かなかった。**
+   * 写真の無いギャラリーの帯が数に入っていて、`profileTable` が2本目になっていたためである
+   * （画面には出ないが、`composePage` は帯を返す）。**画面上の1本目は、ここでは分からない。**
+   * 位置ではなく**言葉で**判定する。ページ見出しとまったく同じ言葉の節は、
+   * どこにあっても言い直しである。
+   */
+  const pageLabel = labelOf(slug as PageId, isGeneral ? "general" : "manufacturing");
+  /**
+   * ★**完全一致だけ**にする。最初は「ページ見出しで終わる見出し」も消していたが、
+   * 実測で **「お問い合わせ」→「フォームでのお問い合わせ」まで消えた**（43案件中35件）。
+   * こちらは言い直しではなく、**電話とフォームを区別する見出し**である。
+   * 言い直しかどうかを語尾で当てるのは無理なので、**同じ言葉のときだけ**にする。
+   */
+  const echoesPageHead = (h: string | undefined) => Boolean(h) && h === pageLabel;
   const add = (base: Base, why: string) => {
-    const named = { ...base, heading: headingFor(base.heading, isGeneral) };
+    const h0 = headingFor(base.heading, isGeneral);
+    const named = { ...base, heading: echoesPageHead(h0) ? undefined : h0 };
     const decorated = decorate(applyTone(weaken(named, project, a), tone), d, a, n++, prev, invertedDone);
     if (INVERTED.includes(decorated.surface)) invertedDone = true;
-    const { sec, note } = repress(decorated, project, a, "headline", used);
+    const { sec, note } = repress(decorated, project, a, "headline", used, slug as PageId);
     prev = sec.surface;
     out.push({ ...spaceMotif(sec, out[out.length - 1]), why: why + note });
   };

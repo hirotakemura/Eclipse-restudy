@@ -164,8 +164,12 @@ const points = ((isGeneral
 {content === "conditions" && presentation === "comparison" && (
   <Comparison label="標準の納期" text={cap.shortestLeadTime} />
 )}
+{/* **本体は対応可能範囲のページ。** ここは判断に効く数字だけ並べて、本体へ送る（Owner / Reference） */}
 {content === "conditions" && presentation === "list" && (
-  <ListView items={analysis.figures.map((f: any) => `${f.label}：${f.value}`)} />
+  <>
+    <ListView items={analysis.figures.map((f: any) => `${f.label}：${f.value}`)} />
+    {page !== "capability" && <p><a href="/capability/">対応可能範囲をすべて見る</a></p>}
+  </>
 )}
 
 {content === "materials" && presentation === "chips" && (
@@ -192,7 +196,12 @@ const points = ((isGeneral
     <div class={`cards${grid.orphan ? " has-orphan" : ""}`} style={`--cols:${grid.cols}`}>
       {shownCases.map((c: any, i: number) => <CaseCard index={i} item={c} />)}
     </div>
-    {cases.length > 6 && page !== "cases" && <p style="margin-top:20px"><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>}
+    {/**
+      * **本体でないページには、必ず本体への導線を出す**（Owner / Reference）。
+      * 以前は「6件を超えるとき」だけ出していたので、4件の会社では
+      * **カードだけ並んで一覧への行き先が無かった。** 工程・引用の分岐は前から `page` だけを見ている。
+      */}
+    {page !== "cases" && <p style="margin-top:20px"><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>}
   </>
 )}
 {content === "cases" && presentation === "process" && (
@@ -231,7 +240,13 @@ const points = ((isGeneral
     {page !== "strengths" && <p><a href="/strengths/">強み・技術をくわしく見る</a></p>}
   </>
 )}
-{content === "technique" && presentation === "list" && <ListView items={techSteps.map((s) => s.title || s.body.slice(0, 40))} />}
+{/* **本体は強み・技術のページ。** ここは見出しだけを並べて、本体へ送る（Owner / Reference） */}
+{content === "technique" && presentation === "list" && (
+  <>
+    <ListView items={techSteps.map((s) => s.title || s.body.slice(0, 40))} />
+    {page !== "strengths" && <p><a href="/strengths/">強み・技術をくわしく見る</a></p>}
+  </>
+)}
 
 {content === "declined" && presentation === "quote" && (
   <Declined text={isGeneral ? reasonChosen : st.wonAfterOthersDeclined} href={linkTo("strengths")}
@@ -298,8 +313,15 @@ const points = ((isGeneral
 
 {content === "recruit" && presentation === "spec" && <Table rows={recruitTerms} />}
 {content === "recruit" && presentation === "list" && <ListView items={recruitBlocks.map(([h]) => h)} />}
+{/**
+  * **塊が1つしかないときは、小見出しを出さない。**
+  * 帯の見出しは `heads.join("・")` で作られている（`sections.ts`）ので、
+  * 塊が1つだと**帯の見出しと小見出しがまったく同じ言葉**になる。
+  * 実測：採用情報のページが `募集している職種`（h2）→ `募集している職種`（h3）→ 1行、
+  * という画面になっていた。**2つ以上あるときだけ、区別のために出す。**
+  */}
 {content === "recruit" && presentation === "prose" && (
-  <>{recruitBlocks.map(([h, body]) => <><h3>{h}</h3><p>{body}</p></>)}</>
+  <>{recruitBlocks.map(([h, body]) => <>{recruitBlocks.length > 1 && <h3>{h}</h3>}<p>{body}</p></>)}</>
 )}
 
 {/* ご連絡先。**電話とメールは、用紙と同じページに必ず置く**（D-060） */}

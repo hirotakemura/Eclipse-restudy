@@ -710,8 +710,17 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
   background-size: 7px 7px, 11px 11px;
 }
 
-/* 隣り合う帯の地が同じときだけ、罫で切る */
-.band + .band { border-top: 0; }
+/**
+ * 隣り合う帯の地が同じときだけ、罫で切る。
+ *
+ * ★実測で見つけた不具合：**`rule`（上下の太罫）を除かないと、その罫が消える。**
+ * `.band[data-surface="rule"]` の `border-top: 3px solid var(--accent)` と
+ * この規則は**詳細度が同じ**（どちらも 0,2,0）なので、**あとに書いたこちらが勝つ。**
+ * 実測：全ページで「1本目の帯だけ 3px、2本目以降は 0px」だった。
+ * つまり「上下の太罫」という語彙が、**ページの最初の1本でしか出ていなかった。**
+ * 章の変わり目がいちばん分かる印なのに、それが消えていた。
+ */
+.band + .band:not([data-surface="rule"]) { border-top: 0; }
 .band[data-surface="plain"] + .band[data-surface="plain"],
 .band[data-surface="soft"] + .band[data-surface="soft"] { border-top: 1px solid var(--line); }
 

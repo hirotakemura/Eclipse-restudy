@@ -36,6 +36,12 @@ interface Props {
    * **素材を置かないことは「決まらなかった」ではなく「要らないと決めた」**であり、
    * 省くと決めたことが画面に残らない（docs/31 原則①）。
    */
+  /**
+   * **この帯は、その内容の本体ではない**（Owner / Reference の実証）。
+   * 判定は `lib/design/system/owner.ts` の表だけが持つ。ここは受け取って出すだけ。
+   * **画面では確かめられないので、HTMLに残す**（どちらで描かれたかを数えるため）。
+   */
+  reference?: boolean;
   assetSource?: string;
   assetIntent?: string;
   assetRole?: string;
@@ -64,7 +70,7 @@ interface Props {
   assetFocal?: string;
 }
 const { width = "normal", emphasis = "normal", surface = "plain", layout = "stack", motif = "none", content, presentation, decidedBy, heading, density = "normal", peak = "none", role,
-  assetSource, assetIntent, assetRole, assetSubject, assetWanted, assetPriority, assetLibrary, assetGenerated, assetImage, assetFocal } = Astro.props;
+  assetSource, assetIntent, assetRole, assetSubject, assetWanted, assetPriority, assetLibrary, assetGenerated, assetImage, assetFocal , reference } = Astro.props;
 ---
 <section
   class="section band"
@@ -77,6 +83,7 @@ const { width = "normal", emphasis = "normal", surface = "plain", layout = "stac
   data-presentation={presentation}
   data-decided-by={decidedBy}
   data-density={density}
+  data-reference={reference ? "" : undefined}
   data-peak={peak !== "none" ? peak : undefined}
   data-role={role}
   data-asset-source={assetSource}
