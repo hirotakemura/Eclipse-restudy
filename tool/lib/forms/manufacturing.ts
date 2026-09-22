@@ -186,13 +186,20 @@ export const BLOCKS: Block[] = [
         placeholder: "聞き取った数値をそのまま。答えが曖昧なら「未確認」を付ける",
       },
       { path: "capability.lotSize", label: "対応ロット", type: "text", required: true, placeholder: "聞き取った内容をそのまま" },
+      /**
+       * **1つの欄で2つ聞かない**（D-452）。
+       * 「標準納期と最短納期の両方を聞く」としていたため、1つの欄に
+       * 「標準7日。急ぎの場合は最短3日」と入り、**値ではなく文**になっていた。
+       */
+      { path: "capability.standardLeadTime", label: "標準納期", type: "text", required: true,
+        help: "ふだんの納期。**値だけ**（例：7日）。急ぎの話は次の欄へ", placeholder: "7日" },
       {
         path: "capability.shortestLeadTime",
         label: "最短納期",
         type: "text",
         required: true,
-        help: "標準納期と最短納期の両方を聞く。即答できない場合は「未確認」を付ける",
-        placeholder: "聞き取った内容をそのまま",
+        help: "急ぐときに出せる最短。**値だけ**（例：3日）。即答できない場合は「未確認」を付ける",
+        placeholder: "3日",
       },
       { path: "capability.prototypeRatio", label: "試作と量産の比率", type: "text" },
       {

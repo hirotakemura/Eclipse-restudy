@@ -95,7 +95,7 @@
       "ステンレス"
     ],
     "lotSize": "1個から。量産の場合は5,000個程度まで",
-    "shortestLeadTime": "標準7日。急ぎの場合は最短3日",
+    "shortestLeadTime": "3日",
     "certifications": [
       "ISO9001"
     ],
@@ -118,7 +118,8 @@
       "表面処理",
       "塗装",
       "溶接"
-    ]
+    ],
+    "standardLeadTime": "7日"
   },
   "strengths": {
     "wonAfterOthersDeclined": "肉厚が非常に薄く、形状が複雑な部品。他社から「ビビって割れるから無理」と断られた案件を複数回受注している。",

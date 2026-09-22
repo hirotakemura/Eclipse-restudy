@@ -589,6 +589,34 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   check("右の列の引き方も、型ごとに変わる",
     /data-tables="?stripe"?\] \.hero-figures/.test(css5) && /data-tables="?all"?\] \.hero-figures/.test(css5));
 
+  console.log("\n━━━ ㉒ 1つの欄で2つ聞かない（D-452）━━━");
+  /**
+   * 実測：**「最短納期」の欄に「標準7日。急ぎの場合は最短3日」**が入っていた。
+   * 取材台本の質問が「**標準納期と最短納期の両方を聞く**」だったためである。
+   * 値が文になるので「短く言い切れる値」と判定されず、
+   * **①2本目が大きな数字にならない ②右の列で大きく組めない ③最初の画面の数字も出ない**——
+   * **1つの原因が3か所で効いていた。**
+   */
+  const { leadValue } = await import("./lib/design/materials.ts");
+  check("大きく出すときは、最初の一文を見る",
+    leadValue("標準7日。急ぎの場合は最短3日") === "標準7日", leadValue("標準7日。急ぎの場合は最短3日"));
+  check("一文しかない値は、そのまま", leadValue("±0.005mm") === "±0.005mm");
+  /**
+   * ★**機械では選べない**ことが実測で分かった——最初の一文を取ると、
+   * **「最短納期」の札に「標準7日」**が出た。**欄のほうを分ける。**
+   */
+  const { FORM_SETS } = await import("./lib/form-definition.ts");
+  const paths = FORM_SETS.manufacturing.blocks.flatMap((b) => b.fields.map((f) => f.path));
+  check("標準納期と最短納期が、別の欄になっている",
+    paths.includes("capability.standardLeadTime") && paths.includes("capability.shortestLeadTime"));
+  const leadHelp = FORM_SETS.manufacturing.blocks.flatMap((b) => b.fields)
+    .find((f) => f.path === "capability.shortestLeadTime")?.help ?? "";
+  check("最短納期の質問が、両方を聞かなくなっている", !/両方/.test(leadHelp), leadHelp);
+  /** **2つ揃っていれば、それがそのまま対比の材料になる** */
+  const two = { ...base, capability: { ...base.capability, standardLeadTime: "7日", shortestLeadTime: "3日" } };
+  check("標準と最短が揃っていれば、対比の材料になる",
+    materialsOf(sanitizeProject(two), "conditions", true).hasPair);
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 

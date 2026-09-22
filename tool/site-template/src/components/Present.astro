@@ -26,6 +26,7 @@ import Gallery from "./Gallery.astro";
 import CaseCard from "./CaseCard.astro";
 import Prose from "./Prose.astro";
 import { cardGrid } from "../lib/cards";
+import { leadValue } from "../../../lib/design/materials.ts";
 import { project, cases, rows, photosOf, photosOfCase, tel, telHref, email, serviceArea, isGeneral, reasonChosen, idealCustomer, offerings, webOf } from "../lib/site";
 import InquiryForm from "./InquiryForm.astro";
 import { splitParts } from "../lib/text";
@@ -102,6 +103,7 @@ const specRows = rows([
   ["協力会社に依頼している工程", outsourced],
   ["対応サイズ（最大）", cap.maxSize], ["対応サイズ（最小）", cap.minSize],
   ["対応精度", cap.tolerance], ["対応ロット", cap.lotSize],
+  ["標準納期", cap.standardLeadTime],
   ["最短納期", cap.shortestLeadTime], ["資格・認証", cap.certifications],
   ["稼働体制", cap.operatingHours],
 ]);
@@ -167,10 +169,17 @@ const points = ((isGeneral
   <p>{offerings.map((o: any) => o.name).filter(Boolean).join("・")}</p>
 )}
 
-{content === "conditions" && presentation === "largeNumber" && <Figures figures={analysis.figures} />}
+{/**
+  * **大きく出すのは最初の一文だけ**（D-452）。
+  * 「標準7日。急ぎの場合は最短3日」は2つの値が1つの文に入っているだけで、
+  * 大きく組むときは先に言われた値を出す。**残りは対応可能範囲の表にそのまま出る**
+  */}
+{content === "conditions" && presentation === "largeNumber" && (
+  <Figures figures={analysis.figures.map((f: any) => ({ ...f, value: leadValue(f.value) }))} />
+)}
 {content === "conditions" && presentation === "spec" && <Table rows={specRows} />}
 {content === "conditions" && presentation === "comparison" && (
-  <Comparison label="標準の納期" text={cap.shortestLeadTime} />
+  <Comparison label="標準の納期" text={cap.standardLeadTime ? `標準${cap.standardLeadTime}。急ぎの場合は最短${cap.shortestLeadTime}` : cap.shortestLeadTime} />
 )}
 {/* **本体は対応可能範囲のページ。** ここは判断に効く数字だけ並べて、本体へ送る（Owner / Reference） */}
 {content === "conditions" && presentation === "list" && (

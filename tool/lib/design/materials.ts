@@ -14,6 +14,20 @@ import { splitParts } from "./text.ts";
 const text = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 const arr = (v: unknown): any[] => (Array.isArray(v) ? v : []);
 
+/**
+ * **大きく出すときは、最初の一文だけを見る**（D-452）。
+ *
+ * 実測：条件の欄には**2つの値が1つの文**で入っていた——
+ * 「標準7日。急ぎの場合は最短3日」「1個から。量産の場合は5,000個程度まで」
+ * 「±0.01mm。形状・材質により ±0.005mm まで対応」。
+ * 欄の名前は「最短納期」なのに、取材台本の質問が「**標準と最短の両方を聞く**」だった。
+ * その結果 `isShortValue` が通らず、**大きな数字の帯も、最初の画面の数字も出なかった。**
+ *
+ * **要約はしない。** 取材者が先に書いた値（最初の一文）をそのまま取るだけである。
+ * 残りは対応可能範囲の表にそのまま出る——**消さずに、置き場所を分ける**（Owner / Reference と同じ）
+ */
+export const leadValue = (v: string): string => (v ?? "").split(/[。\n]/)[0]!.trim();
+
 /** 短く言い切れる値か。**長い文を「大きな数字」として出さない**（D-203） */
 export const isShortValue = (v: string): boolean =>
   v.length > 0 && v.length <= 14 && !/[。、]/.test(v);
@@ -59,7 +73,7 @@ export function materialsOf(project: Project, content: ContentId, hasRealPhotos:
       };
     }
     case "conditions": {
-      const vals = [text(cap.tolerance), text(cap.shortestLeadTime), text(cap.lotSize), (cap.materials ?? []).join("・"), (cap.certifications ?? []).join("・")].filter(Boolean);
+      const vals = [text(cap.tolerance), text(cap.standardLeadTime), text(cap.shortestLeadTime), text(cap.lotSize), (cap.materials ?? []).join("・"), (cap.certifications ?? []).join("・")].filter(Boolean);
       /**
        * **判定する値と、実際に描く値を揃える**（D-251）。
        *
@@ -68,20 +82,27 @@ export function materialsOf(project: Project, content: ContentId, hasRealPhotos:
        * **画面には「案件により相談」が大きく出る**、ということが起きた（実測）。
        * 大きく出す候補は**公差・納期・ロットの3つ**で、資格も材質も数字ではない。
        */
-      const numeric = [text(cap.tolerance), text(cap.shortestLeadTime), text(cap.lotSize)].filter(Boolean);
+      const numeric = [text(cap.tolerance), text(cap.shortestLeadTime), text(cap.standardLeadTime), text(cap.lotSize)].filter(Boolean);
       return {
         ...base,
         count: vals.length,
         length: vals.join("").length,
-        hasShortValue: vals.some(isShortValue),
+        /**
+         * **見るのは最初の一文**（D-452）。「標準7日。急ぎの場合は最短3日」は
+         * 2つの値が1つの文に入っているだけで、**値そのものは短く言い切れている。**
+         * 文のまま測っていたので、条件が揃っている会社でも大きな数字が出せなかった
+         */
+        hasShortValue: vals.some((v) => isShortValue(leadValue(v))),
         // **数字を含んで初めて条件になる**（D-251）。`analyze` の heroFigure と同じ規則
-        hasStrongValue: numeric.some((v) => isShortValue(v) && /\d/.test(v)),
+        hasStrongValue: numeric.some((v) => isShortValue(leadValue(v)) && /\d/.test(leadValue(v))),
         /**
          * 対比は「標準◯／最短◯」のように**2つの値が1つの文に入っている**ときに成り立つ。
          * **描くのは納期だけ**（`Present.astro` の `Comparison`）なので、納期だけを見る。
          * ロットの「1個から…まで」で立てると、**納期の欄に対比でない文が入る。**
          */
-        hasPair: /標準.*最短|最短.*標準|通常.*急ぎ|急ぎ.*通常/.test(text(cap.shortestLeadTime)),
+        /** 欄を分けたら、2つ揃っていることがそのまま対比になる（D-452）。**前の書き方も残す** */
+        hasPair: Boolean(text(cap.standardLeadTime) && text(cap.shortestLeadTime))
+          || /標準.*最短|最短.*標準|通常.*急ぎ|急ぎ.*通常/.test(text(cap.shortestLeadTime)),
       };
     }
     case "materials": {

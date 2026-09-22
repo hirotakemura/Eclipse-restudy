@@ -19,6 +19,7 @@
  * 文章も数値も作らない。値は必ず案件データから取る。
  */
 
+import { leadValue } from "./materials.ts";
 import type { Project } from "../schema.ts";
 import type { MotifId } from "./system/index.ts";
 
@@ -299,6 +300,8 @@ export function analyze(project: Project): Analysis {
    */
   const figures: Figure[] = [
     ["対応ロット", text(cap.lotSize)],
+    /** 標準と最短は別の欄（D-452）。**両方あるときは両方出す** */
+    ["標準納期", text(cap.standardLeadTime)],
     ["最短納期", text(cap.shortestLeadTime)],
     ["対応精度", text(cap.tolerance)],
     ["対応材質", (cap.materials ?? []).join("・")],
@@ -474,7 +477,11 @@ export function analyze(project: Project): Analysis {
    *
    * 条件は2つ：**短く言い切れること**（D-203）と、**数字を含むこと。**
    */
-  const short = (v: string) => v.length > 0 && v.length <= 14 && !/[。、]/.test(v) && /\d/.test(v);
+  /** **見るのは最初の一文**（D-452）。2つの値が1つの文に入っていても、値は値である */
+  const short = (raw: string) => {
+    const v = leadValue(raw);
+    return v.length > 0 && v.length <= 14 && !/[。、]/.test(v) && /\d/.test(v);
+  };
   const FIGURE_OF: Partial<Record<PrimaryStrength, [string, string]>> = {
     precision: ["対応精度", text(cap.tolerance)],
     speed: ["最短納期", text(cap.shortestLeadTime)],
@@ -491,7 +498,8 @@ export function analyze(project: Project): Analysis {
     difficulty: ["不良率", text(st.defectRate)],
   };
   const own = FIGURE_OF[primaryStrength];
-  const heroFigure: Figure | null = own && short(own[1]) ? { label: own[0], value: own[1] } : null;
+  /** **大きく出すのは最初の一文だけ。** 残りは対応可能範囲の表にそのまま出る */
+  const heroFigure: Figure | null = own && short(own[1]) ? { label: own[0], value: leadValue(own[1]) } : null;
 
   return {
     strands: ranked,

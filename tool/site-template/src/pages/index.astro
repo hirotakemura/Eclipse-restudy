@@ -19,6 +19,8 @@ import { composeVisual } from "../../../lib/design/visual.ts";
 import { composeAssets, willDraw, assetImageOf } from "../../../lib/design/assets.ts";
 /** **見出しの大きさは、中身の長さで決める**（D-277）。長文を巨大に組まない */
 import { fit } from "../../../lib/design/system/typography.ts";
+/** **大きく出すのは最初の一文だけ**（D-452）。残りは対応可能範囲の表にそのまま出る */
+import { leadValue } from "../../../lib/design/materials.ts";
 import { project, designBrief, companyName, cases, photoOf, realPhotoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen, webOf } from "../lib/site";
 import { heroId, theme } from "../lib/theme";
 import { hasDraft } from "../lib/draft";
@@ -215,7 +217,7 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
                       * **24字の値まで49pxになった**（実測）。値は文ではないので、そこまで大きくしない。
                       * 短く言い切れないものは導入の段（18〜25px）——本文より大きいが、数字ではない
                       */}
-                    <dd data-role={fit("numeric", v).id === "numeric" ? "numeric" : "lead"}>{v}</dd>
+                    <dd data-role={fit("numeric", leadValue(v)).id === "numeric" ? "numeric" : "lead"}>{leadValue(v)}</dd>
                   </div>
                 ))}
               </dl>
