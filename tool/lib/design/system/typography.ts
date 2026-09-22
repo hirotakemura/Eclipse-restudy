@@ -165,3 +165,81 @@ export function fit(id: TypeRoleId, text: string): TypeRole {
   while (TYPE_ROLES[i]!.maxChars > 0 && len > TYPE_ROLES[i]!.maxChars && i < TYPE_ROLES.length - 1) i++;
   return TYPE_ROLES[i]!;
 }
+
+/**
+ * **半角は全角より狭い。** 実測（この書体・700）——
+ * かな 1.02em ／ 漢字・中黒 1.00em ／ 数字 0.70em ／ `±` 0.84em ／ `.` 0.38em。
+ * **書体が変われば数字も変わる**ので、細かく持たない。全角 1.0、半角 0.8 の2つだけにする。
+ * 0.8 は実測「±0.01mm ＝ 5.39em ÷ 7字 ＝ 0.77em」の**切り上げ**——
+ * 多めに見積もるほうが安全（少なく見積もると、隣の欄に重なる）。
+ */
+const isWide = (ch: string): boolean => !/[\x20-\x7E\uFF61-\uFF9F]/.test(ch);
+/** その文字列の幅（全角いくつぶんか） */
+export const emWidth = (text: string): number =>
+  [...(text ?? "")].reduce((w, c) => w + (isWide(c) ? 1 : 0.8), 0);
+/**
+ * **折り返せない、いちばん長い連続**（全角いくつぶんか）。
+ *
+ * 日本語はどの文字の間でも折り返せるので、全角だけの値は**1文字ぶん**しか要らない。
+ * 「±0.01mm」のような半角の連なりには切れ目が無く、**5.6文字ぶんの幅が1行に要る。**
+ * ここを見ないと、字数を減らしても隣の欄に出る（実測：152pxの重なり）。
+ */
+export const emRun = (text: string): number => {
+  let run = 0, best = 0;
+  for (const c of (text ?? "")) {
+    if (isWide(c) || c === " ") { best = Math.max(best, run, isWide(c) ? 1 : 0); run = 0; }
+    else { run += 0.8; best = Math.max(best, run); }
+  }
+  return Math.max(best, run);
+};
+
+/**
+ * **横に n 個並ぶ欄に、2行までで収まる段を選ぶ**（D-455）。
+ *
+ * 【なぜ `fit` では足りないか】
+ * `fit` は**文字数の上限**だけを見る。上限は「その値が行を1つで使う」ときの値なので、
+ * **横に並べた欄では効かない。** 実測（対応可能範囲・PC 1440px・5欄）——
+ * 「±0.01mm」が **63px・幅340px** で組まれ、**欄の中身189pxを越えて隣の文字に152px重なった。**
+ * 「アルミ・ステンレス」は**5行・枠の高さ362px**だった。
+ *
+ * 【1行に入る幅】
+ * `numeric` の上限 14 を「**全幅のとき1行に入る全角字数**」として使い、欄の数で割る。
+ * 実測：5欄で `14 ÷ 5 ＝ 2.8`、画面で数えて **3字**。合っている。
+ * 他の段は**大きさの比**で伸ばす（`numeric.max ÷ その段の max`）。
+ * **画面の幅（px）は見ない**——CSSの数字を写せば必ずずれる（D-197）。
+ *
+ * 【2つとも満たすまで落とす】
+ *   ① **折り返せない連続**が1行に入ること　… 入らなければ隣の欄に重なる
+ *   ② 全体が `lines` 行に入ること　　　　　… 入らなければ縦に伸びて帯が崩れる
+ * ★実装中に気づいた：②だけ見ていたとき、**「±0.01」と「mm」で数値が2行に切れた。**
+ *   字数が減っても、切れ目の無い値は切れ目の無いままである。
+ *
+ * 【`lead` より下には落とさない】
+ * 落とし切ると、山の値が本文（17px）と同じ大きさになる。**それは山ではない。**
+ * 最初の画面の右列が `numeric` か `lead` の2択なのと揃える（D-451）。
+ */
+export function fitInRow(id: TypeRoleId, text: string, columns: number, lines = 2): TypeRole {
+  const start = TYPE_ROLES.findIndex((t) => t.id === id);
+  if (start < 0) return getTypeRole("body");
+  const n = Math.max(1, Math.floor(columns));
+  const base = getTypeRole("numeric");
+  const floor = TYPE_ROLES.findIndex((t) => t.id === "lead");
+  const perLine = (t: TypeRole) => (base.maxChars / n) * (base.max / t.max);
+  const run = emRun(text), all = emWidth(text);
+  let i = start;
+  while (i < floor && (run > perLine(TYPE_ROLES[i]!) || all > perLine(TYPE_ROLES[i]!) * lines)) i++;
+  return TYPE_ROLES[i]!;
+}
+
+/**
+ * **その段で、その値が1行に収まるか**（D-455）。
+ *
+ * 寸法線（`data-motif="dimension"`）は値の両端に引く飾りで、
+ * **2行に折れると行頭と行末にばらけて浮く**（実測：「1個から」が「-1個／から-」になっていた）。
+ * 引いてよいのは1行の値だけ。
+ */
+export const fitsOneLine = (role: TypeRole, text: string, columns: number): boolean => {
+  const n = Math.max(1, Math.floor(columns));
+  const base = getTypeRole("numeric");
+  return emWidth(text) <= (base.maxChars / n) * (base.max / role.max);
+};

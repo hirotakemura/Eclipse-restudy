@@ -674,6 +674,57 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
     check(`${name}：計画した絵も、本体のページに置かれる`, bad.length === 0, bad.join(" ／ "));
   }
 
+  console.log("\n━━━ ㉕ 横に並べた値は、欄の幅で段を決める（D-455）━━━");
+  /**
+   * 実測（対応可能範囲・PC 1440px・5欄・欄の中身189px）——
+   *   **「±0.01mm」が63px・幅340pxで組まれ、隣の欄の文字に152px重なっていた。**
+   *   **「アルミ・ステンレス」は5行・枠の高さ362px。**
+   * 原因は `data-peak="number"` が**欄の数も値の長さも見ずに全部を63pxにする**こと。
+   * D-433（一言の大きさは一言の長さのときだけ）と同じ形が、値の側に残っていた。
+   */
+  const { fitInRow, emWidth, emRun, fitsOneLine, getTypeRole } =
+    await import("./lib/design/system/typography.ts");
+  /** **半角は全角より狭い。** 見積もりは多め（少なく見ると隣に重なる） */
+  check("全角は1、半角は0.8で数える", emWidth("アミ") === 2 && Math.abs(emWidth("mm") - 1.6) < 1e-9,
+    `${emWidth("アミ")} / ${emWidth("mm")}`);
+  /** **日本語はどこでも折り返せる。** 切れ目の無い半角の連なりだけが1行の幅を要る */
+  check("折り返せない連続は、半角の連なりだけを数える",
+    emRun("アルミ・ステンレス") === 1 && emRun("±0.01mm") > 4,
+    `${emRun("アルミ・ステンレス")} / ${emRun("±0.01mm")}`);
+  /** **欄が増えるほど厳しくなる**（1つあたりの幅が 1/n になるため） */
+  check("欄が1つなら、いままでどおり値のまま",
+    fitInRow("numeric", "±0.01mm", 1).id === "numeric");
+  check("5欄では、切れ目の無い値が段を落とす",
+    fitInRow("numeric", "±0.01mm", 5).id !== "numeric",
+    fitInRow("numeric", "±0.01mm", 5).id);
+  check("5欄でも、短い値は値のまま", fitInRow("numeric", "7日", 5).id === "numeric");
+  /** **落とし切らない。** 本文と同じ大きさになったら、それは山ではない（D-451と揃える） */
+  const veryLong = fitInRow("numeric", "アルミ・ステンレス・鋳鉄・チタン（実績は限定的）", 5);
+  check("どれだけ長くても、導入より下には落とさない", veryLong.id === "lead", veryLong.id);
+  /** **寸法線は1行の値にだけ**（折れると線が行頭と行末に浮く） */
+  check("2行に折れる値では、寸法線を引かない",
+    fitsOneLine(getTypeRole("numeric"), "7日", 5) && !fitsOneLine(getTypeRole("numeric"), "1個から", 5));
+  /**
+   * **書き出したCSSに、`fitInRow` が返しうる段が全部あること。**
+   * ★実装中に落ちた：`quote` を書き忘れ、**落ちたはずの値が63pxのまま5行で残っていた。**
+   * 表を書き写さず、`fitInRow` に実際に返させて突き合わせる（D-197）。
+   */
+  const css7 = Object.values(before.html)[0] ?? "";
+  const figValues = ["7日", "1個から", "±0.01mm", "アルミ・ステンレス", "アルミ・ステンレス・鋳鉄・チタン（実績は限定的）"];
+  const figRoles = [...new Set(figValues.flatMap((v) => [3, 4, 5].map((n) => fitInRow("numeric", v, n).id)))];
+  const missing = figRoles.filter((r) => r !== "numeric"
+    && !new RegExp(`\\.figures dd\\[data-role="?${r}"?\\]\\{[^}]*font-size`).test(css7));
+  check(`段の大きさが、書き出したCSSに全部ある（${figRoles.join("・")}）`, missing.length === 0, missing.join("・"));
+  /** **重なりだけは書体に関係なく止める**（字数を減らしても、切れ目の無い値は切れ目が無い） */
+  check("値の折り返しを、書き出したCSSで許している",
+    /\.figures dd\{[^}]*overflow-wrap:\s*break-word/.test(css7),
+    (/\.figures dd\{[^}]*\}/.exec(css7) ?? [])[0] ?? "見つからない");
+  /** **1列になる幅では落とさない**（欄が1つなら幅を分け合わない） */
+  /** **書き出しは `min-width: 761px` を `width>=761px` に書き替える。** 両方を許す */
+  check("小さい画面では、段を落とす規則をかけない",
+    /@media\s*\((?:min-width:\s*761px|width>=761px)\)\s*\{[^@]*\.figures dd\[data-role/.test(css7),
+    (/@media[^@]{0,60}figures dd\[data-role[^}]*\}/.exec(css7) ?? [])[0] ?? "見つからない");
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 

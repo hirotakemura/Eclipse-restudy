@@ -954,6 +954,17 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
   content: ""; display: inline-block; width: 10px; height: 1px;
   background: var(--accent); vertical-align: middle; margin: 0 8px;
 }
+/**
+ * **寸法線は値に引くもので、文には引かない**（D-455）。
+ * 実測：折り返した値では、線が行頭と行末にばらばらに浮いていた
+ * （「±0.01mm」の上と下、「1個から」の右下）。**段が落ちた値からは外す。**
+ */
+.band[data-motif="dimension"][data-peak="number"] .figures dd:not([data-role="numeric"])::before,
+.band[data-motif="dimension"][data-peak="number"] .figures dd:not([data-role="numeric"])::after,
+.band[data-motif="dimension"][data-peak="number"] .figures dd[data-lines="2"]::before,
+.band[data-motif="dimension"][data-peak="number"] .figures dd[data-lines="2"]::after {
+  content: none;
+}
 /* 断面。薄物・難加工の会社に。見出しの下に細い層を敷く */
 .band[data-motif="section"] > .inner > h2 {
   padding-bottom: 10px;
@@ -1846,6 +1857,42 @@ html[data-headings="band"] .band > .inner > h2 { color: #fff; }
 .band[data-peak="number"] :is(.figures dd, .bignumber-value, .compare-value) {
   font-size: var(--t-numeric); line-height: var(--tl-numeric); letter-spacing: var(--tt-numeric);
 }
+/**
+ * **値が長いときは、段を落とす**（D-455）。
+ *
+ * 実測（PC 1440px・5欄）——欄の中身は **189px** しかないのに全部が **63px** で、
+ * **「±0.01mm」の文字が隣の欄の文字に 152px 重なっていた。**
+ * 「アルミ・ステンレス」は5行に折れ、枠の高さが **362px** になっていた。
+ * 段は `Figures.astro` の `fit()` が決めて `data-role` で渡す。**ここでは大きさだけ当てる。**
+ *
+ * **1列になる幅（760px以下）ではかけない。** 欄が1つなら幅は分け合わないので、
+ * 落とす理由が無い（実測：390pxでは「アルミ・ステンレス」257px／幅390px で収まっている）。
+ */
+@media (min-width: 761px) {
+  .band[data-peak="number"] .figures dd[data-role="statement"] {
+    font-size: var(--t-statement); line-height: var(--tl-statement); letter-spacing: var(--tt-statement);
+  }
+  .band[data-peak="number"] .figures dd[data-role="sectionTitle"] {
+    font-size: var(--t-sectionTitle); line-height: var(--tl-sectionTitle); letter-spacing: var(--tt-sectionTitle);
+  }
+  /**
+   * ★実装中に落ちた：最初は `statement` と `sectionTitle` しか書かず、
+   * **`quote` に落ちた「アルミ・ステンレス」が 63px のまま 5行で残っていた。**
+   * `fitInRow` が返しうる段は**全部書く**（`numeric` は上の既定、下限は `lead`）。
+   */
+  .band[data-peak="number"] .figures dd[data-role="quote"] {
+    font-size: var(--t-quote); line-height: var(--tl-quote); letter-spacing: var(--tt-quote);
+  }
+  .band[data-peak="number"] .figures dd[data-role="lead"] {
+    font-size: var(--t-lead); line-height: var(--tl-lead); letter-spacing: var(--tt-lead); font-weight: 400;
+  }
+}
+/**
+ * **段を落としても、折り返せない値は残る。**「±0.01mm」には切れ目が1つも無いので、
+ * 字数を減らしても幅が足りなければ隣へ出る。**重なりだけは書体に関係なく止める。**
+ * `anywhere` ではなく `break-word`——列の最小幅（`min-content`）を動かさないため。
+ */
+.figures dd { overflow-wrap: break-word; text-wrap: balance; }
 .band[data-peak="number"] .figures > div { padding: 34px 32px; }
 .band[data-peak="number"] :is(.figures dt, .bignumber-label, .compare-label) {
   font-size: var(--t-label); letter-spacing: var(--tt-label);

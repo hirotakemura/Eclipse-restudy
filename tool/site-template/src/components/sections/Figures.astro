@@ -5,12 +5,31 @@
  * **表にしない。** 調達担当者が最初に見るのは「自分のロットと納期で受けてもらえるか」で、
  * それは表の1行ではなく、読める大きさの数字で出す（docs/21）。
  * 値は案件データそのまま。**ここで作らない。**
+ *
+ * 【値ごとに段を決める】（D-455）
+ * 実測（対応可能範囲・PC 1440px）——**「±0.01mm」が隣の欄の文字に 152px 重なっていた。**
+ * 欄の中身は189pxしかないのに、`data-peak="number"` が**欄の数も値の長さも見ずに
+ * 全部を63pxにしていた**（「アルミ・ステンレス」は5行・枠の高さ362px）。
+ * D-433 で「一言の大きさは、一言の長さのときだけ」と決め、
+ * D-451 で最初の画面の右列は `fit()` を通したのに、**この帯だけ関所が無かった。**
+ *
+ * `fitInRow` に**欄の数**を渡して、1つあたりの幅に2行までで収まる段を選ぶ。
+ * **大きさを直接は書かない**——段の名前を渡して、実寸はCSSの `--t-*` に任せる。
  */
+import { fitInRow, fitsOneLine } from "../../../../lib/design/system/typography.ts";
 interface Props { figures: { label: string; value: string }[] }
 const { figures } = Astro.props;
+/** **横に並ぶ数がそのまま欄の数。** 画面の幅は見ない（CSSの数字を写さない・D-197） */
+const columns = figures.length;
 ---
 {figures.length > 0 && (
   <dl class="figures">
-    {figures.map((f) => <div><dt>{f.label}</dt><dd>{f.value}</dd></div>)}
+    {figures.map((f) => {
+      const role = fitInRow("numeric", f.value, columns);
+      /** 寸法線は1行の値にだけ引く。**折れると線が行頭と行末に浮く**（D-455） */
+      return <div><dt>{f.label}</dt>
+        <dd data-role={role.id} data-lines={fitsOneLine(role, f.value, columns) ? "1" : "2"}>{f.value}</dd>
+      </div>;
+    })}
   </dl>
 )}
