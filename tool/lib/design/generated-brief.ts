@@ -301,7 +301,16 @@ export const PURPOSE: Record<GeneratedPurpose, {
     why: "最初の画面。**扱っているものの形**を、いちばん静かに出す。見出しと札が上に乗るので左は空ける",
   },
   strength: {
-    page: "index", slot: "technique", role: "background",
+    /**
+     * **絵にも本体のページがある**（D-454）。
+     *
+     * ここは `index/technique` だった。だが D-410 で `technique` の本体は強み・技術のページになり、
+     * **トップの帯は「要点＋本体へのリンク」の参照**になっている。
+     * `visual.ts` は既に「**本体でない帯を山にしない**」と決めている（D-412）のに、
+     * **そこへ、その会社でいちばん強い絵を置いていた。** 実測：生成4枚のうち3枚がトップに集中し、
+     * **強み・技術のページは画像0枚**だった。絵は、内容の本体があるページへ置く
+     */
+    page: "strengths", slot: "technique", role: "background",
     aspect: "16:9", cropSafe: "1:1", textSafe: "bottom", focal: { x: 0.5, y: 0.35 },
     composition: "directional composition reading left to right, change of state across the frame, "
       + "quiet empty lower half",
@@ -328,7 +337,8 @@ export const PURPOSE: Record<GeneratedPurpose, {
     why: "会社の帯。**積み重なった時間**を出す。焦点を作らず、地に沈める",
   },
   peak: {
-    page: "index", slot: "declined", role: "background",
+    /** 同じ理由で、実績の絵も本体（強み・技術）へ（D-454） */
+    page: "strengths", slot: "declined", role: "background",
     aspect: "16:9", cropSafe: "4:5", textSafe: "top", focal: { x: 0.5, y: 0.6 },
     composition: "single tense form off-centre, generous margin, upper area kept empty",
     arrangement: "one element alone in a wide calm field, most of its area completely at rest "

@@ -638,6 +638,42 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
     /a\[href\^="?tel\\?:"?\]/.test(css6) && /a\[href\^="?mailto\\?:"?\]/.test(css6),
     (/[^{}]{0,80}mailto[^{}]{0,40}\{[^}]*\}/.exec(css6) ?? [])[0] ?? "見つからない");
 
+  console.log("\n━━━ ㉔ 絵にも「本体のページ」がある（D-454）━━━");
+  /**
+   * 実測——生成ビジュアル4枚のうち**3枚がトップに集中**し、
+   * **強み・技術のページは画像0枚**だった。
+   * うち2枚（`strength` / `peak`）が置かれていた `index/technique`・`index/declined` は、
+   * D-410 で**本体が強み・技術に移った参照の帯**である。
+   * `visual.ts` は「**本体でない帯を山にしない**」と決めている（D-412）のに、
+   * **その帯に、その会社でいちばん強い絵を置いていた。**
+   *
+   * **表を書き写さずに確かめる**（D-197）。`PURPOSE` の置き場を `OWNER_OF` と突き合わせるので、
+   * どちらかを動かせばここが落ちる。
+   */
+  const { PURPOSE } = await import("./lib/design/generated-brief.ts");
+  const { OWNER_OF, isOwner } = await import("./lib/design/system/owner.ts");
+  const misplaced = Object.entries(PURPOSE)
+    .filter(([, s]) => OWNER_OF[s.slot])
+    .filter(([, s]) => !isOwner(s.slot, s.page))
+    .map(([k, s]) => `${k}: ${s.page}/${s.slot}（本体は ${OWNER_OF[s.slot].join("・")}）`);
+  check("生成ビジュアルは、その内容の本体があるページに置かれる",
+    misplaced.length === 0, misplaced.join(" ／ "));
+  /** **本体の無い置き場**（`hero`・`history`）は、いままでどおりどのページでもよい */
+  check("本体の決まっていない置き場は、この検査で縛られない",
+    Object.values(PURPOSE).some((s) => !OWNER_OF[s.slot]));
+  /**
+   * **実際に計画させて確かめる。** 表だけ直して計画が動いていなければ意味がない。
+   */
+  for (const [name, file] of FIXTURES.slice(0, 3)) {
+    const p = sanitizeProject(load(file));
+    const a = analyze(p);
+    const bad = planGeneratedVisuals(p, a, "standard").visuals
+      .filter((v) => OWNER_OF[v.placement.slot])
+      .filter((v) => !isOwner(v.placement.slot, v.placement.page))
+      .map((v) => `${v.purpose}→${v.placement.page}/${v.placement.slot}`);
+    check(`${name}：計画した絵も、本体のページに置かれる`, bad.length === 0, bad.join(" ／ "));
+  }
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
