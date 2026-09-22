@@ -1494,6 +1494,40 @@ html[data-hero="motif"] .hero {
 .hero h1.hero-motif[data-role="statement"] { font-size: var(--t-statement); line-height: var(--tl-statement); }
 
 /**
+ * ── 帯の絵を、列として置く（D-450）──────────────────────
+ *
+ * **実測：「どうやって受けているか」の帯は、高さ253pxに生成ビジュアルを持ちながら、
+ * 画面ではほぼ空白だった。** 地に敷く覆いは薄く（opacity .22）、
+ * 淡い絵を淡い地に重ねると**最大画素差 4/255**——圧縮ノイズと同じ水準である（D-386）。
+ * 最初の画面は列にして解決した（D-448）。**帯も同じ考え方でよい。**
+ *
+ * かけるのは**文章の帯（narrow / normal）だけ**。全幅の帯では、絵は地であるほうが正しい。
+ */
+.band-visual { display: none; }
+@media (min-width: 1000px) {
+  .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"]) > .inner {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
+    /** **行を明示する。** 暗黙の行に `1 / -1` は届かず、絵が見出しの高さで止まっていた（実測 220px） */
+    grid-template-rows: auto 1fr;
+    column-gap: 56px; align-items: center;
+  }
+  .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"]) > .inner > h2 { grid-area: 1 / 1; margin-left: 0; }
+  .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"]) > .inner > .band-body { grid-area: 2 / 1; margin-left: 0; }
+  .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"]) > .inner > .band-visual {
+    display: block; grid-area: 1 / 2 / 3 / 3;
+    align-self: stretch; min-height: 260px; border-radius: var(--radius);
+    background-image: var(--asset-image); background-size: cover;
+    background-position: var(--asset-focal, 70% 45%); background-repeat: no-repeat;
+  }
+  /** 2列にするときは、帯の中の幅を広げる。**720pxを2つに割ると、絵が痩せる** */
+  .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"]) > .inner {
+    max-width: min(1200px, 100% - 96px);
+  }
+  /** 列に置いたら、地の覆いはやめる（二重に出さない） */
+  .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"])::before { display: none; }
+}
+
+/**
  * ── 最初の画面を2列にする（D-448）────────────────────────
  *
  * **実測：1440×589px のうち、中身は 23.5%。右半分は 0.0%。**

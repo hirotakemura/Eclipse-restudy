@@ -102,5 +102,12 @@ const { width = "normal", emphasis = "normal", surface = "plain", layout = "stac
   <div class="inner">
     {heading && <h2>{heading}</h2>}
     <div class="band-body"><slot /></div>
+    {/**
+      * **絵は、列として置く**（D-450）。
+      * 帯の地に薄く敷く方式では、実測で**最大画素差 4/255**——人には形として見えなかった（D-386）。
+      * 最初の画面は列にして解決した（D-448）。帯も同じ考え方にする。
+      * **絵が無ければ、この要素ごと出ない**ので、持たない案件は1pxも変わらない
+      */}
+    {assetSource === "generated" && <div class="band-visual" role="presentation"></div>}
   </div>
 </section>

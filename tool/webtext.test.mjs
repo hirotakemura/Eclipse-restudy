@@ -543,6 +543,28 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   const four = ["plain", "rule", "underline", "band"].map(styleOf);
   check("4つの型の札が、すべて違う引き方になっている", new Set(four).size === 4, four.join(" / "));
 
+  console.log("\n━━━ ⑳ 帯の絵を、列として置く（D-450）━━━");
+  /**
+   * 実測：「どうやって受けているか」の帯は、高さ253pxに生成ビジュアルを持ちながら
+   * **画面ではほぼ空白**だった。地に敷く覆いは薄く（opacity .22）、
+   * 淡い絵を淡い地に重ねると**最大画素差 4/255**（D-386）。
+   * 最初の画面は列にして解決した（D-448）。**帯も同じ考え方でよい。**
+   */
+  const css4 = Object.values(before.html)[0] ?? "";
+  check("絵を持つ文章の帯に、絵の列の規則がある",
+    /\.band\[data-asset-source="?generated"?\]:is\(\[data-width="?narrow"?\], ?\[data-width="?normal"?\]\)>\.inner\{[^}]*grid/.test(css4)
+    || /\.band\[data-asset-source=generated\]:is\(\[data-width=narrow\],\[data-width=normal\]\)>\.inner\{[^}]*grid/.test(css4));
+  /** **暗黙の行に `1 / -1` は届かない**——絵が見出しの高さ（220px）で止まっていた */
+  check("絵の列の行を、明示している（暗黙の行に 1/-1 は届かない）",
+    /grid-template-rows:auto 1fr/.test(css4));
+  /** **列に置いたら、地の覆いはやめる**（二重に出さない） */
+  /** **書き出しは `:before`（コロン1つ）に縮める**ので、どちらも受ける */
+  check("列に置いた帯では、地の覆いを出さない",
+    /\[data-asset-source="?generated"?\]:is\(\[data-width="?narrow"?\],\s*\[data-width="?normal"?\]\):{1,2}before\s*\{\s*display:\s*none/.test(css4),
+    (/[^{}]{0,60}:{1,2}before\{display:none\}/.exec(css4) ?? [])[0] ?? "見つからない");
+  /** **絵を持たない案件は、この要素ごと出ない** */
+  check("絵が無ければ、絵の列そのものが出ない", !/class="band-visual"/.test(plain.html["index.html"] ?? ""));
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
