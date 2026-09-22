@@ -1538,6 +1538,31 @@ html[data-hero="motif"] .hero {
  * 写真も絵も条件も持たない案件の最初の画面は、1pxも変わらない。
  */
 .hero-aside { min-width: 0; }
+/**
+ * 最初の画面の右の列（D-451）。**読ませる表ではなく、見て判断させる面にする。**
+ *
+ * 実測：絵を持たない案件では、右の列が**札か表＝17pxの文字の箱**だった。
+ * 発注前にいちばん見られるのは「材質・ロット・納期・精度」なので、**値を大きく組む。**
+ * 大きさは `fit()` が決める——長い値（「1個から。量産の場合は5,000個程度まで」）は
+ * 自動で下の段に落ちるので、**長い文が巨大になることはない**（D-277・D-433と同じ）
+ */
+.hero-figures { display: grid; gap: 20px; margin: 26px 0 0; }
+.hero-figures > div { padding-top: 14px; border-top: var(--line-width) solid var(--line); }
+.hero-figures dt {
+  font-size: var(--t-label); color: var(--ink-soft);
+  letter-spacing: .08em; margin: 0 0 6px; font-weight: var(--tw-label);
+}
+.hero-figures dd { margin: 0; font-family: var(--font-head); font-weight: 700; line-height: 1.3; }
+.hero-figures dd[data-role="numeric"] { font-size: var(--t-numeric); letter-spacing: 0; }
+.hero-figures dd[data-role="statement"] { font-size: var(--t-statement); }
+.hero-figures dd[data-role="sectionTitle"] { font-size: var(--t-sectionTitle); }
+.hero-figures dd[data-role="quote"] { font-size: var(--t-quote); }
+.hero-figures dd[data-role="lead"] { font-size: var(--t-lead); font-weight: 400; }
+.hero-figures dd[data-role="body"] { font-size: var(--t-body); font-weight: 400; line-height: 1.7; }
+/** 型ごとの引き方に合わせる（D-449と同じ考え方）。**罫で示す型は、ここも罫で示す** */
+html[data-tables="horizontal"] .hero-figures > div { border-top-width: var(--line-width); }
+html[data-tables="stripe"] .hero-figures > div { border-top: 0; background: var(--bg-soft); padding: 14px 16px; }
+html[data-tables="all"] .hero-figures > div { border: var(--line-width) solid var(--line); padding: 14px 16px; }
 .hero-visual {
   aspect-ratio: 16 / 9; border-radius: var(--radius);
   background-image: var(--asset-image);

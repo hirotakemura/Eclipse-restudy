@@ -565,6 +565,30 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   /** **絵を持たない案件は、この要素ごと出ない** */
   check("絵が無ければ、絵の列そのものが出ない", !/class="band-visual"/.test(plain.html["index.html"] ?? ""));
 
+  console.log("\n━━━ ㉑ 最初の画面の右の列を「見て判断させる面」にする（D-451）━━━");
+  /**
+   * 実測：**絵を持たない案件は8件中8件**で、右の列が札か表＝17pxの文字の箱だった。
+   * 発注前にいちばん見られるのは材質・ロット・納期・精度なので、**値を大きく組む。**
+   */
+  const fig = (/<dl class="hero-figures">([\s\S]*?)<\/dl>/.exec(before.html["index.html"] ?? "") ?? [])[1] ?? "";
+  check("右の列が、ラベル＋値の面になっている", /<dt>/.test(fig) && /<dd data-role=/.test(fig), fig.slice(0, 100));
+  /**
+   * **短く言い切れる値だけ、大きく組む**（D-251）。
+   * `fit()` の落ち先は「一言」（60字まで・49px）なので、そのまま使うと
+   * **24字の値まで49pxになった**（実測で見つけた）。
+   */
+  const roles = [...fig.matchAll(/data-role="([^"]+)"/g)].map((m) => m[1]);
+  check("値の段は「値」か「導入」の2つだけ（一言の段に落とさない）",
+    roles.length > 0 && roles.every((r) => r === "numeric" || r === "lead"), roles.join(" "));
+  const longOne = /<dd data-role="lead">[^<]{15,}</.test(fig);
+  const shortOne = /<dd data-role="numeric">[^<]{1,14}</.test(fig);
+  check("長い値は導入の段に落ちる", longOne, fig.slice(0, 160));
+  check("短い値は値の段で大きく組む", shortOne, fig.slice(0, 160));
+  /** 型ごとの引き方（D-449と同じ考え方） */
+  const css5 = Object.values(before.html)[0] ?? "";
+  check("右の列の引き方も、型ごとに変わる",
+    /data-tables="?stripe"?\] \.hero-figures/.test(css5) && /data-tables="?all"?\] \.hero-figures/.test(css5));
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 

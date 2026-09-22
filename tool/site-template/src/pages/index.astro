@@ -189,13 +189,35 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
           </div>
           {/* 右の列。**材料が無ければ、この要素ごと出ない** */}
           {aside === "visual" && <div class="hero-aside"><div class="hero-visual" role="presentation"></div></div>}
-          {aside === "facts" && (
-            <div class="hero-aside"><div class="facts facts-aside">{facts.map((f) => <span>{f}</span>)}</div></div>
-          )}
-          {aside === "spec" && (
+          {/**
+            * **右の列は、読ませるものではなく、見て判断させるもの**（D-451）。
+            *
+            * 実測：絵を持たない案件（8件中8件）の右の列は、**札か表＝文字だけ**だった。
+            * 最初の画面の半分が、17pxの文字の箱で埋まっていることになる。
+            * 値を大きく組んで「数字の面」にする。**大きさは `fit()` が決める**ので、
+            * 「1個から。量産の場合は5,000個程度まで」のような長い値は自動で落ちる（D-277）
+            */}
+          {(aside === "facts" || aside === "spec") && (
             <div class="hero-aside">
-              <dl class="spec-first spec-aside">
-                {specs.slice(0, 4).map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
+              <dl class="hero-figures">
+                {(aside === "spec"
+                  ? specs.slice(0, 4)
+                  : facts.slice(0, 4).map((f) => {
+                      const i = f.indexOf("：");
+                      return (i > 0 ? [f.slice(0, i), f.slice(i + 1)] : ["", f]) as [string, string];
+                    })
+                ).map(([k, v]) => (
+                  <div>
+                    {k && <dt>{k}</dt>}
+                    {/**
+                      * **短く言い切れる値だけ、大きく組む**（D-251・D-451）。
+                      * `fit()` の落ち先は「一言」（60字まで・49px）なので、そのまま使うと
+                      * **24字の値まで49pxになった**（実測）。値は文ではないので、そこまで大きくしない。
+                      * 短く言い切れないものは導入の段（18〜25px）——本文より大きいが、数字ではない
+                      */}
+                    <dd data-role={fit("numeric", v).id === "numeric" ? "numeric" : "lead"}>{v}</dd>
+                  </div>
+                ))}
               </dl>
             </div>
           )}
