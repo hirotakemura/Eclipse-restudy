@@ -28,6 +28,20 @@ const draftDir = resolve(join("projects", id, "site-draft"));
 const isDraft = !existsSync(siteDir) && existsSync(draftDir);
 const root = isDraft ? draftDir : siteDir;
 
+/**
+ * **どの書き出しを見せているのかを、必ず言う**（D-442）。
+ *
+ * 公開してよいもの（`site/`）を優先して見せるが、**古い `site/` が残っていると、
+ * 黙って古い画面を見せてしまう。** 書き出しに失敗した回は `site/` を消して
+ * `site-draft/` に回すので、**最後に成功した回の画面がそのまま残る。**
+ * 実際に「直したはずのものが、手元では何も変わっていない」が起きた。
+ * **黙って古いものを見せない**——どちらを、いつ書き出したものかを出す。
+ */
+const timeOf = (d) => (existsSync(d) ? statSync(d).mtime : null);
+const siteAt = timeOf(siteDir);
+const draftAt = timeOf(draftDir);
+const stale = Boolean(siteAt && draftAt && draftAt > siteAt);
+
 if (!existsSync(root)) {
   console.error(`\n  まだ書き出されていません: projects/${id}/site`);
   console.error(`  先に  npm run build:site -- ${id}  を実行してください。\n`);
@@ -74,7 +88,20 @@ const server = createServer(async (req, res) => {
 
 server.listen(PORT, "127.0.0.1", () => {
   const url = `http://localhost:${PORT}/`;
-  console.log(`\n  ${id} のサイトを開きます\n`);
+  const fmt = (t) => (t ? t.toLocaleString("ja-JP") : "—");
+  console.log(`\n  ${id} のサイトを開きます`);
+  console.log(`  見せているのは： ${isDraft ? "site-draft/（確認用）" : "site/（公開してよいもの）"}　${fmt(isDraft ? draftAt : siteAt)}\n`);
+  /**
+   * **確認用のほうが新しいときは、必ず言う。**
+   * 「直したはずなのに変わらない」の原因は、たいていこれである
+   */
+  if (stale) {
+    console.log("  ※ **いま見せているのは、前に成功した書き出しです。**");
+    console.log(`     もっと新しい確認用の書き出しがあります： site-draft/　${fmt(draftAt)}`);
+    console.log("     直近の書き出しは公開判定で止まっているので、site/ は更新されていません。");
+    console.log("     新しいほうを見るには、いったん site/ を消してください：");
+    console.log(`       rm -rf ${draftDir.replace("site-draft", "site")}\n`);
+  }
   if (isDraft) {
     console.log("  ※ これは**公開できない状態**の書き出しです（確認用）。");
     console.log("     足りない項目をKOBOで埋めて、もう一度 build:site を実行してください。\n");
