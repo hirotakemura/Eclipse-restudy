@@ -171,10 +171,44 @@ p { margin: 0 0 16px; }
 /* ── トップの見出し ─────────────────────── */
 .hero { padding: 56px 0 46px; }
 .hero h1 { font-size: clamp(27px, 3.8vw, 56px); line-height: 1.28; }
+/**
+ * 10秒で「自分の用は足りるか」を判断してもらう札。
+ *
+ * **札の意匠を、型ごとに変える**（D-449・社長のご指摘「灰色の丸ピル」）。
+ * 15方向すべてで**同じ灰色の丸ピル**だったので、
+ * 最初の画面でいちばん目に入る小さな部品が、**どの会社でも同じ顔**をしていた。
+ * 汎用UIの部品に見える原因である。
+ *
+ * **新しい語彙は足さない。** 型がすでに持っている「見出しの引き方」
+ * （`headings`：plain / rule / underline / band）に合わせる——
+ * **見出しを罫で示す型は、札も罫で示す。** 別の軸を作ると、必ずいつかずれる（D-197）
+ */
 .hero .facts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
 .hero .facts span {
   background: var(--accent-soft); color: var(--accent-dark);
   padding: 7px 14px; border-radius: 999px; font-size: 15px; font-weight: 600;
+}
+/** 素直に。**塗らずに、細い枠だけ**で示す */
+html[data-headings="plain"] .hero .facts span {
+  background: transparent; color: var(--ink);
+  border: var(--line-width) solid var(--line); border-radius: 4px; font-weight: 500;
+}
+/** 罫で示す型。**左に縦罫**——見出しと同じ引き方 */
+html[data-headings="rule"] .hero .facts span {
+  background: transparent; color: var(--ink);
+  border-radius: 0; border-left: 3px solid var(--accent);
+  padding: 5px 14px 5px 12px; font-weight: 600;
+}
+/** 下線で示す型。**文字が主役で、線は添えるだけ** */
+html[data-headings="underline"] .hero .facts span {
+  background: transparent; color: var(--ink); border-radius: 0;
+  border-bottom: var(--line-width) solid var(--accent);
+  padding: 4px 2px; font-weight: 500;
+}
+/** 帯で示す型。**塗りの帯。角は落とす**（丸くすると札が軽くなる） */
+html[data-headings="band"] .hero .facts span {
+  background: var(--accent-soft); color: var(--accent-dark);
+  border-radius: 2px; padding: 8px 16px;
 }
 
 /* ── 写真 ───────────────────────────────── */
@@ -546,6 +580,23 @@ html[data-tables="stripe"] thead th { border-bottom: 2px solid var(--accent); }
   border-radius: var(--radius); overflow: hidden; margin: 26px 0 24px;
 }
 .spec-first div { background: var(--bg); padding: 14px 16px; box-shadow: 0 0 0 1px var(--line); }
+/**
+ * **条件表も、型ごとに引き方を変える**（D-449）。
+ * 札だけ変えても、右の列が**どの型でも同じ枠の箱**では、最初の画面の顔は揃ったままだった
+ * （4型を並べて見て分かった）。**表の引き方（`tables`）は型がすでに持っている**ので、それに合わせる
+ */
+/** 横罫だけ。**縦の線を引かない**——読む方向にだけ線を置く */
+html[data-tables="horizontal"] .spec-first {
+  border: 0; border-radius: 0; gap: 0; background: transparent;
+  border-top: var(--line-width) solid var(--line);
+}
+html[data-tables="horizontal"] .spec-first div {
+  box-shadow: none; border-bottom: var(--line-width) solid var(--line); padding: 14px 2px;
+}
+/** 1行おきに地色。**多い行を目で追えるように** */
+html[data-tables="stripe"] .spec-first { gap: 0; background: transparent; }
+html[data-tables="stripe"] .spec-first div { box-shadow: none; }
+html[data-tables="stripe"] .spec-first div:nth-child(odd) { background: var(--bg-soft); }
 .spec-first dt { font-size: 13px; color: var(--ink-soft); margin-bottom: 3px; }
 .spec-first dd { margin: 0; font-weight: 600; font-size: 17px; line-height: 1.6; }
 /** 仕様ヒーローは下に条件の表が来るので、導入は**一段だけ**抑える（本文と同寸には落とさない） */

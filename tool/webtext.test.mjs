@@ -523,6 +523,26 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   const left = (/<div class="hero-text">([\s\S]*?)<div class="hero-aside">/.exec(before.html["index.html"] ?? "") ?? [])[1] ?? "";
   check("右へ移した札を、左にも出さない", !/class="facts"/.test(left), left.slice(0, 120));
 
+  console.log("\n━━━ ⑲ 札と条件表の意匠を、型ごとに変える（D-449）━━━");
+  /**
+   * 社長のご指摘「灰色の丸ピル」。15方向すべてで**同じ札**だったので、
+   * 最初の画面でいちばん目に入る小さな部品が、**どの会社でも同じ顔**をしていた。
+   * **新しい語彙は足さない**——型がすでに持っている「見出しの引き方」「表の引き方」に合わせる（D-197）
+   */
+  const css3 = Object.values(before.html)[0] ?? "";
+  for (const h of ["plain", "rule", "underline", "band"]) {
+    check(`札の意匠：${h} の型に、専用の引き方がある`,
+      new RegExp(`html\\[data-headings=\"?${h}\"?\\] \\.hero \\.facts span`).test(css3));
+  }
+  for (const t of ["horizontal", "stripe"]) {
+    check(`条件表の引き方：${t} の型に、専用の引き方がある`,
+      new RegExp(`html\\[data-tables=\"?${t}\"?\\] \\.spec-first`).test(css3));
+  }
+  /** **4つとも違う見た目になること**（同じ値を書き写しただけでは意味がない） */
+  const styleOf = (h) => (new RegExp(`html\\[data-headings=\"?${h}\"?\\] \\.hero \\.facts span\\{([^}]*)\\}`).exec(css3) ?? [])[1] ?? "";
+  const four = ["plain", "rule", "underline", "band"].map(styleOf);
+  check("4つの型の札が、すべて違う引き方になっている", new Set(four).size === 4, four.join(" / "));
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
