@@ -1741,6 +1741,42 @@ html[data-tables="all"] .hero-figures > div { border: var(--line-width) solid va
   letter-spacing: var(--tt-label); color: var(--ink-soft);
 }
 /**
+ * **小さい画面では、見出しを「余白の札」にできない**（D-453）。
+ *
+ * この役割は「見出しを脇の余白に小さく置く」ためのもので、PCでは13pxでも
+ * **本文の左にある札**として読める。スマホは**帯が縦に積まれる**ので、
+ * 同じ13pxが**本文（16px）の上に乗った、迷子のキャプション**になる。
+ * 実測：スマホで「加工したもの」「対応できる条件」が**12px**で出ていた（通し確認）。
+ * 静かさは残したいので、大きさだけ本文の上に戻す
+ */
+@media (max-width: 720px) {
+  .band[data-role="label"] > .inner > h2 {
+    font-size: 17px; font-weight: 700; color: var(--ink);
+  }
+}
+
+/**
+ * **指で押す対象は、指の大きさで決める**（D-453）。
+ *
+ * 通し確認（全12ページ・390px）で、**高さ18〜19pxの押せるものが1ページに10〜14件**あった——
+ * 「加工事例をすべて見る」のような導線、フッターの案内、**電話番号**まで。
+ * BtoBの製造業では電話がいちばんの導線なので（D-060）、ここが押しにくいのは致命的である。
+ * **文字を大きくするのではなく、押せる範囲を広げる**（見た目は変えない）
+ */
+@media (max-width: 720px) {
+  :is(.band-body, .inner) > p > a:only-child,
+  .site-footer a,
+  .site-footer .tel { display: inline-block; padding-block: 12px; }
+  /** 連続して並ぶフッターの案内は、行間も開ける（隣を押さない） */
+  .site-footer nav a { padding-inline: 2px; }
+  /**
+   * **お問い合わせの電話とメールは、いちばん押される。**
+   * 表の中にあるので `p > a` の規則にかからず、19pxのまま残っていた（通し確認で見つけた）
+   */
+  td > a[href^="tel:"], td > a[href^="mailto:"],
+  .inquiry a[href^="tel:"], .inquiry a[href^="mailto:"] { display: inline-block; padding-block: 12px; }
+}
+/**
  * **横に置く見出しは、大きくしない**（D-239）。
  * 大きくすると列に収まらず、「対応できる条／件」のように語の途中で折れる。
  * 山が `split` に当たることは `visual.ts` の側で避けているが、**片方だけに頼らない。**

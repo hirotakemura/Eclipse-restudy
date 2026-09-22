@@ -617,6 +617,27 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   check("標準と最短が揃っていれば、対比の材料になる",
     materialsOf(sanitizeProject(two), "conditions", true).hasPair);
 
+  console.log("\n━━━ ㉓ スマホの通し確認で見つけたもの（D-453）━━━");
+  /**
+   * 全12ページを390pxで通した実測——
+   *   **押せるものの高さが18〜19pxのものが、1ページに10〜14件**（導線・フッター・電話番号）
+   *   **帯の見出しが12px**（「加工したもの」「対応できる条件」）
+   * 横スクロールは12ページとも無し。
+   */
+  const css6 = Object.values(before.html)[0] ?? "";
+  /** **書き出しは宣言の順を入れ替える**ので、順に依存しないで見る */
+  check("小さい画面で、余白の札の見出しを本文より大きくする",
+    /\.band\[data-role="?label"?\]\s*>\s*\.inner\s*>\s*h2\s*\{[^}]*font-size:\s*17px/.test(css6),
+    (/\.band\[data-role="?label"?\][^{]*\{[^}]*17px[^}]*\}/.exec(css6) ?? [])[0] ?? "見つからない");
+  check("小さい画面で、押せるものに指の余白を足す",
+    /p>a:only-child[^{]*\{[^}]*padding-block:12px/.test(css6)
+    || /padding-block:\s*12px/.test(css6));
+  /** **お問い合わせの電話とメールは、表の中にあるので別に拾う**（通し確認で見つけた） */
+  /** **書き出しはコロンを `\\:` に escape する** */
+  check("お問い合わせの電話とメールにも、指の余白を足す",
+    /a\[href\^="?tel\\?:"?\]/.test(css6) && /a\[href\^="?mailto\\?:"?\]/.test(css6),
+    (/[^{}]{0,80}mailto[^{}]{0,40}\{[^}]*\}/.exec(css6) ?? [])[0] ?? "見つからない");
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
