@@ -239,6 +239,27 @@ p { margin: 0 0 16px; }
 .band:has(.gallery .photo:only-child) + :is(.band, .section) { border-top: 0; }
 .band:has(.gallery .photo:only-child) .gallery-wrap { margin-top: 0; }
 
+/**
+ * **写真の役割ごとの大きさ**（D-444）。
+ *
+ * 社長のご指示——「採用の働く人は**ヘッダーいっぱい**に、スマホでも**画像全体が映る**ように」
+ * 「会社概要の外観は**もう少し大きく**」。同じ1枚でも役割が違う。
+ * **全幅のときも切り取らない**（`object-fit: contain`）ので、縦横比のまま全体が出る
+ */
+/**
+ * **全幅の写真は、帯の字下げも外す。**
+ * 実測：`band-body` に `margin-left: 172.8px`（`offset` レイアウト）が掛かっており、
+ * **左だけ172px空いて右は端まで、という左右非対称**になっていた
+ */
+.band[data-layout]:has(.gallery-wrap[data-photo-size="full"]) > .inner > .band-body { margin-inline: 0; }
+.gallery-wrap[data-photo-size="full"] .photo:only-child img {
+  width: 100%; max-width: 100%; max-height: 70vh;
+  height: auto; aspect-ratio: auto; object-fit: contain; margin-inline: 0;
+}
+.gallery-wrap[data-photo-size="large"] .photo:only-child img {
+  max-width: min(720px, 100%); max-height: 480px;
+}
+
 .gallery .photo:only-child img {
   /**
    * **縦と横の両方を止める**（D-440）。

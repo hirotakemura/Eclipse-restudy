@@ -13,11 +13,19 @@
  * `alt` にも使わない——「遠目から」は、目の見えない方への説明として成立しない。
  */
 import { photoSrc } from "../lib/site";
-interface Props { photos: any[]; heading?: string }
-const { photos, heading } = Astro.props;
+/**
+ * **写真の大きさは、その写真の役割で決まる**（D-444）。
+ * 同じ「1枚だけの写真」でも、**働く人は全幅で見せたい／代表者は脇役でよい**。
+ * 役割はページが知っている（どの分類を出すかをページで選んでいる）ので、そこから渡す。
+ *   full   … 全幅。画像の全体を見せる（切り取らない）
+ *   large  … 大きめの脇役
+ *   normal … 脇役（既定）
+ */
+interface Props { photos: any[]; heading?: string; size?: "full" | "large" | "normal" }
+const { photos, heading, size = "normal" } = Astro.props;
 ---
 {photos.length > 0 && (
-  <div class="gallery-wrap">
+  <div class="gallery-wrap" data-photo-size={size !== "normal" ? size : undefined}>
     {heading && <h2>{heading}</h2>}
     <div class="gallery">
       {photos.map((p) => (

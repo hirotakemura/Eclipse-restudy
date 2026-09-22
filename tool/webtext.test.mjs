@@ -449,6 +449,46 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
     && /\.band:has\(\.gallery \.photo:only-child\)\+/.test(css2),
     (/\.band:has\([^{]*\{[^}]*border[^}]*\}/.exec(css2) ?? [])[0] ?? "");
 
+  console.log("\n━━━ ⑰ 写真にも本体のページがある／役割で大きさを変える（D-444・D-445）━━━");
+  /**
+   * **同じ写真を2ページに出さない**（社長のご指示）。
+   * 本文の重複をやめたのと同じ考え方（Owner / Reference・D-410）で、写真にも本体がある。
+   * 外観の本体は会社概要——会社概要は必ず作られるので、行き場を失うことはない。
+   */
+  const pngBytes = (() => {
+    const b = Buffer.alloc(33);
+    b.write("\x89PNG\r\n\x1a\n", 0, "binary");
+    b.writeUInt32BE(13, 8); b.write("IHDR", 12);
+    b.writeUInt32BE(64, 16); b.writeUInt32BE(64, 20); b[24] = 8; b[25] = 6;
+    return b;
+  })();
+  const withPhotos = () => {
+    fs.rmSync(`${dir}/photos`, { recursive: true, force: true });
+    fs.mkdirSync(`${dir}/photos`, { recursive: true });
+    for (const f of ["gaikan.png", "hataraku.png", "daihyo.png"]) fs.writeFileSync(`${dir}/photos/${f}`, pngBytes);
+    return build({ ...base, photos: [
+      { file: "gaikan.png", category: "外観" },
+      { file: "hataraku.png", category: "働く人" },
+      { file: "daihyo.png", category: "代表者" },
+    ] });
+  };
+  const ph = withPhotos();
+  check("外観の写真は、会社概要にだけ出る（トップには出ない）",
+    !/gaikan\.png/.test(ph.html["index.html"] ?? "") && /gaikan\.png/.test(ph.html["company/index.html"] ?? ""),
+    `トップ=${/gaikan\.png/.test(ph.html["index.html"] ?? "")} 会社概要=${/gaikan\.png/.test(ph.html["company/index.html"] ?? "")}`);
+  /** **働く人は全幅、外観は大きめ、代表者は脇役**（社長のご指示） */
+  /** **印は markup で見る**——CSSの側にも同じ語が出るので、規則を数えてしまう */
+  const mark = (h) => (/<div class="gallery-wrap"([^>]*)>/.exec(h ?? "") ?? [])[1] ?? "";
+  check("採用の写真は全幅の印が付く", /data-photo-size="full"/.test(mark(ph.html["recruit/index.html"])));
+  check("会社概要の写真は大きめの印が付く", /data-photo-size="large"/.test(mark(ph.html["company/index.html"])));
+  check("代表挨拶の写真には印が付かない（脇役のまま）",
+    mark(ph.html["message/index.html"]).trim() === "", mark(ph.html["message/index.html"]));
+  /** **全幅でも切り取らない**——「画像全体が映るように」（社長のご指示） */
+  const full = (/\.gallery-wrap\[data-photo-size="?full"?\] \.photo:only-child img\{([^}]*)\}/
+    .exec(Object.values(ph.html)[0] ?? "") ?? [])[1] ?? "";
+  check("全幅でも切り取らない（contain・比率そのまま）",
+    /object-fit:\s*contain/.test(full) && /aspect-ratio:\s*auto/.test(full), full);
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
