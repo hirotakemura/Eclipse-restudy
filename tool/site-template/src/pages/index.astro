@@ -91,6 +91,17 @@ const specs = (isGeneral
     ]
 ).filter(([, v]) => v) as [string, string][];
 
+/**
+ * **見出しの段は、画面に出す文の長さで決める**（D-447）。
+ *
+ * これまでは**取材原文**の長さで決めていた（D-401「掲載文を直しても見た目が動かない」）。
+ * 掲載文をまだ誰も書いていなかった頃は、それで実害が無かった。
+ * いま実際に使い始めたら、**48字の文が、137字のときの段（帯の見出し・40px）で組まれた。**
+ * 一言の段なら49px——**画面に出ていない文の長さで、見出しの大きさが決まっていた。**
+ * 判定に使う値と、実際に描くものを揃える（D-251・D-278・D-433と同じ）
+ */
+const heroText = webOf("basics.businessSummary", basics.businessSummary) ?? "";
+
 const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("・")].filter(Boolean).join("／");
 ---
 <Base title="トップ" description={`${companyName}｜${desc}`}>
@@ -100,13 +111,32 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
       **絵が無ければ属性もつかない**ので、いままでと1ピクセルも変わらない。
       見出し・導入・札は**そのまま上に乗る**（「AI画像＋普通の見出し」にしない）。
     */
+    /**
+     * **最初の画面を、文字の列と「判断材料」の列に分ける**（D-448）。
+     *
+     * 実測：1440×589px の最初の画面で、**中身が占めるのは面積の 23.5%。右半分は 0.0%**——
+     * 半分が余白ではなく**空白**だった。第9段階④で「左に文字・右に絵」と決めていた（D-388）が、
+     * 実装は**全面に薄く敷く覆い**で、絵は列になっていなかった。
+     *
+     * 右に置けるものを、材料のある順に選ぶ。**無ければ1列のまま**（いままでと1pxも変わらない）：
+     *   visual … 生成ビジュアル（会社ごとに違う絵）
+     *   spec   … 対応できる条件（材質・加工・ロット・納期）
+     * **数字（figure）は左の主役なので右には出さない**——同じものを2か所に置かない
+     */
+    const aside = s.kind !== "hero" ? null
+      : s.asset?.generated ? "visual"
+      : hero === "spec" && specs.length >= 3 ? "spec"
+      : facts.length >= 3 ? "facts"
+      : specs.length >= 3 ? "spec"
+      : null;
     if (s.kind === "hero") return (
-      <section class="hero" data-motif={s.motif !== "none" ? s.motif : undefined}
+      <section class="hero" data-hero-aside={aside ?? undefined} data-motif={s.motif !== "none" ? s.motif : undefined}
         data-asset-source={assetImageOf(s.asset) ? s.asset?.source : undefined}
         data-asset-generated={s.asset?.generated?.id}
         data-asset-safe={s.asset?.generated?.safe}
         style={s.asset?.generated ? `--asset-image:url(${s.asset.generated.path});--asset-focal:${s.asset.generated.focal}` : undefined}>
         <div class="inner">
+          <div class="hero-text">
           {/*
             最初の画面は6通り（lib/design/system/hero.ts）。
             **6つ中5つは写真が無くても成立する。** 写真ゼロの会社でも型ごとに違って見えるように（ご指示②）
@@ -116,7 +146,7 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
               <p class="hero-kicker">{companyName}</p>
               <p class="hero-figure-label">{analysis.heroFigure.label}</p>
               <p class="hero-figure">{analysis.heroFigure.value}</p>
-              <h1 class="hero-sub" data-role={fit("statement", basics.businessSummary ?? "").id}>{webOf("basics.businessSummary", basics.businessSummary)}</h1>
+              <h1 class="hero-sub" data-role={fit("statement", heroText).id}>{webOf("basics.businessSummary", basics.businessSummary)}</h1>
             </>
           ) : hero === "type" ? (
             <>
@@ -126,20 +156,25 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
           ) : hero === "motif" ? (
             <>
               <p class="hero-kicker">{companyName}</p>
-              <h1 class="hero-motif" data-role={fit("heroTitle", basics.businessSummary ?? "").id}>{webOf("basics.businessSummary", basics.businessSummary)}</h1>
-              {facts.length > 0 && <div class="facts">{facts.slice(0, 3).map((f) => <span>{f}</span>)}</div>}
+              <h1 class="hero-motif" data-role={fit("heroTitle", heroText).id}>{webOf("basics.businessSummary", basics.businessSummary)}</h1>
+              {aside === null && facts.length > 0 && <div class="facts">{facts.slice(0, 3).map((f) => <span>{f}</span>)}</div>}
             </>
           ) : (
             <>
               <h1>{companyName}</h1>
               <p class="lead">{webOf("basics.businessSummary", basics.businessSummary)}</p>
-              {hero === "spec" && specs.length > 0 ? (
+              {/**
+                * **右へ移したものは、左に出さない。**
+                * 直す前は「条件表を右へ」のときに**左が札に落ちて**、
+                * 材質・ロット・納期・認証が**左右に二重で出ていた**（検査で見つけた）
+                */}
+              {hero === "spec" && specs.length > 0 && aside !== "spec" ? (
                 <dl class="spec-first">
                   {specs.map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
                 </dl>
-              ) : (
-                facts.length > 0 && <div class="facts">{facts.map((f) => <span>{f}</span>)}</div>
-              )}
+              ) : aside === null && facts.length > 0 ? (
+                <div class="facts">{facts.map((f) => <span>{f}</span>)}</div>
+              ) : null}
             </>
           )}
           {/*
@@ -151,6 +186,19 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
             ★これまでは「最初の画面には実写だけを置く」（第7段階・D-242）としてここに出していた。
             その規則は**仮の画像を置かない**ためのもので、**同じ写真を何度も出す**理由ではなかった。
           */}
+          </div>
+          {/* 右の列。**材料が無ければ、この要素ごと出ない** */}
+          {aside === "visual" && <div class="hero-aside"><div class="hero-visual" role="presentation"></div></div>}
+          {aside === "facts" && (
+            <div class="hero-aside"><div class="facts facts-aside">{facts.map((f) => <span>{f}</span>)}</div></div>
+          )}
+          {aside === "spec" && (
+            <div class="hero-aside">
+              <dl class="spec-first spec-aside">
+                {specs.slice(0, 4).map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
+              </dl>
+            </div>
+          )}
         </div>
       </section>
     );

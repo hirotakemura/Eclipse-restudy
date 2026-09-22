@@ -218,11 +218,28 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   check("印があれば、掲載文が画面に出る", shown.includes("【掲載文】strengths.wonAfterOthersDeclined"));
   check("印があれば、事例の掲載文も画面に出る", shown.includes("【掲載文】cases[0].challenge"));
   check("印があれば、トップの事業内容も掲載文になる", shown.includes("【掲載文】basics.businessSummary"));
-  /** **ご指示（c）**：見出しの段は原文の長さで決める。掲載文を直しても見た目が動かない */
+  /**
+   * **【撤回】「見出しの段は原文の長さで決める」（D-401）をやめた**（D-447）。
+   *
+   * 掲載文をまだ誰も書いていなかった頃は、それで実害が無かった。
+   * 実際に使い始めたら、**48字の文が、原文137字のときの段（帯の見出し・40px）で組まれた。**
+   * 一言の段なら49px——**画面に出ていない文の長さで、見出しの大きさが決まっていた。**
+   * 判定に使う値と、実際に描くものを揃える（D-251・D-278・D-433と同じ）。
+   */
   const roleOf = (h) => (/<h1 class="hero-(?:sub|motif)" data-role="([^"]+)"/.exec(h) ?? [])[1];
-  check("掲載文を入れても、トップの見出しの段が変わらない（fit は原文の長さで固定）",
-    roleOf(before.html["index.html"] ?? "") === roleOf(live.html["index.html"] ?? ""),
-    `${roleOf(before.html["index.html"] ?? "")} → ${roleOf(live.html["index.html"] ?? "")}`);
+  /** `data-role` が出るのは「数字を大きく」「技術の地紋」の型なので、そこで確かめる */
+  const roleBase = sanitizeProject(load("fixtures/design-diversity/a-precision.json"));
+  const longRaw = { ...roleBase, basics: { ...roleBase.basics, businessSummary: "あ".repeat(200) } };
+  const rawOnly = build(longRaw);
+  const withShort = build({ ...longRaw, webText: { "basics.businessSummary": {
+    text: "他社で難しいと言われた形を、治具から起こしてお引き受けします。",
+    source: "human", reviewedBy: "検査", reviewedAt: REVIEWED } } });
+  check("見出しの段は、画面に出す文の長さで決まる（原文の長さではない）",
+    roleOf(rawOnly.html["index.html"] ?? "") !== roleOf(withShort.html["index.html"] ?? ""),
+    `原文200字=${roleOf(rawOnly.html["index.html"] ?? "")} → 掲載文30字=${roleOf(withShort.html["index.html"] ?? "")}`);
+  check("短い掲載文なら「一言」の段で組む",
+    roleOf(withShort.html["index.html"] ?? "") === "statement",
+    roleOf(withShort.html["index.html"] ?? ""));
   /** **掲載文にも事実検証がかかる**（人が書いても、出典のない数値は通さない） */
   const bad = build({ ...base, webText: { "strengths.hardestJob": { text: "公差は ±0.0003μm まで対応します", reviewedBy: "検査", reviewedAt: REVIEWED } } });
   check("掲載文に出典のない数値を書くと、公開判定が止める", /webText\/strengths\.hardestJob/.test(bad.log));
@@ -488,6 +505,23 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
     .exec(Object.values(ph.html)[0] ?? "") ?? [])[1] ?? "";
   check("全幅でも切り取らない（contain・比率そのまま）",
     /object-fit:\s*contain/.test(full) && /aspect-ratio:\s*auto/.test(full), full);
+
+  console.log("\n━━━ ⑱ 最初の画面を2列にする（D-448）━━━");
+  /**
+   * 実測：1440×589px の最初の画面で、**中身が占めるのは面積の 23.5%、右半分は 0.0%**。
+   * 「左に文字・右に絵」は第9段階④で決めていた（D-388）のに、
+   * 実装は**全面に敷く薄い覆い**で、絵が列になっていなかった。
+   */
+  const heroOf = (h) => (/<section class="hero"([^>]*)>/.exec(h ?? "") ?? [])[1] ?? "";
+  const plain = build({ ...base, capability: { ...base.capability, materials: [], processes: [],
+    lotSize: "", shortestLeadTime: "", certifications: [] } });
+  check("材料が無い案件は、2列にしない（いままでと変わらない）",
+    !/data-hero-aside/.test(heroOf(plain.html["index.html"])), heroOf(plain.html["index.html"]));
+  check("条件が揃っていれば、右の列ができる",
+    /data-hero-aside="(facts|spec)"/.test(heroOf(before.html["index.html"])), heroOf(before.html["index.html"]));
+  /** **同じものを左右に二重で置かない** */
+  const left = (/<div class="hero-text">([\s\S]*?)<div class="hero-aside">/.exec(before.html["index.html"] ?? "") ?? [])[1] ?? "";
+  check("右へ移した札を、左にも出さない", !/class="facts"/.test(left), left.slice(0, 120));
 
   fs.rmSync(dir, { recursive: true, force: true });
 }

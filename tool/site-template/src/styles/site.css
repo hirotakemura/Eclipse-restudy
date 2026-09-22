@@ -1040,6 +1040,12 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
 .band:is([data-surface="accent"],[data-surface="dark"])[data-asset-source="generated"]::before { opacity: .14; }
 /** 最初の画面は主役なので、少しだけ強く出す。**それでも文字の下は地の色のまま** */
 .hero[data-asset-source="generated"]::before { opacity: .28; }
+/**
+ * **絵を列にしたときは、覆いをやめる**（D-448）。
+ * 薄い覆いは「絵を置く場所が無い」ときの逃げ道だった。
+ * 右の列に**そのままの濃さで**置けるなら、沈める理由が無い
+ */
+.hero[data-hero-aside="visual"]::before { display: none; }
 @media (max-width: 720px) {
   /** **スマホでは薄くする。** 画面に対して絵が大きくなり、文字に近づくため */
   .band[data-asset-source="generated"]::before,
@@ -1433,6 +1439,43 @@ html[data-hero="motif"] .hero {
   padding: 72px 0 60px;
 }
 .hero h1.hero-motif { font-size: clamp(26px, 3.4vw, 40px); line-height: 1.5; max-width: 22em; }
+/** 短い一言で言い切れているときは、地紋の型でも大きく組む（`.hero-sub` と揃える・D-447） */
+.hero h1.hero-motif[data-role="statement"] { font-size: var(--t-statement); line-height: var(--tl-statement); }
+
+/**
+ * ── 最初の画面を2列にする（D-448）────────────────────────
+ *
+ * **実測：1440×589px のうち、中身は 23.5%。右半分は 0.0%。**
+ * 「左に文字・右に絵」は第9段階④で決めていた（D-388）のに、
+ * 実装は**全面に敷く薄い覆い**で、絵が列になっていなかった。
+ *
+ * **材料が無い会社では、この規則ごと効かない**（`data-hero-aside` が付かない）ので、
+ * 写真も絵も条件も持たない案件の最初の画面は、1pxも変わらない。
+ */
+.hero-aside { min-width: 0; }
+.hero-visual {
+  aspect-ratio: 16 / 9; border-radius: var(--radius);
+  background-image: var(--asset-image);
+  background-size: cover; background-position: var(--asset-focal, 70% 45%);
+  background-repeat: no-repeat;
+}
+.spec-aside { margin: 26px 0 0; grid-template-columns: 1fr 1fr; }
+/** 右の列に置いた札は、縦に積む（横に流すと文字の列と背比べにならない） */
+.facts-aside { margin-top: 26px; }
+
+@media (min-width: 1000px) {
+  .hero[data-hero-aside] > .inner {
+    /** 2列のときは、文章1列ぶんの幅（900px）では足りない。帯の `wide` と同じ考え方 */
+    max-width: min(1280px, 100% - 96px);
+    display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 64px; align-items: center;
+  }
+  /** 絵は縦に伸ばして、文字の列と背比べさせる */
+  .hero-visual { aspect-ratio: 4 / 3; }
+  .spec-aside { margin: 0; grid-template-columns: 1fr; }
+  .facts-aside { margin-top: 0; flex-direction: column; align-items: flex-start; gap: 12px; }
+  .facts-aside span { font-size: 16px; padding: 12px 18px; }
+}
 
 @media (max-width: 860px) {
   html[data-hero="type"] .hero { padding: 56px 0 44px; }
