@@ -1278,7 +1278,15 @@ async function loadProjectList(selectId) {
     const g = document.createElement("optgroup");
     g.label = label;
     for (const p of items) {
-      g.append(new Option(`${p.name || p.id}　${p.filledPct}%`, p.id));
+      /**
+       * **案件IDも出す**（D-439）。
+       *
+       * 会社名しか出していなかったので、検証用のデモ案件（`demo` / `demo-2kai` /
+       * `demo-industrial` / `demo-photo`）と本物の案件が、**一覧では見分けられなかった**——
+       * 松原精機は検証用の架空会社なので、**同じ「有限会社 松原精機　100%」が5つ並ぶ。**
+       * IDはフォルダ名であり、`npm run build:site -- <ID>` で使う名前でもある。
+       */
+      g.append(new Option(`${p.name || p.id}　${p.id}　${p.filledPct}%`, p.id));
     }
     sel.append(g);
   }
