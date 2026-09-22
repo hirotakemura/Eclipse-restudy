@@ -1515,6 +1515,26 @@ html[data-hero="motif"] .hero {
  * かけるのは**文章の帯（narrow / normal）だけ**。全幅の帯では、絵は地であるほうが正しい。
  */
 .band-visual { display: none; }
+/**
+ * **小さい画面にも絵を出す**（D-457）。
+ *
+ * 実測：D-454 で強み・技術へ絵を移したあとも、**スマホの強み・技術は3933pxで画像0枚**だった。
+ * 上の `display: none` が**1000px以上でしか解けていなかった**ためで、
+ * D-450 は「PCの2列」として入れたまま、**小さい画面のことを決めていなかった。**
+ * 「PCで見えるからスマホでも問題ない」は、この案件で何度も外れている（CLAUDE.md）。
+ *
+ * 列にはできないので、**本文の下に横いっぱいで置く。** DOMの並びがすでに
+ * 見出し → 本文 → 絵 なので、順番はそのままでよい。
+ */
+@media (max-width: 999px) {
+  .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"]) > .inner > .band-visual {
+    display: block; margin-top: 28px; aspect-ratio: 16 / 9; border-radius: var(--radius);
+    background-image: var(--asset-image); background-size: cover;
+    background-position: var(--asset-focal, 70% 45%); background-repeat: no-repeat;
+  }
+  /** 絵を出したら、地の覆いはやめる（PCと同じ。**二重に出さない**） */
+  .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"])::before { display: none; }
+}
 @media (min-width: 1000px) {
   .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"]) > .inner {
     display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);

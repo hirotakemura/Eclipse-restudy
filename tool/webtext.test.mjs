@@ -758,6 +758,28 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   check("一覧のページでは、どの案件の話かを言う",
     listPage === "" || headOf(mainOf(listPage), "h3").length > 0 || /class="card/.test(listPage));
 
+  console.log("\n━━━ ㉗ 小さい画面にも絵を出す（D-457）━━━");
+  /**
+   * 実測：D-454 で強み・技術へ絵を移したあとも、
+   * **スマホの強み・技術は 3933px で画像0枚**だった。
+   * `.band-visual` を出す規則が **1000px以上の中にしか無かった**ためである
+   * （D-450 は「PCの2列」として入れ、小さい画面のことを決めていなかった）。
+   * 「PCで見えるからスマホでも問題ない」は、この案件で何度も外れている（CLAUDE.md）。
+   */
+  const css8 = Object.values(before.html)[0] ?? "";
+  /** **書き出しは `max-width: 999px` を `width<=999px` に書き替える。** 両方を許す */
+  const spVisual = /@media\s*\((?:max-width:\s*999px|width<=999px)\)\s*\{[^@]*\.band-visual\s*\{[^}]*display:\s*block/
+    .test(css8);
+  check("小さい画面で、帯の絵を出す規則がある", spVisual,
+    (/@media[^@]{0,80}band-visual[^}]*\}/.exec(css8) ?? [])[0] ?? "見つからない");
+  /** **地の覆いと二重に出さない**（PCと同じ扱い） */
+  check("小さい画面でも、絵を出したら地の覆いはやめる",
+    /@media\s*\((?:max-width:\s*999px|width<=999px)\)\s*\{[^@]*generated[^@]*:before\s*\{[^}]*display:\s*none/.test(css8)
+    || /@media\s*\((?:max-width:\s*999px|width<=999px)\)\s*\{[^@]*generated[^@]*::before\s*\{[^}]*display:\s*none/.test(css8));
+  /** **出しっぱなしにはしない**——既定はいままでどおり隠す（実写の帯まで出さないため） */
+  check("既定では、帯の絵は隠したまま",
+    /\.band-visual\{display:none\}/.test(css8) || /\.band-visual \{[^}]*display:\s*none/.test(css8));
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
