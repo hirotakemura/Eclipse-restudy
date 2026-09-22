@@ -216,6 +216,22 @@ if (stillRaw.length) {
   if (stillRaw.length > 6) console.log(`      ほか ${stillRaw.length - 6}件`);
   console.log(`      掲載文を書く： npm run webtext -- ${id}`);
 }
+/**
+ * **「出さないでください」と言われたものを、毎回見せる**（D-425）。
+ *
+ * `terms.ngItems` は必須で聞いているのに、**どのコードも読んでいなかった。**
+ * 実データには「取引先名」「価格・単価」「加工条件の具体的数値（回転数・送り速度等のノウハウ）」
+ * 「社員の顔写真・個人名」が入っていた。**約束したのに、確かめる場所が無かった。**
+ *
+ * **機械では判定しない。** ここに入るのは「取引先名」のような**種類の名前**であって、
+ * 文字列そのものではないので、一致で探しても見つからない（測り方の問題・D-392）。
+ * できるのは**人が見る材料として毎回出すこと**までである。それをしていなかった。
+ */
+const ngItems = project.terms?.ngItems ?? [];
+if (ngItems.length) {
+  console.log(`  出さないとお約束したもの ${ngItems.length}件（**目で確かめてください。機械では判定できません**）`);
+  for (const ng of ngItems) console.log(`      ${ng}`);
+}
 const unplaced = (project.photos ?? []).filter((p) => !p.category || p.category === "その他").length;
 console.log(`  写真 ${photoCount}枚${unplaced ? `（うち置き場所が未定 ${unplaced}枚。サイトには出ません）` : ""}`);
 
@@ -432,6 +448,16 @@ if (fs.existsSync(photoDst)) {
 for (const ph of project.photos ?? []) {
   if (ph?.mock && ph.file && !placeholders.includes(ph.file)) placeholders.push(ph.file);
 }
+/**
+ * **載っているのに、ファイルが無い写真**（D-425）。
+ *
+ * `project.json` に写真の行があってもファイルが届いていないと、`<img>` は壊れた画像になる。
+ * **ロゴがこれになると、全ページのいちばん上が壊れる**（実測でそうなった）。
+ * 枚数の検査は「仮のSVG」と「`mock: true`」しか見ておらず、**無いものは数えようがなかった。**
+ */
+const missingPhotos = (project.photos ?? [])
+  .filter((ph) => ph?.file && !fs.existsSync(path.join(photoSrc, ph.file)))
+  .map((ph) => ph.file);
 
 // 公開に必須の情報。**電話番号のないBtoB製造業サイトは、作った意味がない**（D-060）
 const b = project.basics ?? {};
@@ -441,6 +467,7 @@ if (!b.tel) missing.push("電話番号");
 if (!b.address) missing.push("所在地");
 if (!project.terms?.inquiryNotifyEmail) missing.push("問い合わせの通知先メール");
 if (placeholders.length) missing.push(`実物の写真（仮の画像が${placeholders.length}枚のまま）`);
+for (const f of missingPhotos) leaked.push([`photos/${f}`, "案件データに載っていますが、写真のファイルがありません（画面では壊れた画像になります）"]);
 
 if (project.visualPlan?.visuals?.length) {
   /**

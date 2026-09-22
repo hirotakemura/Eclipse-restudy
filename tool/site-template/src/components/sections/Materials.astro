@@ -3,14 +3,23 @@
  * 対応できる材質。
  * **表の1行に押し込まない。** 材質は調達担当者が検索する語そのもの（docs/06 ブロック3）。
  */
-interface Props { materials: string[]; processes?: string[]; href?: string }
-const { materials, processes = [], href } = Astro.props;
+/**
+ * **外注がある会社では、自社の加工法だと分かるように書く**（D-425）。
+ * 表のほうだけ直して、ここ（札の見せ方）を直し忘れていた——**同じ語を2箇所に書いた結果**である（D-197）。
+ * 外注そのものは札にしない。**札は「この会社が自分の設備でできること」の一覧**で、
+ * 並べると設備を持っていると読める。くわしくは対応可能範囲の表へ送る
+ */
+interface Props { materials: string[]; processes?: string[]; outsourced?: string[]; href?: string }
+const { materials, processes = [], outsourced = [], href } = Astro.props;
 ---
 {materials.length > 0 && <div class="chips">{materials.map((m) => <span>{m}</span>)}</div>}
 {processes.length > 0 && (
   <>
-    <h3>加工法</h3>
+    <h3>{outsourced.length ? "加工法（自社）" : "加工法"}</h3>
     <div class="chips">{processes.map((m) => <span>{m}</span>)}</div>
+    {outsourced.length > 0 && (
+      <p class="note">熱処理・表面処理などの {outsourced.length} 工程は協力会社に依頼し、一括でお引き受けしています。</p>
+    )}
   </>
 )}
 {href && <p><a href={href}>対応可能範囲をすべて見る</a></p>}

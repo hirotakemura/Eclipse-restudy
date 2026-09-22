@@ -89,11 +89,10 @@ export const BLOCKS: Block[] = [
         type: "text",
         required: true,
         help: "今、問い合わせは月に何件ありますか",
-        placeholder: "答えのとおりに。「月1〜2件」のような幅のある回答でよい",
-      },
-      { path: "inquiry.channels", label: "問い合わせの流入経路", type: "tags", required: true, help: "どこから来ていますか（紹介／展示会／検索／飛び込み）" },
-      { path: "inquiry.recentNewClientOrigin", label: "直近の新規取引のきっかけ", type: "textarea", required: true, help: "直近で新しく始まった取引は、どうやって始まりましたか" },
-      { path: "inquiry.lostDealReasons", label: "失注の理由", type: "tags", required: true, help: "失注するとき、理由は何が多いですか（価格／納期／技術／信用）" },
+        placeholder: "答えのとおりに。「月1〜2件」のような幅のある回答でよい", internal: true },
+      { path: "inquiry.channels", label: "問い合わせの流入経路", type: "tags", required: true, help: "どこから来ていますか（紹介／展示会／検索／飛び込み）", internal: true },
+      { path: "inquiry.recentNewClientOrigin", label: "直近の新規取引のきっかけ", type: "textarea", required: true, help: "直近で新しく始まった取引は、どうやって始まりましたか", internal: true },
+      { path: "inquiry.lostDealReasons", label: "失注の理由", type: "tags", required: true, help: "失注するとき、理由は何が多いですか（価格／納期／技術／信用）", internal: true },
       { path: "inquiry.mostProfitableWork", label: "最も利益率の高い仕事", type: "textarea", required: true, help: "一番利益率の高い仕事は何ですか" },
       { path: "inquiry.wantMoreOf", label: "もっと受けたい仕事", type: "textarea", required: true, help: "本当はもっと受けたいのに、今あまり来ていない仕事はありますか" },
       {
@@ -101,8 +100,7 @@ export const BLOCKS: Block[] = [
         label: "来てほしくない問い合わせ",
         type: "textarea",
         required: true,
-        help: "逆に、来てほしくない問い合わせはありますか（小ロット過ぎる、単価が合わない等）",
-      },
+        help: "逆に、来てほしくない問い合わせはありますか（小ロット過ぎる、単価が合わない等）" },
       {
         path: "inquiry.goals",
         label: "サイトの役割",
@@ -117,8 +115,7 @@ export const BLOCKS: Block[] = [
         customerLabel: "今後の受注について気にされていること",
         type: "textarea",
         required: true,
-        help: "今のお取引先からの発注量は、来年・再来年も同じくらい続きそうですか。変化の兆しはありますか",
-      },
+        help: "今のお取引先からの発注量は、来年・再来年も同じくらい続きそうですか。変化の兆しはありますか", internal: true },
       {
         path: "inquiry.targetKeywords",
         label: "想定検索キーワード",
@@ -126,7 +123,13 @@ export const BLOCKS: Block[] = [
         customerLabel: "お客様が検索しそうな言葉（こちらの想定）",
         type: "tags",
         required: true,
-        help: "商談前調査と取材から確定する"
+        /**
+         * **画面には出さない**（D-425）。
+         * 検索語を本文に混ぜると、読む人ではなく検索エンジンに向けた文章になる。
+         * ここは「お客様が使う言葉で書けているか」を我々が確かめるための欄である
+         */
+        internal: true,
+        help: "商談前調査と取材から確定する。**サイトには出さない**（言葉づかいの確認に使う）"
       },
     ],
   },
@@ -151,7 +154,7 @@ export const BLOCKS: Block[] = [
       { trigger: "（加工法をたくさん挙げた）", ask: "そのうち、自社の設備で行っているのはどれですか。外注に出しているものと分けてうかがえますか　★実案件で45件すべてが自社扱いになっていた" },
     ],
     fields: [
-      { path: "capability.materials", label: "対応材質", type: "tags", required: true, help: "対応できる材質を全部挙げてください", placeholder: "聞き取ったとおりに。カンマ区切りでまとめて追加できる" },
+      { path: "capability.materials", label: "対応材質", type: "tags", required: true, help: "**日常的に加工しているものだけ**。実績が数件の材質は入れない（注記を値の中に書かない・D-424）", placeholder: "聞き取ったとおりに。カンマ区切りでまとめて追加できる" },
       {
         path: "capability.processes",
         label: "加工法・工法（自社）",
@@ -289,8 +292,18 @@ export const BLOCKS: Block[] = [
           { path: "clientIndustry", label: "顧客の業界", type: "text", placeholder: "自動車部品メーカー様" },
           { path: "partDescription", label: "部品・製品の概要", type: "textarea" },
           { path: "challenge", label: "相談されたときの課題", type: "textarea", help: "他社で断られた／精度が出ない／コストが合わない／納期が間に合わない" },
-          { path: "solution", label: "どう解決したか", type: "textarea", help: "工程の工夫・治具の内製・材料の提案" },
-          { path: "result", label: "結果", type: "textarea", help: "数字があれば必ず数字で（不良率◯%改善、コスト◯%削減）" },
+          /**
+           * **「専用治具を作った」で止めない**（D-425）。
+           * 実データで、2件の事例が**一字一句同じ解決方法**になっていた。
+           * どこを押さえたか・どの順で削ったかまで聞かないと、事例が1件分にしかならない
+           */
+          { path: "solution", label: "どう解決したか", type: "textarea", help: "**どこを押さえたか・どの順で削ったか**まで。「専用治具を作った」で止めると、ほかの事例と同じ文になる" },
+          /**
+           * **数字だけ取ると、緩い数字が弱みに見える**（D-425）。
+           * 会社の対応精度（±0.01mm）より緩い公差の事例が並ぶと「精度が出ない会社」に読める。
+           * 理由まで取れば「薄物は保持の仕方で歪むため広めに設定」という設計判断として読める
+           */
+          { path: "result", label: "結果", type: "textarea", help: "数字があれば必ず数字で（不良率◯%改善、コスト◯%削減）。**会社の対応精度より緩いときは、その理由も**" },
           { path: "materials", label: "材質", type: "tags" },
           { path: "processes", label: "加工法", type: "tags" },
           // 事例の説得力は、この3つが数字で埋まっているかで決まる（D-172）
@@ -317,7 +330,7 @@ export const BLOCKS: Block[] = [
     fields: [
       { path: "recruitment.isHiring", label: "採用の予定があるか", type: "boolean" },
       { path: "recruitment.neededRoles", label: "不足している職種", type: "tags", help: "今、人は足りていますか。どの職種が足りませんか" },
-      { path: "recruitment.recentHireOrigin", label: "直近で採用できた人の流入経路", type: "textarea", help: "直近で採用できた人は、どうやって入ってきましたか" },
+      { path: "recruitment.recentHireOrigin", label: "直近で採用できた人の流入経路", type: "textarea", help: "直近で採用できた人は、どうやって入ってきましたか", internal: true },
       // **これは我々が採用ページの要否を判断するための欄。答えをそのまま載せない**（D-170）
       { path: "recruitment.retentionNotes", label: "若手の定着状況", type: "textarea", internal: true, help: "若手の定着はどうですか" },
       { path: "recruitment.workplaceAppeal", label: "訴求できる待遇・環境", type: "tags" },

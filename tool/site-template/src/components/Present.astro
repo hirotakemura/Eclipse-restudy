@@ -183,6 +183,7 @@ const points = ((isGeneral
 {content === "materials" && presentation === "chips" && (
   <Materials materials={(only ? only.materials : cap.materials) ?? []}
              processes={(only ? only.processes : cap.processes) ?? []}
+             outsourced={only ? [] : outsourced}
              href={linkTo("capability")} />
 )}
 {content === "materials" && presentation === "list" && <ListView items={cap.materials ?? []} />}

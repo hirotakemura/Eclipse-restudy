@@ -8,7 +8,7 @@
  * 電話とメールが載っていれば、お客様の商売は止まらない（docs/17）。
  */
 import "../styles/site.css";
-import { companyName, tel, telHref, address, nav, headerNav, project, photoOf, photoSrc, isGeneral } from "../lib/site";
+import { companyName, tel, telHref, address, nav, headerNav, project, photoOf, photoSrc, isGeneral, receptionHours} from "../lib/site";
 import { themeStyle, navId, heroId, sectionsId, headingsId, tablesId, motionId, webfont } from "../lib/theme";
 
 const logo = photoOf("ロゴ");
@@ -32,6 +32,9 @@ const jsonLd = {
   "@type": "Organization",
   name: companyName,
   telephone: tel || undefined,
+  /** **聞いた読み方と受付時間を、構造化データにも出す**（D-425） */
+  alternateName: (project.basics?.nameKana || undefined),
+  hoursAvailable: receptionHours || undefined,
   address: address || undefined,
   foundingDate: project.basics?.founded || undefined,
   url: Astro.site?.href,
@@ -80,6 +83,13 @@ const jsonLd = {
           <a class="tel" href={`tel:${telHref}`}>
             <span class="tel-label">お電話でのお問い合わせ</span>
             <span class="tel-num">{tel}</span>
+            {/**
+              * **受付時間を出す**（D-425）。
+              * 取材で必ず聞いているのに、**どのテンプレートも読んでいなかった。**
+              * BtoBの製造業では「いつ電話してよいか」が分からないと、電話がかかってこない。
+              * 聞けていない案件では、いままでと1文字も変わらない。
+              */}
+            {receptionHours && <span class="tel-hours">{receptionHours}</span>}
           </a>
         )}
         <a class="btn" href="/contact/">お問い合わせ</a>

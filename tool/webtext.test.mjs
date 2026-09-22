@@ -288,9 +288,64 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   /** **同じ行に並ぶと、その設備を持っていると読める** */
   const row = (/加工法・工法（自社）<\/th><td>([^<]*)</.exec(cap) ?? [])[1] ?? "";
   check("外注の工程が、自社の行に混ざらない", row.length > 0 && !/熱処理|メッキ|塗装/.test(row), row);
+  /**
+   * **表だけ直して、札の見せ方を直し忘れていた**（実画面のキャプチャで見つけた）。
+   * 同じ語を2箇所に書くと、いつか必ずずれる（D-197）。**どのページにも断りなしの「加工法」を残さない**
+   */
+  const bare = Object.entries(outs.html).filter(([, h]) => /<h3>加工法<\/h3>/.test(h)).map(([k]) => k);
+  check("外注があるとき、札の見出しにも「（自社）」が付く（表だけ直さない）", bare.length === 0, bare.join(" "));
   /** **記録が無い案件（既存42件）では、1バイトも変わらない** */
   check("外注の記録が無ければ、HTMLが1バイトも変わらない",
     Object.keys(before.html).every((k) => build({ ...base }).html[k] === before.html[k]));
+
+  console.log("\n━━━ ⑩ 判断のために聞いた欄が、原稿の材料にならない（D-425）━━━");
+  /**
+   * **指示では守れない**（D-253：渡さなければ、書きようがない）。
+   * プロンプトには「社内の判断材料をそのまま書かない」と書いてあったのに、
+   * **`internal: true` が付いていないので、データは書き手に渡っていた。**
+   * 実データの `outlookConcern` には「自動車部品がティア1経由で売上の約6割を占めるため、
+   * ここが最大の不確実性」が入っていた。D-170とまったく同じ形である。
+   */
+  const { writerView } = await import("./lib/generate/writer-view.ts");
+  const judged = { ...base, inquiry: { ...base.inquiry,
+    outlookConcern: "価格が下がっていくと不透明との懸念。自動車部品が売上の約6割を占める",
+    monthlyInquiries: "月1〜2件", recentNewClientOrigin: "3年前。それ以降、新規取引は始まっていない",
+    targetKeywords: ["薄肉 加工", "薄物 切削"] } };
+  const w = writerView(judged);
+  /** **「いまどれくらい苦しいか」は渡さない。** 書き手の判断には要らず、出たら事故になる */
+  for (const k of ["outlookConcern", "monthlyInquiries", "recentNewClientOrigin",
+                   "lostDealReasons", "channels", "targetKeywords"]) {
+    check(`inquiry.${k} が原稿の材料に渡らない`, w.inquiry?.[k] === undefined, JSON.stringify(w.inquiry?.[k]));
+  }
+  /**
+   * **「どこに力点を置くか」は渡す**（D-182）。これが無いと書き手が強弱を付けられない。
+   * 渡すが書かせない——**だから公開判定で同じ文字列を見張り続ける**（D-253 は残る）
+   */
+  for (const k of ["mostProfitableWork", "wantMoreOf", "wantLessOf"]) {
+    check(`inquiry.${k} は渡る（力点の判断に要る）`, w.inquiry?.[k] !== undefined);
+  }
+  /** **サイトの役割は渡す。** どのページを作るかの判断で、社内の本音ではない */
+  check("inquiry.goals は渡る（構成の判断に要る）", Array.isArray(w.inquiry?.goals));
+  /** 画面は1バイトも変わらない——`internal` は書き手に渡すかどうかの話で、組み立ての話ではない */
+  check("判断用の印を付けても、HTMLが1バイトも変わらない",
+    Object.keys(before.html).every((k) => build({ ...base }).html[k] === before.html[k]));
+
+  console.log("\n━━━ ⑪ 出さないとお約束したものを、毎回見せる（D-425）━━━");
+  const ng = build({ ...base, terms: { ...base.terms, ngItems: ["取引先名", "価格・単価"] } });
+  check("NGの一覧を、書き出しのたびに出す", /出さないとお約束したもの 2件/.test(ng.log));
+  check("NGの一覧が空なら、その報告は出ない",
+    !/出さないとお約束したもの/.test(build({ ...base, terms: { ...base.terms, ngItems: [] } }).log));
+
+  console.log("\n━━━ ⑫ 載っているのに、ファイルが無い写真（D-425）━━━");
+  /**
+   * **ロゴがこれになると、全ページのいちばん上が壊れる**（実測でそうなった）。
+   * 枚数の検査は「仮のSVG」と `mock: true` しか見ておらず、**無いものは数えようがなかった**
+   */
+  const ghost = build({ ...base, photos: [{ file: "no-such-file.jpg", category: "外観" }] });
+  check("ファイルの無い写真があると、公開を止める",
+    /写真のファイルがありません/.test(ghost.log) && /このままでは公開できません/.test(ghost.log));
+  check("写真が1枚も載っていなければ、その報告は出ない",
+    !/写真のファイルがありません/.test(build({ ...base, photos: [] }).log));
 
   fs.rmSync(dir, { recursive: true, force: true });
 }

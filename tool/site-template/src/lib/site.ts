@@ -67,6 +67,8 @@ const webRow = <T extends Record<string, any>>(prefix: string, row: T, fields: s
 export const companyName = project.basics?.name ?? "";
 export const tel = project.basics?.tel ?? "";
 export const address = project.basics?.address ?? "";
+/** 電話の受付時間。**取材で聞いているのに、どこも読んでいなかった**（D-425） */
+export const receptionHours = project.basics?.receptionHours ?? "";
 
 /**
  * メールアドレス。
