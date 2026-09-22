@@ -180,6 +180,12 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
    * 「テンプレートのどこかが直参照のまま」を見逃す（D-197）。
    */
   const dir = "projects/_webtext-test";
+  /**
+   * **前の実行が途中で止まっていたら、その残骸から始めない。**
+   * 後始末は最後に1回しかしないので、実行が中断されると次の実行に残る。
+   * 検査が**前回の残りに左右される**状態にしない
+   */
+  fs.rmSync(dir, { recursive: true, force: true });
   const site = `${dir}/site`;
   const base = sanitizeProject(load("fixtures/design-diversity/b-difficulty.json"));
   const build = (project) => {
@@ -385,6 +391,38 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   /** **複数枚のときは揃った箱が要る**——行が揃わないと一覧に見えない。そこは変えない */
   check("複数枚のときは、いままでどおり比率を揃える",
     /\.gallery \.photo img\s*\{[^}]*aspect-ratio:\s*4\s*\/\s*3/.test(css));
+
+  console.log("\n━━━ ⑮ ロゴに背景が付いていないか（D-438）━━━");
+  /**
+   * 実案件でいただいたロゴは **502×336px の「ロゴの見本」**——つや消し金属の地に
+   * ロゴが小さく置かれた画像だった。実測：**ロゴが占めるのは横63%×縦18%・透過なし。**
+   * ヘッダーに置くと**グレーの板が出て、中のロゴは高さ11px**になる。**読めない。**
+   * CSSでは直らない——大きくすると、板が大きくなるだけである。
+   */
+  const png = (colorType) => {
+    const b = Buffer.alloc(33);
+    b.write("\x89PNG\r\n\x1a\n", 0, "binary");
+    b.writeUInt32BE(13, 8); b.write("IHDR", 12);
+    b.writeUInt32BE(64, 16); b.writeUInt32BE(64, 20);
+    b[24] = 8; b[25] = colorType;
+    return b;
+  };
+  const withLogo = (name, buf) => {
+    /** **1件ずつ確かめる。** 前の検査で置いた画像を残したまま次を測らない */
+    fs.rmSync(`${dir}/photos`, { recursive: true, force: true });
+    fs.mkdirSync(`${dir}/photos`, { recursive: true });
+    fs.writeFileSync(`${dir}/photos/${name}`, buf);
+    return build({ ...base, photos: [{ file: name, category: "ロゴ" }] });
+  };
+  check("背景つきのロゴ（透過なし）は、目で確かめる印を出す",
+    /ロゴに背景が付いています/.test(withLogo("logo-rgb.png", png(2)).log));
+  check("透過つきのロゴは、何も言わない",
+    !/ロゴに背景が付いています/.test(withLogo("logo-rgba.png", png(6)).log));
+  check("SVG のロゴは、何も言わない",
+    !/ロゴに背景が付いています/.test(withLogo("logo.svg", Buffer.from("<svg xmlns=\"http://www.w3.org/2000/svg\"/>")).log));
+  /** **止めはしない**——透過の無いロゴしか無い会社はある */
+  check("ロゴに背景があっても、書き出しは止めない",
+    !/✗ photos\/logo-rgb\.png/.test(withLogo("logo-rgb.png", png(2)).log));
 
   fs.rmSync(dir, { recursive: true, force: true });
 }

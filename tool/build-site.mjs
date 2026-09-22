@@ -455,6 +455,40 @@ for (const ph of project.photos ?? []) {
  * **ロゴがこれになると、全ページのいちばん上が壊れる**（実測でそうなった）。
  * 枚数の検査は「仮のSVG」と「`mock: true`」しか見ておらず、**無いものは数えようがなかった。**
  */
+/**
+ * **ロゴの画像が、ヘッダーに置ける形か**（D-438）。
+ *
+ * 実案件でいただいたロゴは **502×336px の「ロゴの見本」**だった——
+ * つや消し金属の地に、ロゴが中央に小さく置かれた画像である。実測：
+ *   ・ロゴそのものが占めるのは **横63% × 縦18%**（上下の余白だけで276px＝画像の82%）
+ *   ・**透過なし**
+ * これをヘッダーに置くと、**地の金属板が四角いグレーの箱として出て、
+ * その中のロゴは高さ11px**になる。**読めない。**
+ * CSSでいくら大きくしても直らない——大きくすると、グレーの板が大きくなるだけである。
+ *
+ * **判定は透過の有無だけにする。** 余白の割合を見るには画素を読む必要があり、
+ * 書き出しにブラウザを持ち込むことになる（`qa:visible` と違って、ここは毎回走る）。
+ * ヘッダー用のロゴは、ほぼ必ず透過PNGかSVGである。**そこだけ見れば足りる。**
+ * **止めはしない**——透過の無いロゴしか無い会社はある。人に見せて判断してもらう。
+ * **見るのは「透過の層があるか」まで**である。透過つきで作ってあるのに中身が
+ * 塗りつぶされている画像は、これでは捕まらない。そこまで見るには画素を読むことになる
+ */
+const logoFile = (project.photos ?? []).find((ph) => ph?.category === "ロゴ")?.file;
+if (logoFile) {
+  const f = path.join(photoSrc, logoFile);
+  const ext = path.extname(logoFile).toLowerCase();
+  let hasAlpha = ext === ".svg";
+  if (ext === ".png" && fs.existsSync(f)) {
+    const b = fs.readFileSync(f);
+    /** PNG の IHDR：色の種類は25バイト目。6=RGBA・4=グレー+A・3=パレット（tRNS があれば透過） */
+    const colorType = b[25];
+    hasAlpha = colorType === 6 || colorType === 4 || (colorType === 3 && b.includes(Buffer.from("tRNS")));
+  }
+  if (!hasAlpha && fs.existsSync(f)) {
+    suspect.push([`photos/${logoFile}`, "ロゴに背景が付いています（透過なし）。ヘッダーでは四角い板として出ます。背景を抜いたPNGかSVGをいただいてください"]);
+  }
+}
+
 const missingPhotos = (project.photos ?? [])
   .filter((ph) => ph?.file && !fs.existsSync(path.join(photoSrc, ph.file)))
   .map((ph) => ph.file);
