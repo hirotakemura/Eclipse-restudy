@@ -725,6 +725,39 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
     /@media\s*\((?:min-width:\s*761px|width>=761px)\)\s*\{[^@]*\.figures dd\[data-role/.test(css7),
     (/@media[^@]{0,60}figures dd\[data-role[^}]*\}/.exec(css7) ?? [])[0] ?? "見つからない");
 
+  console.log("\n━━━ ㉖ その1件のページで、同じことを3回言わない（D-456）━━━");
+  /**
+   * 実測：加工事例の個別ページ4件とも、
+   *   `h1`「半導体装置向け部品の、図面が固まる前からの形状相談」
+   *   `h3`「半導体装置向け部品の、図面が固まる前からの形状相談」（まったく同じ）
+   *   さらに「この案件について」の要約も同じ内容
+   * で、**1画面で3回同じことを言っていた。** リンクも `/cases/` が2本。
+   * D-414 は同じことを禁じているが、**帯の見出し（`h2`）しか見ていない**ので当たらない。
+   */
+  const casePages = Object.entries(before.html).filter(([k]) => /^cases[\\/\\\\]\d/.test(k));
+  const headOf = (html, tag) => [...html.matchAll(new RegExp(`<${tag}[^>]*>(.*?)</${tag}>`, "gs"))]
+    .map((m) => m[1].replace(/<[^>]+>/g, "").trim());
+  const mainOf = (html) => (/<main[\s\S]*?<\/main>/.exec(html) ?? [""])[0];
+  check(`加工事例の個別ページが書き出されている（${casePages.length}件）`, casePages.length > 0);
+  const echoed = casePages.filter(([, html]) => {
+    const m = mainOf(html);
+    const h1 = headOf(m, "h1")[0];
+    return h1 && [...headOf(m, "h2"), ...headOf(m, "h3")].includes(h1);
+  }).map(([k]) => k);
+  check("ページ見出しと同じ文を、そのページの中でもう一度出さない", echoed.length === 0, echoed.join("・"));
+  const twoWays = casePages.filter(([, html]) => {
+    const hrefs = [...mainOf(html).matchAll(/<a href="([^"]+)"/g)].map((m) => m[1]);
+    return hrefs.filter((h) => h === "/cases/").length > 1;
+  }).map(([k]) => k);
+  check("その1件のページに、一覧への行き先を2つ出さない", twoWays.length === 0, twoWays.join("・"));
+  /** **一覧に戻る道そのものは残す**（消し過ぎていないこと） */
+  const noWayBack = casePages.filter(([, html]) => !/<a href="\/cases\/"/.test(mainOf(html))).map(([k]) => k);
+  check("その1件のページから、一覧へ戻れる", noWayBack.length === 0, noWayBack.join("・"));
+  /** **一覧のページでは、いままでどおり案件名を出す**（工程だけが宙に浮かないように） */
+  const listPage = before.html["cases/index.html"] ?? before.html["cases\\index.html"] ?? "";
+  check("一覧のページでは、どの案件の話かを言う",
+    listPage === "" || headOf(mainOf(listPage), "h3").length > 0 || /class="card/.test(listPage));
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 

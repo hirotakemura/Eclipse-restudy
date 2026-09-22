@@ -219,21 +219,28 @@ const points = ((isGeneral
       * 以前は「6件を超えるとき」だけ出していたので、4件の会社では
       * **カードだけ並んで一覧への行き先が無かった。** 工程・引用の分岐は前から `page` だけを見ている。
       */}
-    {page !== "cases" && <p style="margin-top:20px"><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>}
+    {page !== "cases" && !only && <p style="margin-top:20px"><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>}
   </>
 )}
 {content === "cases" && presentation === "process" && (
   <>
-    {/* **どの案件の話かを先に言う。** 言わないと、工程だけが宙に浮く */}
-    {caseForProcess?.title && <h3 style="margin-top:0">{caseForProcess.title}</h3>}
+    {/**
+      * **どの案件の話かを先に言う。** 言わないと、工程だけが宙に浮く。
+      * **ただし、その1件のページでは言わない**（D-456）——
+      * 実測：個別ページ4件とも `h1` と `h3` がまったく同じ文で、
+      * 「この案件について」の要約も同じ内容だった。**1画面で3回同じことを言っていた。**
+      * D-414 と同じ考え方だが、あちらは帯の見出し（`h2`）しか見ていないので当たらない。
+      */}
+    {!only && caseForProcess?.title && <h3 style="margin-top:0">{caseForProcess.title}</h3>}
     <Process steps={caseSteps} />
-    {page !== "cases" && <p><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>}
+    {page !== "cases" && !only && <p><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>}
   </>
 )}
 {content === "cases" && presentation === "quote" && (
   <>
     <Declined text={quoteOf(cases.map((c: any) => c.challenge).filter(Boolean).join(" "))} />
-    {page !== "cases" && <p><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>}
+    {/** 個別ページには下に「一覧に戻る」がある。**同じ行き先を2つ出さない**（D-456） */}
+    {page !== "cases" && !only && <p><a href="/cases/">{isGeneral ? "実績" : "加工事例"}をすべて見る</a></p>}
   </>
 )}
 {content === "cases" && presentation === "spec" && !only && (
