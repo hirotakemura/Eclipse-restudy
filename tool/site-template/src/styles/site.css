@@ -168,6 +168,17 @@ p { margin: 0 0 16px; }
  */
 .gallery { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
 .gallery .photo { margin: 0; }
+/**
+ * **1枚しかない写真を、画面いっぱいに引き伸ばさない。**
+ *
+ * `auto-fit` は、要素が1つだと**1カラムが全幅**になる。全幅の帯に置いているので、
+ * 実測で **PC 1126×845px**——会社概要・代表挨拶・採用情報で、
+ * **本文より写真のほうが大きい画面**になっていた（社長のご指摘）。
+ * 4枚あるページ（工場・設備）は 362×272px で問題ない。**枚数で壊れていた。**
+ *
+ * 写真そのものの上限を決める。中央に寄せるので、全幅の帯の中でも収まりがつく。
+ */
+.gallery .photo:only-child img { max-width: 560px; margin-inline: auto; }
 .gallery .photo img { aspect-ratio: 4 / 3; object-fit: cover; }
 /* 外観写真は横長で受けるので、切らずに出す */
 .hero-photo img { aspect-ratio: 16 / 9; object-fit: cover; }

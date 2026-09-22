@@ -1,5 +1,17 @@
 ---
-/** 写真の並び。0枚なら何も出さない */
+/**
+ * 写真の並び。0枚なら何も出さない。
+ *
+ * 【`caption` を画面に出さない】★社長のご指摘で直した
+ * KOBO の `caption` は**撮影したときの覚え書き**である。実案件に入っていたのは
+ * 「遠目から」「計測器」「加工部拡大」——**どれを撮った写真か自分で見分けるための memo** で、
+ * お客様に読ませる説明ではない。それが `<figcaption>` としてそのまま公開ページに出ていた。
+ *
+ * 取材で書いたものが**そのまま画面に出る**のは、掲載文（`webText`）を分けた理由と同じ問題である
+ * （D-401・取材の走り書きは、そのままではWebに載せられない）。
+ * **掲載用の説明欄を KOBO が持つまでは、出さない。**
+ * `alt` にも使わない——「遠目から」は、目の見えない方への説明として成立しない。
+ */
 import { photoSrc } from "../lib/site";
 interface Props { photos: any[]; heading?: string }
 const { photos, heading } = Astro.props;
@@ -10,8 +22,7 @@ const { photos, heading } = Astro.props;
     <div class="gallery">
       {photos.map((p) => (
         <figure class="photo">
-          <img src={photoSrc(p)} alt={p.caption ?? ""} loading="lazy" />
-          {p.caption && <figcaption>{p.caption}</figcaption>}
+          <img src={photoSrc(p)} alt="" loading="lazy" />
         </figure>
       ))}
     </div>

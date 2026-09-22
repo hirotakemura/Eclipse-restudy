@@ -24,6 +24,7 @@ import { buildSourceText, verifyDraft } from "./lib/verify.ts";
 import { writerView } from "./lib/generate/writer-view.ts";
 import { planGeneratedVisuals } from "./lib/design/generated-brief.ts";
 import { assertWebText, WEB_TEXT_PATHS, webTextShape } from "./lib/schema.ts";
+import { webTextFields, duplicateBlocks } from "./lib/webtext-review.ts";
 import { DIRECTIONS } from "./lib/design/direction.ts";
 
 let ok = 0, ng = 0;
@@ -42,6 +43,11 @@ const FIXTURES = [
 ];
 const PAGES = ["strengths", "capability", "equipment", "cases", "company", "contact"];
 const REVIEWED = "2026-09-17T00:00:00.000Z";
+
+/** 同じ段落を2つの欄に入れた案件データ（松原精機で実際に起きた形） */
+const twiceRaw = (p) => ({ ...p, strengths: { ...p.strengths,
+  workOthersAvoid: "支持点を変えた専用の押さえ治具を製作し、荒取りと仕上げの間に休ませる時間を取りました。",
+  hardestJob: "支持点を変えた専用の押さえ治具を製作し、荒取りと仕上げの間に休ませる時間を取りました。" } });
 
 /** 掲載文を「まったく違う文章」で全欄に入れる。**違いが出るなら、必ずここで出る** */
 const withWeb = (p, reviewedAt = REVIEWED) => {
@@ -217,6 +223,55 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   /** **表に無いパスは、読み込みで落ちる** */
   const worse = build({ ...base, webText: { "capability.tolerance": { text: "±1μm", reviewedAt: REVIEWED } } });
   check("事実の欄に掲載文を置くと、書き出しが始まらない", /掲載文は持てません/.test(worse.log));
+
+  console.log("\n━━━ ⑧ 取材の言葉のまま出している欄を、黙って通さない（D-416・D-418）━━━");
+  /**
+   * **欄の名前をここで持たない**（D-197：書き写した表は必ずいつかずれる）。
+   * 取材の質問と、画面に出す文が別物であることは、**欄名そのものに出ている**——
+   * `basics.businessSummary` の欄名は「主力の事業と売上比率」で、聞くための欄である。
+   */
+  const named = webTextFields(base, base.formSet).find((f) => f.key === "basics.businessSummary");
+  check("欄の名前は、フォーム定義から引いている（表を2つ持たない）",
+    named?.label === "主力の事業と売上比率", named?.label);
+  check("掲載文に印があれば、画面に出る文のほうを見る",
+    duplicateBlocks(webTextFields(withWeb(twiceRaw(base)), base.formSet)).length === 0);
+  /**
+   * **「入力100%」を「書けている」と読み替えない。**
+   * 第2回取材のデータは入力率100%で、掲載文は0件だった（43案件すべて0件）。
+   * 黙って取材の言葉が公開に回っていたので、書き出しのたびに名指しさせる。
+   */
+  check("掲載文の無い欄を、書き出しのたびに名指しする", /取材の言葉のまま画面に出している欄 \d+\/\d+件/.test(before.log),
+    (before.log.split("\n").find((l) => l.includes("取材の言葉")) ?? "（出ていない）"));
+  check("掲載文がすべて揃っていれば、その報告は出ない",
+    !/取材の言葉のまま画面に出している欄/.test(live.log),
+    (live.log.split("\n").find((l) => l.includes("取材の言葉")) ?? ""));
+
+  /**
+   * **同じ文が複数の欄にあると、実績の数だけが水増しされる。**
+   * 松原精機では事例4件のうち2件の「どう解決したか」が一字一句同じだった。
+   * 構成の重複（D-410〜D-415）では消えない。**データの側に1件分しか書かれていない。**
+   */
+  const SAME = "支持点を変えた専用の押さえ治具を製作し、荒取りと仕上げの間に休ませる時間を取りました。";
+  /** 松原精機で実際に起きた形——**強み・技術の2つの欄に、同じ段落がそのまま入っていた** */
+  const twice = (v) => ({ ...base, strengths: { ...base.strengths, workOthersAvoid: v, hardestJob: v } });
+  const dup = build(twice(SAME));
+  check("同じ文が2つの欄に入っていると、公開を止める",
+    /同じ文が 2つの欄に入っています/.test(dup.log) && /このままでは公開できません/.test(dup.log),
+    dup.log.split("\n").filter((l) => l.includes("同じ文が")).join(" | "));
+  check("止めたときに、直し方（掲載文を書く）を出す", /片方を書き直してください/.test(dup.log));
+  /**
+   * **指摘を消す手順が、そのまま正しい直し方になっている。**
+   * 見るのは画面に出る文なので、片方を掲載文として書き直せば通る。
+   */
+  const fixed = build({
+    ...twice(SAME),
+    webText: { "strengths.hardestJob": { text: "ワーク専用の押さえ治具を新しく起こし、荒取りと仕上げのあいだに寸法を落ち着かせる時間を取りました。", source: "human", reviewedBy: "検査", reviewedAt: REVIEWED } },
+  });
+  check("片方を掲載文として書き直すと、止まらなくなる", !/同じ文が /.test(fixed.log),
+    (fixed.log.split("\n").find((l) => l.includes("同じ文が ")) ?? ""));
+  /** **誤検知で止まる道具は、いずれ切られる**（internal-language.ts と同じ考え） */
+  check("短い結びの一文が一致しても、止めない（20字未満）",
+    !/同じ文が /.test(build(twice("納品まで問題なく進みました。")).log));
 
   fs.rmSync(dir, { recursive: true, force: true });
 }

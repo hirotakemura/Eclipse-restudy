@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "generate": "node generate.mjs",
     "brief": "node brief.mjs",
+    "webtext": "node webtext.mjs",
     "visual": "node visual-brief.mjs",
     "test:verify": "node verify.test.mjs",
     "test:internal": "node internal-language.test.mjs",

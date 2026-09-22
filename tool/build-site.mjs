@@ -28,6 +28,7 @@ import { verifyDraft } from "./lib/verify.ts";
 import { writerView } from "./lib/generate/writer-view.ts";
 import { internalValues } from "./lib/form-definition.ts";
 import { assertWebText } from "./lib/schema.ts";
+import { webTextFields, rawFields, duplicateBlocks } from "./lib/webtext-review.ts";
 import { analyze } from "./lib/design/analysis.ts";
 import { sanitizeProject } from "./lib/sanitize.ts";
 import { composeTop, composePage, explain, traceOf } from "./lib/design/sections.ts";
@@ -193,6 +194,28 @@ if (unconfirmed.length) {
   console.log(`  未確認のため、サイトに出していない項目 ${unconfirmed.length}件`);
   for (const path of unconfirmed) console.log(`      ${path}`);
 }
+/**
+ * **「入力100%」を「書けている」と読み替えない**（D-416）。
+ *
+ * 第2回取材のデータは、KOBOの入力率が100%だった。それでも最初の画面の見出しは
+ * 「精密切削加工。売上構成は自動車部品が約6割、…2019年に社長就任。」の137字だった。
+ * 欄の名前は「**主力の事業と売上比率**」で、台本の質問は「主力の事業は何ですか」。
+ * **聞くための欄**が、そのまま見出しになっていた。
+ *
+ * 掲載文の仕組み（`webText`・D-401）は作ってあったが、**43案件すべてで一度も使われていない**（実測）。
+ * 書き出す道具が無かったからである。**黙って取材の言葉を公開に回さない。**
+ * 止めはしない——掲載文の無い案件を一斉に赤くしても、直せる人が増えるわけではない。
+ */
+const webFields = webTextFields(project, project.formSet);
+const stillRaw = rawFields(webFields);
+if (stillRaw.length) {
+  console.log(`  取材の言葉のまま画面に出している欄 ${stillRaw.length}/${webFields.length}件`);
+  for (const f of stillRaw.slice(0, 6)) {
+    console.log(`      ${f.key}　${f.label}　${f.published.length}字　「${f.published.replace(/\s+/g, "").slice(0, 28)}…」`);
+  }
+  if (stillRaw.length > 6) console.log(`      ほか ${stillRaw.length - 6}件`);
+  console.log(`      掲載文を書く： npm run webtext -- ${id}`);
+}
 const unplaced = (project.photos ?? []).filter((p) => !p.category || p.category === "その他").length;
 console.log(`  写真 ${photoCount}枚${unplaced ? `（うち置き場所が未定 ${unplaced}枚。サイトには出ません）` : ""}`);
 
@@ -336,6 +359,20 @@ const NEEDS_REVIEW = "{{要確認}}";
 const leaked = [...draftBlocks];
 const suspect = [];
 /**
+ * **同じ文が、複数の欄に入っていないか**（D-418）。
+ *
+ * 第2回取材のデータでは、事例4件のうち2件の「どう解いたか」が一字一句同じだった。
+ * 「支持点を変えた専用の押さえ治具を製作し、荒取りと仕上げの間に休ませる時間を取りました。」
+ * **実績が2件あるように見えて、書いてあるのは1件分である。**
+ * 強み・技術の2欄にも、治具の内製の段落が丸ごと同じ形で入っていた。
+ *
+ * これは構成の重複（Owner / Reference・D-410〜D-415）では消えない。**データの側の話**である。
+ * 見るのは画面に出る文なので、**片方を掲載文として書き直せば、この指摘は消える。**
+ */
+for (const d of duplicateBlocks(webFields)) {
+  leaked.push([d.keys.join(" / "), `同じ文が ${d.keys.length}つの欄に入っています：「${d.text.slice(0, 40)}…」`]);
+}
+/**
  * **画面に出た絵は、書き出したHTMLを見て数える**（第9段階⑤）。
  *
  * 直す前は「配ったファイル数」を「画面に出る絵」と呼んでいた。
@@ -465,6 +502,10 @@ if (leaked.length || missing.length) {
   if (drafts && !reviewed) {
     console.log(`\n  原稿を読んだら、印を置いてください（誰がいつ読んだかを1行で）：`);
     console.log(`    echo "$(date +%F) 竹村が全ページ確認" > ${path.join(draftSrc, ".reviewed")}`);
+  }
+  if (leaked.some(([, why]) => why.startsWith("同じ文が"))) {
+    console.log(`\n  同じ文が複数の欄に入っています。片方を書き直してください：`);
+    console.log(`    npm run webtext -- ${id}`);
   }
   console.log("\n  KOBOで該当の項目を埋めてから、もう一度実行してください。");
   console.log(`\n  中身の確認はできます：  npm run preview:site -- ${id}`);

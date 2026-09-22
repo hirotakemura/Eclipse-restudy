@@ -945,7 +945,18 @@ export function composePage(
      * 条件は、上の帯を足した条件（2台以上）と同じでなければならない。
      */
     add({ kind: "equipmentTable", width: "wide", emphasis: named.length >= 2 ? "quiet" : "normal", heading: "保有設備一覧", form: "spec" }, "全設備の一覧");
-    add({ kind: "gallery", width: "full", emphasis: "normal", heading: "工場・設備" }, "設備は写真があると伝わる");
+/**
+     * **写真の帯に、KOBO の分類名をそのまま見出しとして出さない**（社長のご指摘）。
+     *
+     * 「外観」「代表者」「働く人」「工場・設備」は、**KOBO が写真を仕分けるための分類名**であって、
+     * お客様に読ませる言葉ではない。会社概要のページで写真の上に「外観」と出ていた。
+     * そのページの主題そのものを写した写真なので、**見出しは要らない**
+     * （ページ見出しがもう言っている。D-414 と同じ考え方を写真にも当てる）。
+     *
+     * 加工事例の「加工したもの」とトップの「工場・設備」は**残す**——
+     * こちらはページの主題とは別の話題を足しているので、何の写真かを言う必要がある。
+     */
+    add({ kind: "gallery", width: "full", emphasis: "normal" }, "設備は写真があると伝わる（見出しはページ名が言っている）");
     /**
      * **厚くするとき**（短納期・設備が強みの会社）。
      * 短納期で選ばれる会社に効くのは「何があるか」より「どれだけ回せるか」なので、
@@ -1036,7 +1047,18 @@ export function composePage(
   }
 
   if (slug === "company") {
-    add({ kind: "gallery", width: "full", emphasis: "normal", heading: "外観" }, "どこにある会社かが分かる");
+/**
+     * **写真の帯に、KOBO の分類名をそのまま見出しとして出さない**（社長のご指摘）。
+     *
+     * 「外観」「代表者」「働く人」「工場・設備」は、**KOBO が写真を仕分けるための分類名**であって、
+     * お客様に読ませる言葉ではない。会社概要のページで写真の上に「外観」と出ていた。
+     * そのページの主題そのものを写した写真なので、**見出しは要らない**
+     * （ページ見出しがもう言っている。D-414 と同じ考え方を写真にも当てる）。
+     *
+     * 加工事例の「加工したもの」とトップの「工場・設備」は**残す**——
+     * こちらはページの主題とは別の話題を足しているので、何の写真かを言う必要がある。
+     */
+    add({ kind: "gallery", width: "full", emphasis: "normal" }, "どこにある会社かが分かる（見出しはページ名が言っている）");
     add({ kind: "profileTable", width: "wide", emphasis: "lead", heading: "会社概要", form: "spec" }, "発注前に確かめる欄");
     /**
      * **沿革は、聞き取った行を全部出す**（D-204・D-302）。
@@ -1071,7 +1093,7 @@ export function composePage(
       }
     }
     /** 実写が届けば、ここが山になる（`image` の山） */
-    add({ kind: "gallery", width: "normal", emphasis: "normal", heading: "代表者" }, "顔が見えると信用が変わる");
+    add({ kind: "gallery", width: "normal", emphasis: "normal" }, "顔が見えると信用が変わる（見出しはページ名が言っている）");
   }
 
   if (slug === "recruit") {
@@ -1095,7 +1117,7 @@ export function composePage(
     if ((mr.rows ?? 0) >= 1) {
       add({ kind: "recruitTerms", width: "wide", emphasis: "normal", heading: "募集要項", form: "spec" }, "条件の書いていない求人は応募されない（D-171）");
     }
-    add({ kind: "gallery", width: "full", emphasis: "quiet", heading: "働く人" }, "働いている人が見えると応募が変わる");
+    add({ kind: "gallery", width: "full", emphasis: "quiet" }, "働いている人が見えると応募が変わる（見出しはページ名が言っている）");
   }
 
   if (slug === "contact") {
