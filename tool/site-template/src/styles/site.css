@@ -837,6 +837,16 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
  * 章の変わり目がいちばん分かる印なのに、それが消えていた。
  */
 .band + .band:not([data-surface="rule"]) { border-top: 0; }
+/**
+ * **最初の画面の真下には、章の罫を引かない**（D-446・社長のご指摘「濃すぎる」）。
+ *
+ * 罫（`rule`）の役目は「章の変わり目をいちばん分かるようにする」こと（D-413）。
+ * だが**最初の画面と本文のあいだは、誰が見ても変わり目である**——
+ * 高さいっぱいの画面が終わって帯が始まるので、**印はもう十分に立っている。**
+ * そこへ 3px のアクセント罫を重ねると、**区切りが二重になって重い。**
+ * 章の変わり目としての罫は、**2本目以降の帯で**これまでどおり効く
+ */
+.hero + .band[data-surface="rule"] { border-top: 0; }
 .band[data-surface="plain"] + .band[data-surface="plain"],
 .band[data-surface="soft"] + .band[data-surface="soft"] { border-top: 1px solid var(--line); }
 
