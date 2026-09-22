@@ -8,6 +8,8 @@
 
 import type { Project } from "../schema.ts";
 import type { ContentId, Materials } from "./system/index.ts";
+/** **画面と同じ規則で文を区切る。** 別々に持つと必ずずれる（D-197・D-433） */
+import { splitParts } from "./text.ts";
 
 const text = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 const arr = (v: unknown): any[] => (Array.isArray(v) ? v : []);
@@ -142,15 +144,16 @@ export function materialsOf(project: Project, content: ContentId, hasRealPhotos:
       const v = text(st.followUpFindings);
       /** 【見出し】で区切られた数が、そのまま工程の段数になる（`splitParts` と同じ数え方） */
       const parts = (v.match(/【[^】]+】/g) ?? []).length || (v ? 1 : 0);
-      return { ...base, count: parts, steps: parts, length: v.length, hasSteps: hasSteps(v), hasQuote: hasQuoted(v) };
+      return { ...base, count: parts, steps: parts, length: v.length, leadLength: splitParts(v)[0]?.body.length ?? 0,
+               hasSteps: hasSteps(v), hasQuote: hasQuoted(v) };
     }
     case "declined": {
       const v = [text(st.wonAfterOthersDeclined), text(st.workOthersAvoid), text(st.hardestJob)].filter(Boolean);
-      return { ...base, count: v.length, length: v.join("").length, hasQuote: hasQuoted(...v) };
+      return { ...base, count: v.length, length: v.join("").length, leadLength: (v[0] ?? "").length, hasQuote: hasQuoted(...v) };
     }
     case "praise": {
       const v = [text(st.praiseFromClients), text(st.workOthersAvoid), text(st.hardestJob)].filter(Boolean);
-      return { ...base, count: v.length, length: v.join("").length, hasQuote: hasQuoted(...v) };
+      return { ...base, count: v.length, length: v.join("").length, leadLength: (v[0] ?? "").length, hasQuote: hasQuoted(...v) };
     }
     case "history": {
       const h = arr(basics.history);
@@ -158,7 +161,7 @@ export function materialsOf(project: Project, content: ContentId, hasRealPhotos:
     }
     case "executive": {
       const v = [text(p.executive?.vision), text(p.executive?.messageToStaff)].filter(Boolean);
-      return { ...base, count: v.length, length: v.join("").length, hasQuote: hasQuoted(...v) };
+      return { ...base, count: v.length, length: v.join("").length, leadLength: (v[0] ?? "").length, hasQuote: hasQuoted(...v) };
     }
     case "photos": {
       const ph = arr(p.photos).filter((x: any) => x?.file && !/\.svg$/i.test(String(x.file)));
@@ -188,7 +191,7 @@ export function materialsOf(project: Project, content: ContentId, hasRealPhotos:
         arr(t.allowances).join("、"), t.insurance, t.qualifications, t.selection,
         t.documents, t.contact, t.factoryTour].map(text).filter(Boolean);
       const blocks = [arr(r.neededRoles).join("、"), arr(r.workplaceAppeal).join("、")].map(text).filter(Boolean);
-      return { ...base, count: blocks.length, rows: terms.length, length: blocks.join("").length };
+      return { ...base, count: blocks.length, rows: terms.length, length: blocks.join("").length, leadLength: (blocks[0] ?? "").length };
     }
     /**
      * お問い合わせ。用紙は必ずあるので `length` は固定。

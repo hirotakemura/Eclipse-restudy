@@ -43,6 +43,16 @@ export interface Visual {
   layout: LayoutId;
   /** 見出しの文字の役割 */
   role: TypeRoleId;
+  /**
+   * **「一言を大きく」が、長い文にかかっているか**（D-433）。
+   *
+   * 実測：代表挨拶の128字が **49px・約12字/行・11行**で組まれ、
+   * **見出しと本文が同じ大きさ**になっていた（PC 1440px）。
+   * 山そのものは正しい——そのページで最も読ませたいのは、その文である。
+   * **正しくないのは大きさだけ**なので、山は取り消さず、組み方だけ一段落とす。
+   * 上限は `TYPE_ROLES` の `statement.maxChars` を見る（同じ数字を2箇所に書かない・D-197）
+   */
+  peakText?: "long";
 }
 
 export type VisualSection = Section & { visual: Visual };
@@ -319,7 +329,11 @@ export function composeVisual(
     }
     const i = b++;
     const peak = i === peakAt ? peakId : i === subAt ? subId : "none";
-    return { ...s, visual: { peak, density: density[i]!, layout: layout[i]!, role: role[i]! } };
+    /** 大きくする文が長すぎないか。**判定に使う値と、実際に描くものを揃える**（D-251・D-433） */
+    const lead = peak === "statement"
+      ? (materialsOf(project, s.content, a.hasRealPhotos).leadLength ?? 0) : 0;
+    const peakText = lead > getTypeRole("statement").maxChars ? "long" as const : undefined;
+    return { ...s, visual: { peak, density: density[i]!, layout: layout[i]!, role: role[i]!, peakText } };
   });
 }
 

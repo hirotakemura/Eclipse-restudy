@@ -446,12 +446,20 @@ html[data-tables="stripe"] thead th { border-bottom: 2px solid var(--accent); }
   **写真が揃わない会社のための型。**
   調達担当者が見ているのは「材質×加工法×条件」であって、綺麗な写真ではない（docs/06）。
 */
+/**
+ * 最初の画面の条件表。
+ *
+ * **罫線は「地の色を1pxの隙間から覗かせる」作りだった**ので、
+ * 項目の数が列数で割り切れないとき、**最後の行の余りが灰色の空白として残っていた**
+ * （実測：5列に6項目で、2行目の右4マスが灰色の帯になっていた・社長のご指摘）。
+ * 地をページの地色にし、罫線はマス目そのものに持たせる。**余りは、ただの余白になる**（D-435）
+ */
 .spec-first {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 1px; background: var(--line); border: var(--line-width) solid var(--line);
+  gap: 1px; background: var(--bg); border: var(--line-width) solid var(--line);
   border-radius: var(--radius); overflow: hidden; margin: 26px 0 24px;
 }
-.spec-first div { background: var(--bg); padding: 14px 16px; }
+.spec-first div { background: var(--bg); padding: 14px 16px; box-shadow: 0 0 0 1px var(--line); }
 .spec-first dt { font-size: 13px; color: var(--ink-soft); margin-bottom: 3px; }
 .spec-first dd { margin: 0; font-weight: 600; font-size: 17px; line-height: 1.6; }
 /** 仕様ヒーローは下に条件の表が来るので、導入は**一段だけ**抑える（本文と同寸には落とさない） */
@@ -1559,9 +1567,22 @@ html[data-headings="band"] .band > .inner > h2 { color: #fff; }
 }
 
 /* 一言を大きく。**写真が0枚の案件では、これが山になる** */
-.band[data-peak="statement"] :is(.declined p, .longform-open, .band-body > p:first-child) {
+/**
+ * **一言の大きさは、一言の長さのときだけ**（D-433）。
+ *
+ * 実測：代表挨拶の128字が **49px・598pxの列・約12字/行・11行**で組まれ、
+ * **見出し（49px）と本文が同じ大きさ**だった。「長い文字列を巨大に組むと、
+ * 読みにくいだけで何も言っていない画面になる」（D-251・D-277）とまったく同じ形である。
+ * **山は取り消さない**——そのページで最も読ませたいのは、その文で間違いない。
+ * 落とすのは組み方だけで、長い文は引用の段（`--t-quote`）にする。**本文よりは大きい。**
+ */
+.band[data-peak="statement"]:not([data-peak-text="long"]) :is(.declined p, .longform-open, .band-body > p:first-child) {
   font-size: var(--t-statement); font-weight: var(--tw-statement);
   line-height: var(--tl-statement); max-width: 22em;
+}
+.band[data-peak="statement"][data-peak-text="long"] :is(.declined p, .longform-open, .band-body > p:first-child) {
+  font-size: var(--t-quote); font-weight: var(--tw-quote);
+  line-height: var(--tl-quote); max-width: 34em;
 }
 .band[data-peak="statement"] .declined { border-left-width: 6px; padding-left: 32px; }
 

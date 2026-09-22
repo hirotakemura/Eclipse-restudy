@@ -1,29 +1,7 @@
 /**
- * 取材メモの体裁をほどく。
+ * **本体は `lib/design/text.ts` にある**（D-433）。
  *
- * 取材の記録は「【治具の内製】…【設計経験による図面の意図読解】…」の形で書かれる。
- * **一塊の長文のまま出すと読まれない。** 【】を小見出しとして分ける。
- * 分けられない文はそのまま1つの塊として返す。
+ * 帯の組み立て（`materialsOf`）と画面の描画が、**同じ規則で文を区切る必要がある。**
+ * 別々に持つと、必ずいつかずれる（D-197）。ここは置き換え先を指すだけにする。
  */
-export interface TextPart {
-  title?: string;
-  body: string;
-}
-
-export function splitParts(text: string | undefined): TextPart[] {
-  return (text ?? "")
-    .split(/【([^】]+)】/)
-    .reduce<TextPart[]>((acc, chunk, i) => {
-      if (i === 0) {
-        if (chunk.trim()) acc.push({ body: chunk.trim() });
-        return acc;
-      }
-      if (i % 2 === 1) {
-        acc.push({ title: chunk.trim(), body: "" });
-        return acc;
-      }
-      acc[acc.length - 1]!.body = chunk.trim();
-      return acc;
-    }, [])
-    .filter((x) => x.body);
-}
+export { splitParts, type TextPart } from "../../../lib/design/text.ts";

@@ -347,6 +347,30 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   check("写真が1枚も載っていなければ、その報告は出ない",
     !/写真のファイルがありません/.test(build({ ...base, photos: [] }).log));
 
+  console.log("\n━━━ ⑬ 聞いているのに出ていなかった欄／一言の大きさ（D-432〜D-435）━━━");
+  /** **不良率**：型定義に「数字が良ければ強力な武器」と書いてあるのに、出口が無かった */
+  const dr = build({ ...base, strengths: { ...base.strengths, defectRate: "0.3%以下" } });
+  check("不良率が、最初の画面に出る", /0\.3%以下/.test(dr.html["index.html"] ?? ""));
+  check("不良率が無ければ、その行は出ない", !/不良率/.test(build({ ...base }).html["index.html"] ?? ""));
+  /** **平均年齢**：求職者も発注者も見る。従業員数のとなりに置く */
+  const age = build({ ...base, basics: { ...base.basics, averageAge: 38 } });
+  check("平均年齢が、会社概要に出る", /38歳/.test(age.html["company/index.html"] ?? ""));
+  /**
+   * **一言の大きさは、一言の長さのときだけ**（D-433）。
+   * 代表挨拶の128字が 49px・11行で組まれ、見出しと同じ大きさになっていた。
+   */
+  const longV = "あ".repeat(200);
+  const lng = build({ ...base, executive: { ...base.executive, vision: longV } });
+  const shortV = "難しいものは、まず一度ご相談ください。";
+  const shr = build({ ...base, executive: { ...base.executive, vision: shortV } });
+  const marked = (h) => /data-peak="statement"[^>]*data-peak-text="long"/.test(h ?? "");
+  const msgL = lng.html["message/index.html"] ?? "";
+  const msgS = shr.html["message/index.html"] ?? "";
+  check("長い文に一言の山がかかると、印が付く（組み方を一段落とす）", marked(msgL));
+  check("短い一言には、印が付かない（そのまま大きく組む）", !marked(msgS));
+  /** **山そのものは取り消さない**——そのページで最も読ませたいのは、その文で間違いない */
+  check("長くても、一言の山であること自体は変わらない", /data-peak="statement"/.test(msgL));
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 

@@ -479,6 +479,16 @@ export function analyze(project: Project): Analysis {
     precision: ["対応精度", text(cap.tolerance)],
     speed: ["最短納期", text(cap.shortestLeadTime)],
     range: ["対応ロット", text(cap.lotSize)],
+    /**
+     * **難加工の会社の数字は、不良率である**（D-432）。
+     *
+     * `strengths.defectRate` は型定義に「数字が良ければ強力な武器」と書いてあったのに、
+     * **どのテンプレートも読んでいなかった**（D-425の突き合わせで出た）。
+     * 難しいものを引き受ける会社にとって、いちばん効く数字は精度でも納期でもなく
+     * 「**それで不良を出していない**」ことである。ほかの3つと同じ条件
+     * （短く言い切れる・数字を含む）を通ったときだけ使う
+     */
+    difficulty: ["不良率", text(st.defectRate)],
   };
   const own = FIGURE_OF[primaryStrength];
   const heroFigure: Figure | null = own && short(own[1]) ? { label: own[0], value: own[1] } : null;

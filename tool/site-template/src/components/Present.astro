@@ -312,6 +312,13 @@ const points = ((isGeneral
   <Table rows={rows([
     ["会社名", basics.name], ["代表者", basics.representative], ["創業", basics.founded],
     ["資本金", basics.capital], ["従業員数", basics.employees ? `${basics.employees}名` : ""],
+    /**
+     * **平均年齢**（D-434）。取材で聞いているのに、どのテンプレートも読んでいなかった。
+     * ★置き場所は測って決めた——採用のページの条件表に入れたが、
+     * **その表は募集要項が埋まっている案件でしか描かれず、手元の2案件では出なかった。**
+     * 従業員数のとなり（発注前に確かめる欄）なら必ず出るうえ、求職者もここを見る
+     */
+    ["平均年齢", basics.averageAge ? `${basics.averageAge}歳` : ""],
     ["所在地", basics.address], ["電話番号", tel], ["メールアドレス", email],
     ["事業内容", businessSummary], ["主要取引先の業界", basics.clientIndustries],
   ])} />

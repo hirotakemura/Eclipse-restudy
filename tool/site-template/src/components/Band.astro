@@ -27,6 +27,8 @@ interface Props {
    */
   density?: string;
   peak?: string;
+  /** 「一言を大きく」が長い文にかかっているか（D-433） */
+  peakText?: "long";
   role?: string;
   /**
    * 素材の判断（docs/31・`lib/design/assets.ts`）。**第1段階では出すだけで、描画は変えない。**
@@ -69,7 +71,7 @@ interface Props {
   /** 生成ビジュアルの焦点（`background-position`）。**スマホで切られても中心が残る** */
   assetFocal?: string;
 }
-const { width = "normal", emphasis = "normal", surface = "plain", layout = "stack", motif = "none", content, presentation, decidedBy, heading, density = "normal", peak = "none", role,
+const { width = "normal", emphasis = "normal", surface = "plain", layout = "stack", motif = "none", content, presentation, decidedBy, heading, density = "normal", peak, peakText, role,
   assetSource, assetIntent, assetRole, assetSubject, assetWanted, assetPriority, assetLibrary, assetGenerated, assetImage, assetFocal , reference } = Astro.props;
 ---
 <section
@@ -85,6 +87,7 @@ const { width = "normal", emphasis = "normal", surface = "plain", layout = "stac
   data-density={density}
   data-reference={reference ? "" : undefined}
   data-peak={peak !== "none" ? peak : undefined}
+  data-peak-text={peakText}
   data-role={role}
   data-asset-source={assetSource}
   data-asset-intent={assetIntent}
