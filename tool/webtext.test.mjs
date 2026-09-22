@@ -424,6 +424,19 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   check("ロゴに背景があっても、書き出しは止めない",
     !/✗ photos\/logo-rgb\.png/.test(withLogo("logo-rgb.png", png(2)).log));
 
+  console.log("\n━━━ ⑯ 1枚だけの写真は、縦も横も止める（D-440）━━━");
+  /**
+   * **幅しか止めていなかった。** 縦長の写真は少しも小さくならない——
+   * 実測：800×1200 が **420×630px**、900×900 が **420×420px**。
+   * 代表者の写真は縦長で撮ることが多い。**検証に使った写真が全部おなじ横長だったので、
+   * 気づけなかった**（社長から2度目のご指摘で分かった）。
+   */
+  const only = (/\.gallery \.photo:only-child img\s*\{([^}]*)\}/.exec(Object.values(before.html)[0] ?? "") ?? [])[1] ?? "";
+  check("高さにも上限がある（縦長の写真が小さくならない）", /max-height:\s*\d+px/.test(only), only.trim());
+  check("幅にも上限がある", /max-width:\s*min\(/.test(only), only.trim());
+  /** **引き伸ばさない**——`width: auto` なので、元より大きくはならない */
+  check("元の大きさより引き伸ばさない", /width:\s*auto/.test(only) && /height:\s*auto/.test(only), only.trim());
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 

@@ -83,6 +83,13 @@ a { color: var(--accent); }
  * **用のボタンが、名乗りより目立つ**状態だった（D-431で34→48pxに上げたが、まだ届いていなかった）
  */
 .logo { font-size: 27px; font-weight: 700; font-family: var(--font-head); color: var(--ink); text-decoration: none; letter-spacing: .02em; display: inline-flex; align-items: center; }
+/**
+ * **社長のご指示：画像そのものの範囲を大きくする**（D-441）。
+ *
+ * いただいたロゴは余白の大きい「見本画像」で、**ロゴ自体は画像の高さの18%**しかない。
+ * 60pxでは、ロゴそのものは11px——読めない。96pxにすると約17pxになる。
+ * **代償はヘッダーが高くなること**で、これは画像を差し替えるまでの当座の手当てである
+ */
 .logo img { height: 60px; width: auto; display: block; }
 
 /* ── スマホのメニュー開閉 ─────────────────── */
@@ -205,8 +212,17 @@ p { margin: 0 0 16px; }
  * **1枚のときに揃える相手はいない。** 写真そのものの形のまま、小さめに置く
  */
 .gallery .photo:only-child img {
-  /** **画面より広くしない。** 420px を素で書くと、幅390pxのスマホで横にはみ出す（実測） */
-  max-width: min(420px, 100%); width: auto; height: auto;
+  /**
+   * **縦と横の両方を止める**（D-440）。
+   *
+   * 幅だけ止めていたので、**縦長の写真は少しも小さくならなかった**——
+   * 実測：800×1200 の写真が **420×630px**、900×900 が **420×420px**。
+   * 代表者の写真は縦長で撮ることが多い。**脇役の1枚の重さは、幅ではなく高さで決まる。**
+   * 検証に使った写真が全部おなじ横長（1672×941）だったので、気づけなかった。
+   * **画面より広くしない**（420pxを素で書くと幅390pxのスマホで横にはみ出す・実測）
+   */
+  max-width: min(420px, 100%); max-height: 300px;
+  width: auto; height: auto;
   aspect-ratio: auto; object-fit: contain; margin-inline: auto;
 }
 .gallery .photo img { aspect-ratio: 4 / 3; object-fit: cover; }
