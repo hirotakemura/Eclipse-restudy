@@ -148,16 +148,29 @@ export const BLOCKS: Block[] = [
       { trigger: "現場に聞かないと分からない", ask: "承知しました。工場長さんに30分だけお時間いただけますか。設備の銘板も撮影させてください" },
       { trigger: "最新設備を入れている", ask: "メーカーと型番を教えてください。型番そのもので検索されることがあります" },
       { trigger: "何でもやります", ask: "その中で、いちばん多い材質と加工法は何ですか" },
+      { trigger: "（加工法をたくさん挙げた）", ask: "そのうち、自社の設備で行っているのはどれですか。外注に出しているものと分けてうかがえますか　★実案件で45件すべてが自社扱いになっていた" },
     ],
     fields: [
       { path: "capability.materials", label: "対応材質", type: "tags", required: true, help: "対応できる材質を全部挙げてください", placeholder: "聞き取ったとおりに。カンマ区切りでまとめて追加できる" },
       {
         path: "capability.processes",
-        label: "加工法・工法",
+        label: "加工法・工法（自社）",
         type: "tags",
         required: true,
-        help: "どういう加工ができますか。分からなければ工場長に確認する",
+        /**
+         * **「どういう加工ができますか」では、外注も混ざる**（D-424）。
+         * 実案件で45件すべてが入り、設備2種類の切削会社に鋳造・射出成形・鍛造が並んだ。
+         * 聞き方のほうを直す。
+         */
+        help: "自社の設備で日常的に行っているものだけ。外注に出しているものは次の欄へ",
         placeholder: "聞き取ったとおりに。カンマ区切りでまとめて追加できる",
+      },
+      {
+        path: "capability.outsourcedProcesses",
+        label: "協力会社に依頼している工程",
+        type: "tags",
+        help: "熱処理・表面処理・塗装など。**一括で頼める**ことは選ばれる理由になるので、無理に削らない",
+        placeholder: "無ければ空のままでよい",
       },
       { path: "capability.maxSize", label: "対応サイズ（最大）", type: "text" },
       { path: "capability.minSize", label: "対応サイズ（最小）", type: "text" },

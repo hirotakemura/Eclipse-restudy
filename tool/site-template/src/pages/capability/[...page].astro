@@ -26,9 +26,12 @@ import { theme } from "../../lib/theme";
 import { hasDraft } from "../../lib/draft";
 
 const cap = project.capability ?? ({} as any);
+/** **外注の工程を、自社と同じ行に置かない**（D-424）。記録が無ければ1文字も変わらない */
+const outsourced = (cap.outsourcedProcesses ?? []) as string[];
 const spec = rows([
   ["対応材質", cap.materials],
-  ["加工法・工法", cap.processes],
+  [outsourced.length ? "加工法・工法（自社）" : "加工法・工法", cap.processes],
+  ["協力会社に依頼している工程", outsourced],
   ["対応サイズ（最大）", cap.maxSize],
   ["対応サイズ（最小）", cap.minSize],
   ["対応精度", cap.tolerance],

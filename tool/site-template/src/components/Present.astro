@@ -90,8 +90,16 @@ const caseSteps = (caseForProcess
 const techSteps = splitParts(st.followUpFindings).map((x) => ({ title: x.title ?? "", body: x.body }));
 const quoteOf = (v: string) => (/[「『][^」』]{4,}[」』]/.exec(v ?? "") ?? [])[0] ?? v;
 const equipTotal = (cap.equipment ?? []).reduce((s: number, e: any) => s + (Number(e.count) || 0), 0);
+/**
+ * **外注の工程を、自社と同じ行に置かない**（D-424）。
+ * 同じ行に並ぶと、その設備を持っていると読める。外注を記録した案件だけ「（自社）」を付けて分ける。
+ * 記録が無い案件（既存42件）では、行も見出しも1文字も変わらない。
+ */
+const outsourced = (cap.outsourcedProcesses ?? []) as string[];
+const processLabel = outsourced.length ? "加工法・工法（自社）" : "加工法・工法";
 const specRows = rows([
-  ["対応材質", cap.materials], ["加工法・工法", cap.processes],
+  ["対応材質", cap.materials], [processLabel, cap.processes],
+  ["協力会社に依頼している工程", outsourced],
   ["対応サイズ（最大）", cap.maxSize], ["対応サイズ（最小）", cap.minSize],
   ["対応精度", cap.tolerance], ["対応ロット", cap.lotSize],
   ["最短納期", cap.shortestLeadTime], ["資格・認証", cap.certifications],
@@ -179,7 +187,7 @@ const points = ((isGeneral
 )}
 {content === "materials" && presentation === "list" && <ListView items={cap.materials ?? []} />}
 {content === "materials" && presentation === "spec" && (
-  <Table rows={rows([["対応材質", cap.materials], ["加工法・工法", cap.processes]])} />
+  <Table rows={rows([["対応材質", cap.materials], [processLabel, cap.processes], ["協力会社に依頼している工程", outsourced]])} />
 )}
 
 {content === "equipment" && presentation === "cardGrid" && <Equipment equipment={cap.equipment ?? []} href={linkTo("equipment")} />}

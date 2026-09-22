@@ -273,6 +273,25 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   check("短い結びの一文が一致しても、止めない（20字未満）",
     !/同じ文が /.test(build(twice("納品まで問題なく進みました。")).log));
 
+  console.log("\n━━━ ⑨ 外注の工程を、自社と同じ行に置かない（D-424）━━━");
+  /**
+   * 実案件で、加工法が**45件すべて**入っていた——切削の会社の対応可能範囲に
+   * 鋳造・射出成形・鍛造まで並び、設備一覧はマシニングとNC旋盤の2種類だった。
+   * **書いてあることと、できることが合っていなかった。**
+   */
+  const outs = build({ ...base, capability: { ...base.capability,
+    processes: ["切削加工", "旋盤加工", "マシニング加工"],
+    outsourcedProcesses: ["熱処理", "メッキ", "塗装"] } });
+  const cap = outs.html["capability/index.html"] ?? "";
+  check("外注を記録すると、別の行として出る", /協力会社に依頼している工程/.test(cap));
+  check("外注があるときは、自社の行に「（自社）」が付く", /加工法・工法（自社）/.test(cap));
+  /** **同じ行に並ぶと、その設備を持っていると読める** */
+  const row = (/加工法・工法（自社）<\/th><td>([^<]*)</.exec(cap) ?? [])[1] ?? "";
+  check("外注の工程が、自社の行に混ざらない", row.length > 0 && !/熱処理|メッキ|塗装/.test(row), row);
+  /** **記録が無い案件（既存42件）では、1バイトも変わらない** */
+  check("外注の記録が無ければ、HTMLが1バイトも変わらない",
+    Object.keys(before.html).every((k) => build({ ...base }).html[k] === before.html[k]));
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
