@@ -371,6 +371,21 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   /** **山そのものは取り消さない**——そのページで最も読ませたいのは、その文で間違いない */
   check("長くても、一言の山であること自体は変わらない", /data-peak="statement"/.test(msgL));
 
+  console.log("\n━━━ ⑭ 1枚だけの写真を、切り取らない・引き伸ばさない（D-436）━━━");
+  /**
+   * 社長のご指摘——会社概要の外観・代表者・働く人が「でかすぎる／見切れている／荒い」。
+   * 測ると3つとも同じ原因で、**枚数に関係なく `aspect-ratio: 4/3` + `object-fit: cover`** を
+   * かけていた。16:9 の写真は左右が3割切り落とされ、小さい写真は引き伸ばされていた。
+   */
+  const css = Object.values(before.html)[0] ?? "";
+  const rule = (/\.gallery \.photo:only-child img\s*\{([^}]*)\}/.exec(css) ?? [])[1] ?? "";
+  check("1枚のときは、決まった比率に押し込まない", /aspect-ratio:\s*auto/.test(rule), rule.trim());
+  check("1枚のときは、切り取らない（contain）", /object-fit:\s*contain/.test(rule), rule.trim());
+  check("1枚のときも、画面より広くしない", /max-width:\s*min\(/.test(rule), rule.trim());
+  /** **複数枚のときは揃った箱が要る**——行が揃わないと一覧に見えない。そこは変えない */
+  check("複数枚のときは、いままでどおり比率を揃える",
+    /\.gallery \.photo img\s*\{[^}]*aspect-ratio:\s*4\s*\/\s*3/.test(css));
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
