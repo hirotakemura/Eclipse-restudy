@@ -436,6 +436,18 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   check("幅にも上限がある", /max-width:\s*min\(/.test(only), only.trim());
   /** **引き伸ばさない**——`width: auto` なので、元より大きくはならない */
   check("元の大きさより引き伸ばさない", /width:\s*auto/.test(only) && /height:\s*auto/.test(only), only.trim());
+  /**
+   * **写真1枚の帯を、章にしない**（D-443）。
+   * 実測：採用情報が「罫線 → 写真1枚 → 罫線」になっていた。帯そのものの罫線を消しても
+   * **前の帯の下罫と、次のブロックの上罫が残る**。写真は前の文章の挿絵で、章の切れ目ではない
+   */
+  const css2 = Object.values(before.html)[0] ?? "";
+  check("写真1枚の帯は、余白を詰める",
+    /\.band:has\(\.gallery \.photo:only-child\)\{[^}]*padding-block/.test(css2));
+  check("写真1枚の帯の前後に、章の切れ目を作らない",
+    /\.band:has\(\+\s*\.band \.gallery \.photo:only-child\)/.test(css2)
+    && /\.band:has\(\.gallery \.photo:only-child\)\+/.test(css2),
+    (/\.band:has\([^{]*\{[^}]*border[^}]*\}/.exec(css2) ?? [])[0] ?? "");
 
   fs.rmSync(dir, { recursive: true, force: true });
 }

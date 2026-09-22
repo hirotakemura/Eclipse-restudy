@@ -211,6 +211,34 @@ p { margin: 0 0 16px; }
  * **複数枚のときは揃った箱が要る**（行が揃わないと一覧に見えない）が、
  * **1枚のときに揃える相手はいない。** 写真そのものの形のまま、小さめに置く
  */
+/**
+ * **写真1枚の帯を、章にしない**（D-443）。
+ *
+ * 実測（PC 1440px）——会社概要は**全幅の帯（1440px）に 300×300 の写真が1枚**で、
+ * 上下の余白が **90px ずつ**、帯の高さは **510px**。見出しも出していない（D-418）ので、
+ * **罫線と余白しかない帯**に見える。社長のご指摘「上に仕切りの罫線が見える」はこれである。
+ * 写真は脇役なので、**章の重さを与えない。** 余白を詰めて、前の文章の続きとして置く
+ */
+.band:has(.gallery .photo:only-child) { padding-block: 40px; }
+/**
+ * **章の切れ目の罫線を、写真1枚の帯に付けない。**
+ * 実測：採用情報のページが「罫線 → 写真1枚 → 罫線」になっていた。
+ * 写真は前の文章の**挿絵**であって、新しい章ではない。
+ * ただし「上下の太罫」（`rule`）は型が選んだ章の印なので、そこは残す（D-413）
+ */
+.band:has(.gallery .photo:only-child):not([data-surface="rule"]) { border-top: 0; }
+/**
+ * **写真1枚の帯の前後にも、章の切れ目を作らない。**
+ *
+ * 帯そのものの罫線を消しても、**前の帯の下罫と、次のブロックの上罫が残る**ので、
+ * 実測：採用情報のページが「罫線（y=717）→ 写真1枚 → 罫線（y=1097）」になっていた。
+ * **線と線のあいだに写真だけが挟まった箱**に見える。
+ * 写真は前の文章の挿絵なので、その前後で章を切らない
+ */
+.band:has(+ .band .gallery .photo:only-child) { border-bottom: 0; }
+.band:has(.gallery .photo:only-child) + :is(.band, .section) { border-top: 0; }
+.band:has(.gallery .photo:only-child) .gallery-wrap { margin-top: 0; }
+
 .gallery .photo:only-child img {
   /**
    * **縦と横の両方を止める**（D-440）。
@@ -221,7 +249,7 @@ p { margin: 0 0 16px; }
    * 検証に使った写真が全部おなじ横長（1672×941）だったので、気づけなかった。
    * **画面より広くしない**（420pxを素で書くと幅390pxのスマホで横にはみ出す・実測）
    */
-  max-width: min(420px, 100%); max-height: 300px;
+  max-width: min(520px, 100%); max-height: 360px;
   width: auto; height: auto;
   aspect-ratio: auto; object-fit: contain; margin-inline: auto;
 }
