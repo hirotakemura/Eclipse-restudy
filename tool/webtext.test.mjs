@@ -918,6 +918,89 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   check(`最初の画面の右の列が、その式どおりに組まれている（${pairs.length}件）`,
     pairs.length === 0 || wrong.length === 0, wrong.join(" ／ "));
 
+  console.log("\n━━━ ㉚ 絵の明暗を、言葉と検査の両方で押さえる（D-464）━━━");
+  /**
+   * 実測：届いた4枚とも **128より暗い画素が 0.0〜0.8%／明暗の幅 23〜51**で、
+   * 背景に敷いても画面上の差は最大 32〜36/255 だった。**覆いの濃さでは作れない差。**
+   * 原因は注文書の光の指定で、明るい型に
+   * **「均質な光・淡い地・強い影なし」**と書いてあった。**絵は言われたとおりに出来ていた。**
+   */
+  const { visualLanguageOf } = await import("./lib/design/generated-brief.ts");
+  const { DIRECTIONS: DIRS } = await import("./lib/design/direction.ts");
+  const anz = await import("./lib/design/analysis.ts");
+  const lights = DIRS.map((d) => visualLanguageOf(base, anz.analyze(base), d.id).lighting);
+  /** **淡さ・影なしを頼まない**（この言葉が平べったい絵を作っていた） */
+  const pale = lights.filter((l) => /pale background|no harsh shadow|even diffused/.test(l));
+  check(`どの型でも、淡い地・影なしを頼まない（${DIRS.length}型）`, pale.length === 0, pale[0] ?? "");
+  /** **明暗の幅を、どの型でも必ず頼む** */
+  const noRange = DIRS.filter((d, i) => !/full tonal range/.test(lights[i] ?? "")).map((d) => d.id);
+  check(`どの型でも、明暗の幅を頼む（${DIRS.length}型）`, noRange.length === 0, noRange.join("・"));
+  /**
+   * **注文書の中で矛盾しないこと。**
+   * ★実装中に見つけた：会社の帯の DEPTH が「方向の無い光・値の差はかすか」で、
+   * 足したばかりの「明暗の幅」と真っ向から矛盾していた（実測でも4枚中いちばん平べったい）。
+   */
+  const { planGeneratedVisuals: plan2 } = await import("./lib/design/generated-brief.ts");
+  const allPrompts = DIRS.flatMap((d) => plan2(base, anz.analyze(base), d.id).visuals.map((v) => v.prompt));
+  const contradicting = allPrompts.filter((p) =>
+    /full tonal range/.test(p) && /(light without direction|faint steps of value|no harsh shadow)/.test(p));
+  check(`注文書の中で、光の指定が矛盾しない（${allPrompts.length}件）`,
+    contradicting.length === 0, (contradicting[0] ?? "").slice(0, 120));
+  /** **禁じた言葉は入れない**（足した言葉が関所を抜けていないこと） */
+  const { assertGenerated: ag } = await import("./lib/design/system/index.ts");
+  let passed = true;
+  try { for (const d of DIRS) ag(plan2(base, anz.analyze(base), d.id).visuals); } catch (e) { passed = String(e.message); }
+  check("足した言葉が、禁じた言葉の関所を通る", passed === true, passed === true ? "" : passed);
+
+  /**
+   * **届いた絵を機械で測る**（`lib/png-tone.ts`）。
+   * 画像ライブラリは足さない——PNG の画素は `zlib` で読める。
+   * ここでは**明暗の分かっているPNGを自分で作って**、読めていることを確かめる。
+   */
+  const { toneOf, readableAsBackground } = await import("./lib/png-tone.ts");
+  const zlib = await import("node:zlib");
+  /** 8bit RGB・インターレース無しのPNGを組み立てる（`rows` は行ごとの明るさ 0〜255） */
+  const makePng = (rows, w = 16) => {
+    const crcTable = [...Array(256)].map((_, n) => {
+      let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0;
+    });
+    const crc = (b) => { let c = 0xffffffff; for (const x of b) c = crcTable[(c ^ x) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+    const chunk = (type, data) => {
+      const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
+      const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
+      const cs = Buffer.alloc(4); cs.writeUInt32BE(crc(body));
+      return Buffer.concat([len, body, cs]);
+    };
+    const ihdr = Buffer.alloc(13);
+    ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(rows.length, 4);
+    ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+    const raw = Buffer.concat(rows.map((v) => {
+      const line = Buffer.alloc(1 + w * 3); line[0] = 0;
+      for (let x = 0; x < w; x++) { line[1 + x * 3] = v; line[2 + x * 3] = v; line[3 + x * 3] = v; }
+      return line;
+    }));
+    return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      chunk("IHDR", ihdr), chunk("IDAT", zlib.deflateSync(raw)), chunk("IEND", Buffer.alloc(0))]);
+  };
+  /** 明るい側に固まった絵（届いた4枚と同じ形） */
+  const flat = toneOf(makePng([...Array(40)].map((_, i) => 200 + (i % 20))));
+  /** 暗い所と明るい所を持つ絵 */
+  const deep = toneOf(makePng([...Array(40)].map((_, i) => (i < 12 ? 30 : 210))));
+  check("明るさの読み取りが合っている（平べったい絵）",
+    flat !== null && flat.dark === 0 && flat.range < 30, JSON.stringify(flat));
+  check("明るさの読み取りが合っている（明暗のある絵）",
+    deep !== null && deep.dark > 0.2 && deep.range > 150, JSON.stringify(deep));
+  check("平べったい絵は、背景として不合格になる", flat !== null && !readableAsBackground(flat));
+  check("明暗のある絵は、背景として合格になる", deep !== null && readableAsBackground(deep));
+  /** **読めない形は `null`**（推測で合格にしない・CLAUDE.md） */
+  check("PNGでないものは「読めない」と返す（推測で合格にしない）",
+    toneOf(Buffer.from("これは画像ではありません")) === null);
+  /** **書き出しが、この検査を実際に使っていること**（作っただけで呼んでいない、を防ぐ） */
+  const buildSrc = fs.readFileSync("build-site.mjs", "utf8");
+  check("書き出しが、絵の明暗を測って止める",
+    /readableAsBackground/.test(buildSrc) && /このままでは背景として見えません/.test(buildSrc)
+    && /leaked\.push\(\[`generated\//.test(buildSrc));
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 

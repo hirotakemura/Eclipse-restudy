@@ -93,11 +93,34 @@ export function visualLanguageOf(project: Project, a: Analysis, direction?: stri
     : theme.mood.typeScale <= 0.95 ? "sparse composition, generous empty space"
     : "measured composition, balanced empty space";
 
-  /** 光は、その型が暗い面を使うかどうかで決める。**配色の言い方はしない**（色はCSSが持つ） */
+  /**
+   * 光は、その型が暗い面を使うかどうかで決める。**配色の言い方はしない**（色はCSSが持つ）。
+   *
+   * 【明暗の幅を、どちらの型でも必ず頼む】（D-464）
+   * 実測：届いた4枚とも**128より暗い画素が 0.0〜0.8%**、5%点〜95%点の幅が **41/255** しかなく、
+   * 背景に敷いても**絵の有無による最大画素差が 32〜36/255**にとどまった。
+   * 覆いの濃さをいくら上げても、**絵の中に無い明暗は作れない。**
+   *
+   * 原因はここで、明るい型に **`even diffused light, pale background, no harsh shadow`**
+   * ——「均質な光・淡い地・強い影なし」——と指示していた。**絵は言われたとおりに出来ていた。**
+   * 15の型のうち**10がこちら側**なので、1案件の話ではない。
+   *
+   * この言葉が入っていた理由は、**絵を `.22` で文字の下に敷いていた頃、
+   * 淡いことが文字を守る手段だったから**である。D-459/D-463 で
+   * 「**地の色を55%必ず残す**」という別の守り方に変えたので、役目は終わっている。
+   * 真っ黒な絵が来ても合成後の明るさは 140/255 で、墨の本文に対して **5.0:1**（AA）。
+   *
+   * **文字の逃げ場は `FRAME` の `textSafe` が持つ**ので、ここでは光だけを言う。
+   * 明るい型でも「影の側がはっきり暗い」ことを頼み、**淡いことは頼まない。**
+   */
   const dark = d.surfaces.includes("dark") || d.surfaces.includes("accent");
+  /** どちらの型にも共通で付ける。**幅が無い絵は、背景にすると消える** */
+  const RANGE = "full tonal range from deep shadow to bright highlight, "
+    + "at least one clearly dark region occupying a meaningful part of the frame";
   const lighting = dark
-    ? "single directional light, deep shadows, dark background"
-    : "even diffused light, pale background, no harsh shadow";
+    ? `single directional light, deep shadows, dark background, ${RANGE}`
+    : `soft directional light from one side, the shaded side of each form reading clearly `
+      + `darker than its lit side, mid-tone background rather than a pale one, ${RANGE}`;
 
   return {
     id: lang.id, label: lang.label, axis: lang.axis,
@@ -107,7 +130,8 @@ export function visualLanguageOf(project: Project, a: Analysis, direction?: stri
     why: lang.id === "none"
       ? `勝ち筋（${a.primaryStrength}）から絵の方針が引けないので、生成ビジュアルは作らない`
       : `勝ち筋 ${a.primaryStrength} → ${lang.label}。材質「${mat.from}」・型「${d.label}」・`
-        + `${theme.mood.label}の余白から、${dark ? "締まった光" : "均質な光"}で組む`,
+        + `${theme.mood.label}の余白から、${dark ? "締まった光" : "片側からの光"}で組む`
+        + "（どちらの型でも**明暗の幅**は必ず頼む・D-464）",
   };
 }
 
@@ -332,9 +356,17 @@ export const PURPOSE: Record<GeneratedPurpose, {
       + "the whole of it already settled rather than still changing",
     lead: "time", leadCount: 1, secondCount: 2, secondFrom: ["form", "act"],
     viewpoint: "straight-on view, flat and frontal",
-    depth: "deep focus throughout, light without direction, "
-      + "the layers separating only as faint steps of value",
-    why: "会社の帯。**積み重なった時間**を出す。焦点を作らず、地に沈める",
+    /**
+     * ★D-464 で光の指定に「明暗の幅」を足したとき、**ここと真っ向から矛盾した。**
+     * 元は `light without direction, the layers separating only as faint steps of value`
+     * ——「方向の無い光・値の差はかすか」——で、実測でも**4枚中いちばん平べったかった**
+     * （明暗の幅 23／暗い画素 0.0%）。
+     * **「焦点を作らない」は構図の話で、「明暗を付けない」ことではない。**
+     * 焦点を作らないまま、層ごとの値の差ははっきりさせる。
+     */
+    depth: "deep focus throughout, light raking low across the layers, "
+      + "each layer separating as a clear step of value, the deepest layers falling into shadow",
+    why: "会社の帯。**積み重なった時間**を出す。焦点は作らないが、層ごとの明暗ははっきり付ける",
   },
   peak: {
     /** 同じ理由で、実績の絵も本体（強み・技術）へ（D-454） */

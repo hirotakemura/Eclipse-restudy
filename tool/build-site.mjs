@@ -37,6 +37,7 @@ import { composeAssets, explainGenerated } from "./lib/design/assets.ts";
 import { projectHashOf } from "./lib/design/brief.ts";
 import { resolveTheme } from "./lib/theme.ts";
 import { DIRECTIONS } from "./lib/design/direction.ts";
+import { toneOf, readableAsBackground, READABLE_AS_BACKGROUND } from "./lib/png-tone.ts";
 
 // npm run dev:site -- <案件ID> の形でも、順番が入れ替わっても拾えるようにする
 const args = process.argv.slice(2);
@@ -516,6 +517,33 @@ if (project.visualPlan?.visuals?.length) {
   console.log(`\n  ── 生成ビジュアル ──`);
   console.log(`     requested ${requested.length}　／　絵が届いている ${ready.length}　／　**placed ${placed.length}**　／　skipped ${skipped.length}`
     + (genDropped ? `　／　画像が見つからないので下ろした ${genDropped}` : ""));
+
+  /**
+   * **絵の明暗を測る**（D-464）。
+   *
+   * 生成ビジュアルは背景として敷く（D-459・D-463）ので、**幅の無い絵は敷いても消える。**
+   * 実測：最初に届いた4枚は **128より暗い画素が 0.0〜0.8%／明暗の幅 23〜51** で、
+   * 画面上の差は最大 32〜36/255 にとどまった。**覆いの濃さでは作れない差**である。
+   * ここまでは「絵が届いたか」しか見ておらず、**淡い絵がそのまま画面に出ていた。**
+   */
+  for (const v of placed) {
+    const f = path.join(genSrc, v.provenance.file);
+    const tone = fs.existsSync(f) ? toneOf(fs.readFileSync(f)) : null;
+    if (!tone) {
+      /** **測れないものを合格にしない**（CLAUDE.md） */
+      leaked.push([`generated/${v.provenance.file}`, "明暗を測れない形の画像です（PNGの真彩色・インターレース無しでください）"]);
+      continue;
+    }
+    const line = `幅 ${tone.range}／暗い画素 ${(tone.dark * 100).toFixed(1)}%`;
+    if (readableAsBackground(tone)) {
+      console.log(`     明暗 ${v.visualId}　${line}　○ 背景として見える`);
+    } else {
+      console.log(`     明暗 ${v.visualId}　${line}　✗ このままでは背景として見えません`);
+      leaked.push([`generated/${v.provenance.file}`,
+        `明暗が足りません（${line}）。背景として敷くには、**中間より暗い画素が ${READABLE_AS_BACKGROUND.dark * 100}% 以上**、`
+        + `**明暗の幅が ${READABLE_AS_BACKGROUND.range} 以上**要ります。注文書（npm run visual -- ${id}）の光の指定で作り直してください`]);
+    }
+  }
   if (!ready.length) {
     console.log("     絵はまだありません。サイトはいままでと同じです（npm run visual -- <案件ID> で注文書を見る）");
   }
