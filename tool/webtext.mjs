@@ -2,7 +2,8 @@
  * KOBO — 掲載文を書く（第10段階②）
  *
  *   npm run webtext -- <案件ID>                    … 下書きを書き出す
- *   npm run webtext -- <案件ID> --apply --by 竹村   … 書いた文を案件データに取り込む
+ *   npm run webtext -- <案件ID> --draft            … **AIに掲載文の下書きを書かせる**（D-466）
+ *   npm run webtext -- <案件ID> --apply --by 竹村   … 読んだ文を案件データに取り込む
  *
  * **なぜこの道具が要るのか。**
  *
@@ -15,8 +16,9 @@
  * だが**書き出す道具が無かったので、43案件すべてで一度も使われていなかった**（実測）。
  * **仕組みがあるだけでは、使われない。**
  *
- * **ここで文章は書かない。**
- * AIも呼ばない（第10段階②の掲載文は人が書く。D-013「生成物は原稿の第1稿であって、商品ではない」）。
+ * **既定では文章を書かない。** `--draft` のときだけAIに下書きを書かせる（D-466）。
+ * 下書きは下書きで、**画面に出るのは人が読んで `--apply --by` した文だけ**である
+ * （D-013「生成物は原稿の第1稿であって、商品ではない」）。
  * この道具がするのは、
  *   ① 画面に出ている文を、欄ごとに全部並べる
  *   ② 機械で確実に言えることだけを添える（重複・社内語・見出しに長すぎる）
@@ -29,17 +31,20 @@ import { webTextFields, rawFields, duplicateBlocks, internalIn } from "./lib/web
 import { assertWebText } from "./lib/schema.ts";
 import { fit } from "./lib/design/system/typography.ts";
 import { canListTechnique } from "./lib/design/system/owner.ts";
+import { checkWebText } from "./lib/webtext-check.ts";
+import { styleOf } from "./lib/webtext-style.ts";
 
 const args = process.argv.slice(2);
 const id = args.find((a) => !a.startsWith("--"));
 const apply = args.includes("--apply");
+const draft = args.includes("--draft");
 const by = (() => {
   const i = args.indexOf("--by");
   return i >= 0 ? (args[i + 1] ?? "").trim() : "";
 })();
 
 if (!id) {
-  console.error("\n  使い方: npm run webtext -- <案件ID>");
+  console.error("\n  使い方: npm run webtext -- <案件ID> [--draft]");
   console.error("          npm run webtext -- <案件ID> --apply --by <読んだ人>\n");
   process.exit(1);
 }
@@ -96,16 +101,54 @@ if (!apply) {
     if (f.key === "strengths.followUpFindings" && canListTechnique(f.raw)) {
       notes.push("【…】の見出しで、強み・技術の工程が組まれています。掲載文にも【…】を残してください");
     }
+    /** 取材の言葉に、掲載文の型を当てた指摘（D-466）。**直す前に何がずれているか**が分かる */
+    for (const x of checkWebText(f.key, f.raw, project)) notes.push(`${x.message}：「${x.found}」`);
+    const style = styleOf(f.key);
+    const prevRow = prev.find((r) => r["欄"] === f.key);
     return {
       "欄": f.key,
       "聞いた質問": [f.label, f.help].filter(Boolean).join(" — "),
+      /** 合わせる先（`webtext-style.ts`）。**AIも人も、これを見て書く** */
+      "型": style ? `${style.role}／${style.maxChars}字まで${style.notes.length ? "／" + style.notes.join("／") : ""}` : "",
       "取材の言葉": f.raw,
       "字数": f.raw.trim().length,
       "気になる点": notes,
-      /** 人が書くところ。**空のままなら、取材の言葉がそのまま画面に出る** */
-      "掲載文": f.reviewed ? f.published : (prevOf.get(f.key) ?? ""),
+      /** AIが書いた下書き。**ここは読むだけ。画面に出すのは「掲載文」** */
+      "AIの下書き": prevRow?.["AIの下書き"] ?? "",
+      "下書きの検査": prevRow?.["下書きの検査"] ?? [],
+      /** 人が書くところ。**空のままなら、公開できない**（D-466） */
+      "掲載文": f.reviewed ? f.published : (prevRow?.["掲載文"] ?? prevOf.get(f.key) ?? ""),
     };
   });
+
+  if (draft) {
+    /**
+     * **キーが無ければ止める。回避しない**（社長のご指示）。
+     * 下書きが無くても、人が「掲載文」を書けば同じ道で公開できる。
+     */
+    if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
+      console.error("\n  Anthropic API の認証情報が見つかりません。AIの下書きは書けません。");
+      console.error("    export ANTHROPIC_API_KEY=sk-ant-api03-...");
+      console.error("  を設定してから、もう一度実行してください。");
+      console.error("  （キーが無くても、下書きの「掲載文」を人が書けば公開できます）\n");
+      process.exit(1);
+    }
+    const { draftWebText } = await import("./lib/generate/webtext-draft.ts");
+    /** **読んだ印のある欄は書き直さない。** 人が決めた文を、AIが上書きしない */
+    const todo = fields.filter((f) => !f.reviewed);
+    console.log(`\n  AIに下書きを頼みます（${todo.length}欄）`);
+    const results = await draftWebText(todo, project, { onProgress: (m) => console.log(`  ${m}`) });
+    for (const r of results) {
+      const row = rows.find((x) => x["欄"] === r.key);
+      if (!row) continue;
+      row["AIの下書き"] = r.text;
+      row["下書きの検査"] = r.findings.map((x) => `${x.severity === "error" ? "✗" : "△"} ${x.message}：「${x.found}」`);
+      if (r.refused) row["下書きの検査"].unshift("✗ AIが書くのを断りました。人が書いてください");
+      else if (r.blocked) row["下書きの検査"].unshift("✗ 取材の言葉に無い記述が残ったので、下書きを渡しません。人が書いてください");
+      /** **掲載文が空の欄にだけ、下書きを写す。** 人が書きかけた文は消さない */
+      if (!row["掲載文"] && r.text) row["掲載文"] = r.text;
+    }
+  }
   fs.mkdirSync(draftDir, { recursive: true });
   fs.writeFileSync(sheet, JSON.stringify(rows, null, 2) + "\n", "utf8");
 
@@ -121,7 +164,8 @@ if (!apply) {
     }
   }
   console.log(`\n  下書き： ${sheet}`);
-  console.log(`  「掲載文」に、画面に出す文を書いてください。**空のままなら取材の言葉がそのまま出ます。**`);
+  console.log(`  「掲載文」を読んで、直してください。**読んだ印の無い欄が残っている間は公開できません**（D-466）`);
+  if (!draft) console.log(`  AIに下書きを書かせる： npm run webtext -- ${id} --draft`);
   console.log(`  書けたら： npm run webtext -- ${id} --apply --by <読んだ人>\n`);
   process.exit(0);
 }
@@ -158,7 +202,15 @@ for (const r of rows) {
     breaks.push(`${key}：【…】の見出しが無くなると、強み・技術の箇条書きが空になります`);
     continue;
   }
-  next[key] = { text, source: "human", reviewedBy: by, reviewedAt: now };
+  /** **事実の照合で落ちる文は、読んだ印があっても取り込まない**（D-466） */
+  const errors = checkWebText(key, text, project).filter((x) => x.severity === "error");
+  if (errors.length) {
+    breaks.push(`${key}：${errors.map((x) => `「${x.found}」${x.message}`).join("／")}`);
+    continue;
+  }
+  /** **誰が書いた文かを残す。** AIの下書きを一字も変えずに通したなら "ai" */
+  const source = String(r["AIの下書き"] ?? "").trim() === text ? "ai" : "human";
+  next[key] = { text, source, reviewedBy: by, reviewedAt: now };
   added.push(key);
 }
 if (breaks.length) {

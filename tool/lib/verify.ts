@@ -28,7 +28,11 @@ export type FindingKind =
   | "unverified-number" // 出典のないその他の数値
   | "banned-phrase" // 無内容な表現
   | "unresolved-marker" // {{要確認}} が残っている
-  | "internal-language"; // 社内語（作業メモ・確認事項）が本文に入っている
+  | "internal-language" // 社内語（作業メモ・確認事項）が本文に入っている
+  // ── 掲載文の型（`webtext-check.ts`・D-466）──
+  | "tone" // です・ます以外の文末が混じっている
+  | "length" // 欄の上限を越えている
+  | "off-site-topic"; // 社外に出す必要のない話（売上比率・家族の事情など）
 
 export interface Finding {
   severity: Severity;
@@ -119,7 +123,15 @@ const RULES: Rule[] = [
   {
     kind: "fabricated-tolerance",
     severity: "error",
-    pattern: /[±+\-]?\s*\d+(?:\.\d+)?\s*(?:μm|um|㎛|ミクロン|ミリ)/gi,
+    /**
+     * ★**`±` の付いた `mm` も公差として止める**（D-466 で見つけた穴）。
+     * 以前は `μm・ミクロン・ミリ` だけを見ていたので、**「±0.0003mm」のような作った公差が
+     * 下の「その他の数値」（warn）に落ち、止まらなかった。** この道具が扱う会社の公差は
+     * ほぼ `±0.01mm` の形で書かれるので、いちばん多い書き方が素通りしていたことになる。
+     * `±` の無い `600mm` は大きさなので、いままでどおり下の warn で人が見る。
+     * ★**照合の前に `toHalfWidth` が `±` を `+` に置き換える。** 最初 `±` で書いて一致しなかった。
+     */
+    pattern: /[±+\-]?\s*\d+(?:\.\d+)?\s*(?:μm|um|㎛|ミクロン|ミリ)|[±+]\s*\d+(?:\.\d+)?\s*mm/gi,
     message: "公差・精度の値に出典がありません。取材で確認できていない数値を書いてはいけません",
   },
   {

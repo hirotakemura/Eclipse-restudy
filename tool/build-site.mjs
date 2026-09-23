@@ -29,6 +29,7 @@ import { writerView } from "./lib/generate/writer-view.ts";
 import { internalValues } from "./lib/form-definition.ts";
 import { assertWebText } from "./lib/schema.ts";
 import { webTextFields, rawFields, duplicateBlocks } from "./lib/webtext-review.ts";
+import { checkWebText } from "./lib/webtext-check.ts";
 import { analyze } from "./lib/design/analysis.ts";
 import { sanitizeProject } from "./lib/sanitize.ts";
 import { composeTop, composePage, explain, traceOf } from "./lib/design/sections.ts";
@@ -206,7 +207,14 @@ if (unconfirmed.length) {
  *
  * 掲載文の仕組み（`webText`・D-401）は作ってあったが、**43案件すべてで一度も使われていない**（実測）。
  * 書き出す道具が無かったからである。**黙って取材の言葉を公開に回さない。**
- * 止めはしない——掲載文の無い案件を一斉に赤くしても、直せる人が増えるわけではない。
+ *
+ * 【D-466 で、止めるようにした】
+ * 以前は「止めはしない——一斉に赤くしても、直せる人が増えるわけではない」としていた。
+ * いまは**直す道具がある**（型・検査・AIの下書き・`--apply --by`）。
+ * そして実測で、松原精機は24欄中21欄が取材の言葉のまま——売上の構成比、家族の事情、
+ * です・ますとである調の混在が、そのまま公開される状態だった。
+ * **お金をいただく商品として、取材の言葉がそのまま出るほうが危ない。**
+ * 確認用の書き出し（`site-draft`）は出るので、画面を見ながら直せる。
  */
 const webFields = webTextFields(project, project.formSet);
 const stillRaw = rawFields(webFields);
@@ -216,7 +224,25 @@ if (stillRaw.length) {
     console.log(`      ${f.key}　${f.label}　${f.published.length}字　「${f.published.replace(/\s+/g, "").slice(0, 28)}…」`);
   }
   if (stillRaw.length > 6) console.log(`      ほか ${stillRaw.length - 6}件`);
-  console.log(`      掲載文を書く： npm run webtext -- ${id}`);
+  console.log(`      掲載文を書く： npm run webtext -- ${id}　（AIの下書き： --draft）`);
+}
+/** `missing` / `leaked` はこの後で作られるので、**ここでは集めるだけ**にして後で足す */
+/**
+ * ★最初は「聞き取りが埋まっていない」の並びに入れていたが、**聞き取りは埋まっている。**
+ * 足りないのは画面に出す文のほうで、直す道も別（`npm run webtext`）なので、直し方ごと出す。
+ */
+const webTextLeaked = stillRaw.length
+  ? [["webText", `取材の言葉のまま画面に出る欄が ${stillRaw.length}件あります。`
+      + `npm run webtext -- ${id}（AIの下書きは --draft）で掲載文を書き、--apply --by <読んだ人> で取り込んでください`]]
+  : [];
+/**
+ * **読んだ印があっても、事実の照合で落ちる文は出さない**（D-466）。
+ * 取り込むとき（`--apply`）にも見ているが、案件データを手で直された場合に備えて、書き出しでも見る。
+ */
+for (const f of webFields.filter((x) => x.reviewed)) {
+  for (const e of checkWebText(f.key, f.published, project).filter((x) => x.severity === "error")) {
+    webTextLeaked.push([f.key, `掲載文に、取材の言葉に無い記述があります：「${e.found}」${e.message}`]);
+  }
 }
 /**
  * **「出さないでください」と言われたものを、毎回見せる**（D-425）。
@@ -374,7 +400,7 @@ if (!domain) console.log(`  ※ ドメイン未定のため ${siteUrl} で書き
  */
 const NEEDS_REVIEW = "{{要確認}}";
 /** 原稿の再検証と、人の確認の印。**書き出しの前に済んでいる**ので、ここでは合流させるだけ */
-const leaked = [...draftBlocks];
+const leaked = [...draftBlocks, ...webTextLeaked];
 const suspect = [];
 /**
  * **同じ文が、複数の欄に入っていないか**（D-418）。

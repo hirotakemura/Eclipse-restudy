@@ -1020,6 +1020,133 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   check("書き出しが、来歴の未確認で公開を止める",
     /unconfirmedProvenance\(v\)/.test(src2) && /まだ確かめていません/.test(src2));
 
+  {
+  console.log("\n━━━ ㉜ 掲載文の型・検査・AIの下書き・公開の関所（D-466）━━━");
+  /**
+   * 実測（松原精機）：画面に文を出せる24欄のうち **21欄が取材の言葉のまま**。
+   * 事業内容に売上の構成比と家族の事情、文体は です・ます 7欄／である 3欄／混在 5欄。
+   * 「取材の言葉 → AIが欄ごとに下書き → 機械が検査 → 人が承認」の形にした。
+   */
+  const { WEB_TEXT_STYLE, COMMON_RULES: CR, styleOf: so } = await import("./lib/webtext-style.ts");
+  const { WEB_TEXT_PATHS: WTP } = await import("./lib/schema.ts");
+  const { getTypeRole: gtr } = await import("./lib/design/system/typography.ts");
+  /** **表が1つ**——掲載文を持てる欄のすべてに、型があること（ずれたら落ちる・D-197） */
+  const noStyle = WTP.filter((k) => !WEB_TEXT_STYLE[k]);
+  check(`掲載文を持てる欄すべてに、型がある（${WTP.length}欄）`, noStyle.length === 0, noStyle.join("・"));
+  const extra = Object.keys(WEB_TEXT_STYLE).filter((k) => !WTP.includes(k));
+  check("掲載文を持てない欄に、型を置いていない", extra.length === 0, extra.join("・"));
+  /** **最初の画面と山の2欄は、段の上限をそのまま使う**（数字を写さない） */
+  check("最初の画面の見出しの上限が、段の上限と同じ",
+    so("basics.businessSummary")?.maxChars === gtr("statement").maxChars);
+  check("添字つきの欄でも型が引ける", so("cases[3].solution")?.role === WEB_TEXT_STYLE["cases[].solution"].role);
+
+  /** ── 検査 ── */
+  const { checkWebText: cw } = await import("./lib/webtext-check.ts");
+  const kinds = (key, text) => cw(key, text, base).map((f) => `${f.severity}:${f.kind}`);
+  check("です・ます調の文には、文体の指摘が出ない",
+    !kinds("cases[0].solution", "専用の治具を製作しました。加工順序も見直しています。").includes("warn:tone"));
+  check("である調の文が混じると、文体の指摘が出る",
+    kinds("cases[0].solution", "専用の治具を製作した。加工順序も見直しています。").includes("warn:tone"));
+  /** ★最初は「〜ました」「〜でした」を末尾の「した」で拾って、4件誤検知した */
+  check("「〜ました」「〜でした」を、である調と数えない",
+    !kinds("cases[0].result", "寸法が安定しませんでした。量産に移りました。").includes("warn:tone"));
+  /** **引用は話されたとおりが正しい** */
+  check("「」の中の言い切りは、数えない",
+    !kinds("strengths.praiseFromClients", "「図面に書いてないところに気づいてくれる」と言っていただいています。").includes("warn:tone"));
+  check("体言止めは、数えない", !kinds("cases[0].partDescription", "ステンレスの薄物部品").includes("warn:tone"));
+  check("売上の構成比が入ると、指摘が出る",
+    kinds("basics.businessSummary", "精密切削加工です。売上構成は自動車部品が約6割です。").includes("warn:off-site-topic"));
+  check("上限を越えると、指摘が出る",
+    kinds("cases[0].partDescription", "あ".repeat(80)).includes("warn:length"));
+  /** **事実の照合は `verify.ts` と同じもの**——取材の言葉に無い公差は止める */
+  check("取材の言葉に無い数字は、止める（error）",
+    kinds("cases[0].result", "±0.0003mm に収めました。").some((k) => k.startsWith("error:")),
+    kinds("cases[0].result", "±0.0003mm に収めました。").join(" "));
+
+  /** ── AIへの指示は、型から組み立てる ── */
+  const draftMod = await import("./lib/generate/webtext-draft.ts");
+  const missingDrop = CR.drop.filter((d) => !draftMod.WEBTEXT_SYSTEM.includes(d));
+  check("AIへの指示に、載せない話がすべて入っている（型と同じ表）", missingDrop.length === 0, missingDrop.join("・"));
+  check("AIへの指示に、事実を足さない決まりが入っている", draftMod.WEBTEXT_SYSTEM.includes(CR.facts));
+  const oneField = webTextFields(base)[0];
+  const fp = draftMod.fieldPrompt(oneField, base);
+  check("欄ごとの依頼に、その欄の役割と上限と取材の言葉が入っている",
+    fp.includes(so(oneField.key).role) && fp.includes(`${so(oneField.key).maxChars}字`) && fp.includes(oneField.raw.trim().slice(0, 20)));
+
+  /**
+   * ── AIの下書き（偽の応答で確かめる。**この環境にはキーが無い**）──
+   * 呼ぶ口は `beta.messages.create` 1つだけなので、そこを差し替える。
+   */
+  const fake = (replies) => {
+    const calls = [];
+    return { calls, client: { beta: { messages: { create: async (req) => {
+      calls.push(req);
+      const r = replies[Math.min(calls.length - 1, replies.length - 1)];
+      return r === "REFUSE"
+        ? { stop_reason: "refusal", content: [] }
+        : { stop_reason: "end_turn", content: [{ type: "text", text: r }] };
+    } } } } };
+  };
+  const f0 = { ...oneField };
+  const ok1 = fake(["整えた文です。"]);
+  const [r1] = await draftMod.draftWebText([f0], base, { client: ok1.client });
+  check("検査を通る下書きは、そのまま渡す", r1.text === "整えた文です。" && !r1.blocked && r1.retries === 0);
+  check("同じモデルで、共通の指示をキャッシュに載せて頼む",
+    ok1.calls[0].model === draftMod.DEFAULT_MODEL && ok1.calls[0].system[0].cache_control?.type === "ephemeral");
+  const fix = fake(["±0.0003mm に収めました。", "取材の言葉どおりに収めました。"]);
+  const [r2] = await draftMod.draftWebText([f0], base, { client: fix.client });
+  check("取材の言葉に無い数字を書いたら、指摘を渡して書き直させる",
+    r2.retries === 1 && !r2.blocked && JSON.stringify(fix.calls[1].messages).includes("0.0003"));
+  const bad = fake(["±0.0003mm に収めました。"]);
+  const [r3] = await draftMod.draftWebText([f0], base, { client: bad.client, maxRetries: 2 });
+  check("書き直しても直らなければ、下書きとして渡さない（人が書く）",
+    r3.blocked && r3.text === "" && bad.calls.length === 3);
+  const ref = fake(["REFUSE"]);
+  const [r4] = await draftMod.draftWebText([f0], base, { client: ref.client });
+  check("AIが断ったら、下書きとして渡さない", r4.refused && r4.blocked && r4.text === "");
+  /** **AIは読んだ印を置かない**——画面に出すかどうかは人が決める */
+  const draftSrc = fs.readFileSync("lib/generate/webtext-draft.ts", "utf8");
+  check("AIの下書きの層は、読んだ印を書かない", !/reviewedAt\s*:/.test(draftSrc) && !("reviewedAt" in r1));
+
+  /** ── 公開の関所 ── */
+  check("取材の言葉のまま出る欄が残っていたら、公開を止める",
+    /取材の言葉のまま画面に出る欄が \d+件あります/.test(before.log) && /このままでは公開できません/.test(before.log),
+    before.log.split("\n").filter((l) => /取材の言葉|公開できません/.test(l)).join(" ／ "));
+  /** 読んだ印があっても、事実の照合で落ちる文は出さない */
+  const invented = build({ ...base, webText: { [oneField.key]: {
+    text: "±0.0003mm の精度で仕上げました。", source: "human", reviewedBy: "検査", reviewedAt: "2026-09-23T00:00:00Z" } } });
+  check("読んだ印があっても、取材の言葉に無い数字の入った掲載文は公開しない",
+    /掲載文に、取材の言葉に無い記述があります/.test(invented.log),
+    invented.log.split("\n").filter((l) => /掲載文/.test(l)).join(" ／ "));
+
+  /** ── 道具（キーが無いとき・取り込みのとき）── */
+  const keyless = childProcess.spawnSync("node", ["webtext.mjs", "_webtext-test", "--draft"], {
+    encoding: "utf8", env: { ...process.env, ANTHROPIC_API_KEY: "", ANTHROPIC_AUTH_TOKEN: "" } });
+  check("キーが無ければ、回避せずに止める", keyless.status === 1 && /認証情報が見つかりません/.test(keyless.stderr),
+    keyless.stderr.slice(0, 120));
+  /** AIの下書きを一字も変えずに通したら "ai"、直したら "human" */
+  fs.writeFileSync(`${dir}/project.json`, JSON.stringify(base, null, 2));
+  childProcess.spawnSync("node", ["webtext.mjs", "_webtext-test"], { encoding: "utf8" });
+  const sheetPath = `${dir}/draft/webtext.json`;
+  const sheetRows = JSON.parse(fs.readFileSync(sheetPath, "utf8"));
+  check("下書きの表に、型が出ている", sheetRows.every((r) => typeof r["型"] === "string" && r["型"].length > 0));
+  const [ka, kb] = sheetRows.map((r) => r["欄"]);
+  sheetRows[0]["AIの下書き"] = "AIが整えた文です。"; sheetRows[0]["掲載文"] = "AIが整えた文です。";
+  if (kb) { sheetRows[1]["AIの下書き"] = "AIが整えた文です。"; sheetRows[1]["掲載文"] = "人が直した文です。"; }
+  fs.writeFileSync(sheetPath, JSON.stringify(sheetRows, null, 2));
+  const applied = childProcess.spawnSync("node", ["webtext.mjs", "_webtext-test", "--apply", "--by", "検査"], { encoding: "utf8" });
+  const after = JSON.parse(fs.readFileSync(`${dir}/project.json`, "utf8")).webText ?? {};
+  check("AIの下書きを変えずに通した欄は、書いたのが AI と残る", after[ka]?.source === "ai", JSON.stringify(after[ka]) + applied.stderr);
+  if (kb) check("人が直した欄は、書いたのが人と残る", after[kb]?.source === "human", JSON.stringify(after[kb]));
+  /** **取り込みでも、事実の照合で落ちる文は受けない** */
+  sheetRows[0]["掲載文"] = "±0.0003mm に収めました。";
+  fs.writeFileSync(`${dir}/project.json`, JSON.stringify(base, null, 2));
+  fs.writeFileSync(sheetPath, JSON.stringify(sheetRows, null, 2));
+  const refusedApply = childProcess.spawnSync("node", ["webtext.mjs", "_webtext-test", "--apply", "--by", "検査"], { encoding: "utf8" });
+  check("取り込みのときも、取材の言葉に無い数字の入った文は受けない",
+    refusedApply.status === 1 && /0\.0003/.test(refusedApply.stderr), refusedApply.stderr.slice(0, 160));
+
+  }
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
