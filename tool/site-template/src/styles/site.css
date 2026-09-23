@@ -91,6 +91,8 @@ a { color: var(--accent); }
  * **代償はヘッダーが高くなること**で、これは画像を差し替えるまでの当座の手当てである
  */
 .logo img { height: 60px; width: auto; display: block; }
+/** ロゴ画像の横に置く会社名（D-460）。**画像と並ぶので、画像より小さく** */
+.logo img + .logo-name { margin-left: 14px; font-size: 21px; letter-spacing: .04em; }
 
 /* ── スマホのメニュー開閉 ─────────────────── */
 .nav-toggle { display: none; }
@@ -291,7 +293,15 @@ html[data-headings="band"] .hero .facts span {
   height: auto; aspect-ratio: auto; object-fit: contain; margin-inline: 0;
 }
 .gallery-wrap[data-photo-size="large"] .photo:only-child img {
-  max-width: min(720px, 100%); max-height: 480px;
+  /**
+   * **PCでは、もう一段大きく**（D-461）。
+   * 実測：外観（900×900の正方形）が **PC 480×480px** で、1440pxの画面に対して小さすぎた。
+   * 効いていたのは `max-height: 480px` のほう（幅は720pxまで許していた）。
+   * **上限は高さで決まる**ので、高さを上げる。
+   * スマホは `min(…, 100%)` で画面幅に張り付いており、**390×390のまま変わらない。**
+   * 大きくし過ぎると D-416（1126×845で「デカすぎる」）に戻るので、その手前で止める。
+   */
+  max-width: min(900px, 100%); max-height: 620px;
 }
 
 .gallery .photo:only-child img {
@@ -429,6 +439,7 @@ thead th { width: auto; }
   /** 小さい画面。**ヘッダーが高くなりすぎないよう、PCより一段下げる**（D-431） */
   .logo { font-size: 22px; }
   .logo img { height: 46px; }
+  .logo img + .logo-name { margin-left: 10px; font-size: 17px; }
   .head-contact { width: 100%; margin-left: 0; justify-content: space-between; }
   .tel { text-align: left; }
   .tel-num { font-size: 19px; }
@@ -1096,7 +1107,13 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
   background-size: cover;
   background-position: var(--asset-focal, 70% 45%);
   background-repeat: no-repeat;
-  opacity: .22;
+  /**
+   * **見える濃さにする**（D-459）。`.22` では最大画素差 4/255 ——
+   * 圧縮ノイズと同じ水準で、**人には形として見えていなかった**（D-386）。
+   * 上限は「地の色を `.55` で必ず残す」＝ `.45`。白地なら最低 140/255 が残るので、
+   * 墨（#1a1a1a）の本文で 4.5:1 を下回らない。**文字の読みやすさを絵に預けない。**
+   */
+  opacity: .45;
 }
 /** 白抜きの地では、絵をさらに沈める（白い文字を守る） */
 .band:is([data-surface="accent"],[data-surface="dark"])[data-asset-source="generated"]::before { opacity: .14; }
@@ -1109,9 +1126,14 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
  */
 .hero[data-hero-aside="visual"]::before { display: none; }
 @media (max-width: 720px) {
-  /** **スマホでは薄くする。** 画面に対して絵が大きくなり、文字に近づくため */
+  /**
+   * **スマホでは薄くする。** 画面に対して絵が大きくなり、文字に近づくため。
+   * ★D-459 で地の濃さを `.22 → .45` に上げたとき、**ここだけ `.16` のまま残っていた。**
+   * 「スマホの強み・技術に絵が1枚も無い」（D-457）に逆戻りする値である。
+   * 同じ比（約2.05倍）で上げる。**0 にはしない**——0 は「出ていない」ことである
+   */
   .band[data-asset-source="generated"]::before,
-  .hero[data-asset-source="generated"]::before { opacity: .16; }
+  .hero[data-asset-source="generated"]::before { opacity: .33; }
 }
 @media print {
   .band[data-asset-source="generated"]::before,
@@ -1514,49 +1536,20 @@ html[data-hero="motif"] .hero {
  *
  * かけるのは**文章の帯（narrow / normal）だけ**。全幅の帯では、絵は地であるほうが正しい。
  */
-.band-visual { display: none; }
 /**
- * **小さい画面にも絵を出す**（D-457）。
+ * ── 帯の絵は「背景」として敷く（D-459）────────────────────
  *
- * 実測：D-454 で強み・技術へ絵を移したあとも、**スマホの強み・技術は3933pxで画像0枚**だった。
- * 上の `display: none` が**1000px以上でしか解けていなかった**ためで、
- * D-450 は「PCの2列」として入れたまま、**小さい画面のことを決めていなかった。**
- * 「PCで見えるからスマホでも問題ない」は、この案件で何度も外れている（CLAUDE.md）。
+ * D-450 で帯の絵を**右の列**にした。理由は「地に敷くと見えない」（最大画素差 4/255）。
+ * だが列に置くと、**本文の横に画像を1枚貼り付けたように見える。**
+ * 絵は帯の雰囲気であって、本文と並ぶ別の中身ではない。**背景に戻す。**
  *
- * 列にはできないので、**本文の下に横いっぱいで置く。** DOMの並びがすでに
- * 見出し → 本文 → 絵 なので、順番はそのままでよい。
+ * **見えないまま戻すのでは、D-450 の前に戻るだけ**なので、
+ * 濃さを上げる（`.22` → `.45`）。同時に**文字の読みやすさの底を、絵に預けない**——
+ * 地の色を `.55` の不透明度で必ず重ねるので、
+ * **どんな絵が来ても、地の明るさの55%より暗くならない**（白地なら最低140／255）。
+ * 実測は `docs/04` の D-459 に記載。
  */
-@media (max-width: 999px) {
-  .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"]) > .inner > .band-visual {
-    display: block; margin-top: 28px; aspect-ratio: 16 / 9; border-radius: var(--radius);
-    background-image: var(--asset-image); background-size: cover;
-    background-position: var(--asset-focal, 70% 45%); background-repeat: no-repeat;
-  }
-  /** 絵を出したら、地の覆いはやめる（PCと同じ。**二重に出さない**） */
-  .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"])::before { display: none; }
-}
-@media (min-width: 1000px) {
-  .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"]) > .inner {
-    display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 0.8fr);
-    /** **行を明示する。** 暗黙の行に `1 / -1` は届かず、絵が見出しの高さで止まっていた（実測 220px） */
-    grid-template-rows: auto 1fr;
-    column-gap: 56px; align-items: center;
-  }
-  .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"]) > .inner > h2 { grid-area: 1 / 1; margin-left: 0; }
-  .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"]) > .inner > .band-body { grid-area: 2 / 1; margin-left: 0; }
-  .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"]) > .inner > .band-visual {
-    display: block; grid-area: 1 / 2 / 3 / 3;
-    align-self: stretch; min-height: 260px; border-radius: var(--radius);
-    background-image: var(--asset-image); background-size: cover;
-    background-position: var(--asset-focal, 70% 45%); background-repeat: no-repeat;
-  }
-  /** 2列にするときは、帯の中の幅を広げる。**720pxを2つに割ると、絵が痩せる** */
-  .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"]) > .inner {
-    max-width: min(1200px, 100% - 96px);
-  }
-  /** 列に置いたら、地の覆いはやめる（二重に出さない） */
-  .band[data-asset-source="generated"]:is([data-width="narrow"], [data-width="normal"])::before { display: none; }
-}
+.band-visual { display: none; }
 
 /**
  * ── 最初の画面を2列にする（D-448）────────────────────────

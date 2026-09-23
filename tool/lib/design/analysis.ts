@@ -304,7 +304,16 @@ export function analyze(project: Project): Analysis {
     ["標準納期", text(cap.standardLeadTime)],
     ["最短納期", text(cap.shortestLeadTime)],
     ["対応精度", text(cap.tolerance)],
-    ["対応材質", (cap.materials ?? []).join("・")],
+    /**
+     * **対応材質は、ここに入れない**（D-458）。
+     *
+     * 実測：「アルミ・ステンレス」が**欄の中で2行に折れ、「アルミ・ステ／ンレス」**と切れていた。
+     * 段を落としても1行にならない（9字は、5欄に割った幅では導入（25px）でも収まらない）。
+     * **そもそも材質は「値」ではなく「一覧」**で、数が増えれば必ず溢れる。
+     * 一覧は札（`materials/chips`）と仕様の表（`conditions/spec`）が既に出しており、
+     * **同じものを3箇所に出していた。** ここから外すと欄が5つ→4つになり、
+     * 1つあたりの幅が 189px → 252px に広がって、**残る値が全部1行に収まる。**
+     */
   ]
     .filter(([, v]) => v)
     .map(([label, value]) => ({ label: label as string, value: value as string }));

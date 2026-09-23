@@ -75,8 +75,15 @@ const jsonLd = {
 <body>
   <header class="site-header">
     <div class="bar">
+      {/**
+        * **ロゴの横に会社名を出す**（D-460）。
+        * ロゴ画像だけだと、**図像を知らない人には会社名が読めない。**
+        * 画像があるときは `alt` を空にする——**名前は隣に文字で出ている**ので、
+        * 読み上げで二度言わせない。画像が無いときは、いままでどおり名前だけ。
+        */}
       <a class="logo" href="/">
-        {logo ? <img src={photoSrc(logo)} alt={companyName} /> : companyName}
+        {logo && <img src={photoSrc(logo)} alt="" />}
+        <span class="logo-name">{companyName}</span>
       </a>
       <div class="head-contact">
         {tel && (

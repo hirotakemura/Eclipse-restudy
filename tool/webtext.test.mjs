@@ -543,27 +543,36 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   const four = ["plain", "rule", "underline", "band"].map(styleOf);
   check("4つの型の札が、すべて違う引き方になっている", new Set(four).size === 4, four.join(" / "));
 
-  console.log("\n━━━ ⑳ 帯の絵を、列として置く（D-450）━━━");
+  console.log("\n━━━ ⑳ 帯の絵は「背景」として敷く（D-459。D-450を撤回）━━━");
   /**
-   * 実測：「どうやって受けているか」の帯は、高さ253pxに生成ビジュアルを持ちながら
-   * **画面ではほぼ空白**だった。地に敷く覆いは薄く（opacity .22）、
-   * 淡い絵を淡い地に重ねると**最大画素差 4/255**（D-386）。
-   * 最初の画面は列にして解決した（D-448）。**帯も同じ考え方でよい。**
+   * D-450 で帯の絵を**右の列**にした。理由は「地に敷くと見えない」（最大画素差 4/255）。
+   * だが列に置くと、**本文の横に画像を1枚貼り付けたように見える。**
+   * 絵は帯の雰囲気であって、本文と並ぶ別の中身ではない。**背景に戻す**（D-459）。
+   *
+   * **見えないまま戻すのでは D-450 の前に戻るだけ**なので、濃さを上げた（`.22` → `.45`）。
+   * 実測：絵の有無による**最大画素差 4 → 36 / 255**。
+   * 同時に**文字の読みやすさを絵に預けない**——地の色が必ず 55% 残るので、
+   * 白地なら最低 140/255。墨（#1a1a1a）の本文で 4.5:1 を下回らない。
    */
   const css4 = Object.values(before.html)[0] ?? "";
-  check("絵を持つ文章の帯に、絵の列の規則がある",
-    /\.band\[data-asset-source="?generated"?\]:is\(\[data-width="?narrow"?\], ?\[data-width="?normal"?\]\)>\.inner\{[^}]*grid/.test(css4)
-    || /\.band\[data-asset-source=generated\]:is\(\[data-width=narrow\],\[data-width=normal\]\)>\.inner\{[^}]*grid/.test(css4));
-  /** **暗黙の行に `1 / -1` は届かない**——絵が見出しの高さ（220px）で止まっていた */
-  check("絵の列の行を、明示している（暗黙の行に 1/-1 は届かない）",
-    /grid-template-rows:auto 1fr/.test(css4));
-  /** **列に置いたら、地の覆いはやめる**（二重に出さない） */
-  /** **書き出しは `:before`（コロン1つ）に縮める**ので、どちらも受ける */
-  check("列に置いた帯では、地の覆いを出さない",
-    /\[data-asset-source="?generated"?\]:is\(\[data-width="?narrow"?\],\s*\[data-width="?normal"?\]\):{1,2}before\s*\{\s*display:\s*none/.test(css4),
-    (/[^{}]{0,60}:{1,2}before\{display:none\}/.exec(css4) ?? [])[0] ?? "見つからない");
+  /** **列にしない。** `.band-visual` を出す規則が1つも無いこと */
+  check("帯の絵を、列として出す規則が無い",
+    !/\.band-visual[^{]*\{[^}]*display:\s*(block|grid|flex)/.test(css4),
+    (/\.band-visual[^{]*\{[^}]*\}/.exec(css4) ?? [])[0] ?? "");
+  /** **背景として敷いている**（要素ではなく、帯の `::before`） */
+  check("帯の絵を、背景として敷いている",
+    /\.band\[data-asset-source="?generated"?\]:{1,2}before[^{]*\{[^}]*background-image:\s*var\(--asset-image\)/.test(css4)
+    || /\.band\[data-asset-source=generated\]:{1,2}before[^{]*,[^{]*\{[^}]*background-image:var\(--asset-image\)/.test(css4));
+  /**
+   * **濃さの上限は「地の色を55%残す」**＝ `.45`。
+   * ここを上げると文字の読みやすさが絵しだいになる（測れないコントラストになる）。
+   */
+  const op = (/\[data-asset-source=generated\]:before[^{]*\{[^}]*opacity:([.\d]+)/.exec(css4)
+    ?? /\[data-asset-source="generated"\][^{]*::before\s*\{[^}]*opacity:\s*([.\d]+)/.exec(css4) ?? [])[1];
+  check("帯の絵の濃さが、見える値まで上がっている（かつ .45 を超えない）",
+    op !== undefined && Number(op) > 0.22 && Number(op) <= 0.45, String(op));
   /** **絵を持たない案件は、この要素ごと出ない** */
-  check("絵が無ければ、絵の列そのものが出ない", !/class="band-visual"/.test(plain.html["index.html"] ?? ""));
+  check("絵が無ければ、絵の要素そのものが出ない", !/class="band-visual"/.test(plain.html["index.html"] ?? ""));
 
   console.log("\n━━━ ㉑ 最初の画面の右の列を「見て判断させる面」にする（D-451）━━━");
   /**
@@ -758,27 +767,91 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   check("一覧のページでは、どの案件の話かを言う",
     listPage === "" || headOf(mainOf(listPage), "h3").length > 0 || /class="card/.test(listPage));
 
-  console.log("\n━━━ ㉗ 小さい画面にも絵を出す（D-457）━━━");
+  console.log("\n━━━ ㉗ 小さい画面にも絵が出る（D-457。D-459で背景に戻した）━━━");
   /**
-   * 実測：D-454 で強み・技術へ絵を移したあとも、
-   * **スマホの強み・技術は 3933px で画像0枚**だった。
-   * `.band-visual` を出す規則が **1000px以上の中にしか無かった**ためである
-   * （D-450 は「PCの2列」として入れ、小さい画面のことを決めていなかった）。
-   * 「PCで見えるからスマホでも問題ない」は、この案件で何度も外れている（CLAUDE.md）。
+   * D-457 は「スマホの強み・技術が 3933px で画像0枚」を直したものだった。
+   * D-459 で**背景に戻した**ので、出し方は変わったが、**目的は変わっていない**——
+   * 小さい画面にも絵が出ること。背景の覆いは画面幅で消していないので、そのまま出る。
+   * ★**「PCで見えるからスマホでも問題ない」は使わない**（CLAUDE.md）。ここで押さえる。
    */
   const css8 = Object.values(before.html)[0] ?? "";
-  /** **書き出しは `max-width: 999px` を `width<=999px` に書き替える。** 両方を許す */
-  const spVisual = /@media\s*\((?:max-width:\s*999px|width<=999px)\)\s*\{[^@]*\.band-visual\s*\{[^}]*display:\s*block/
-    .test(css8);
-  check("小さい画面で、帯の絵を出す規則がある", spVisual,
-    (/@media[^@]{0,80}band-visual[^}]*\}/.exec(css8) ?? [])[0] ?? "見つからない");
-  /** **地の覆いと二重に出さない**（PCと同じ扱い） */
-  check("小さい画面でも、絵を出したら地の覆いはやめる",
-    /@media\s*\((?:max-width:\s*999px|width<=999px)\)\s*\{[^@]*generated[^@]*:before\s*\{[^}]*display:\s*none/.test(css8)
-    || /@media\s*\((?:max-width:\s*999px|width<=999px)\)\s*\{[^@]*generated[^@]*::before\s*\{[^}]*display:\s*none/.test(css8));
-  /** **出しっぱなしにはしない**——既定はいままでどおり隠す（実写の帯まで出さないため） */
-  check("既定では、帯の絵は隠したまま",
-    /\.band-visual\{display:none\}/.test(css8) || /\.band-visual \{[^}]*display:\s*none/.test(css8));
+  /** **小さい画面で、絵を消す規則が無いこと**（`display:none` も `opacity:0` も） */
+  /** **`@media print` は数えない**（紙では敷かないのが正しい）。★最初これで赤くなった */
+  const screenMedia = css8.replace(/@media print\{[^@]*/g, "");
+  const killed = /@media[^@]{0,400}\[data-asset-source=generated\]:before[^{]*\{[^}]*display:none/.test(screenMedia);
+  check("小さい画面で、帯の絵を消していない", !killed,
+    (/@media[^@]{0,200}\[data-asset-source=generated\]:before[^}]*\}/.exec(css8) ?? [])[0] ?? "");
+  /**
+   * **スマホでは少し薄くする**のは残す（画面に対して絵が大きくなり、文字に近づくため）。
+   * ただし **0 にはしない**——0 は「出ていない」ことである。
+   */
+  const spOp = (/@media[^@]{0,400}\[data-asset-source=generated\]:before[^{]*\{opacity:([.\d]+)\}/.exec(screenMedia) ?? [])[1];
+  /**
+   * ★実装中に見つけた：地の濃さを `.22 → .45` に上げたとき、**スマホだけ `.16` のまま**だった。
+   * 上げ忘れると、D-457 が直した「スマホに絵が1枚も無い」へ逆戻りする。
+   * **PCの半分は下回らない**ところで押さえる。
+   */
+  const pcOp = Number(op ?? 0);
+  check("スマホでの濃さが、PCの半分を下回らない",
+    spOp === undefined || (Number(spOp) > 0 && Number(spOp) >= pcOp / 2), `SP ${spOp} / PC ${op}`);
+
+  console.log("\n━━━ ㉘ 社長のご指示 4件（D-458〜D-461）━━━");
+  const cssA = Object.values(before.html)[0] ?? "";
+  /**
+   * **D-458 対応材質を「大きく出す数字」から外す。**
+   * 実測：「アルミ・ステンレス」が欄の中で2行に折れ、**「アルミ・ステ／ンレス」**と切れていた。
+   * 段を落としても1行にならない（9字は、5欄に割った幅では導入25pxでも収まらない）。
+   * **材質は「値」ではなく「一覧」**で、数が増えれば必ず溢れる。
+   */
+  const { analyze: an } = await import("./lib/design/analysis.ts");
+  const figLabels = (an(base).figures ?? []).map((f) => f.label);
+  check("大きく出す数字に、対応材質を入れない", !figLabels.includes("対応材質"), figLabels.join("・"));
+  /** **材質そのものは消していない**——札と仕様の表に出る */
+  check("対応材質は、別の見せ方で残っている",
+    /対応材質/.test(before.html["capability/index.html"] ?? "")
+    && /class="chips"/.test(before.html["capability/index.html"] ?? ""));
+  /**
+   * **1行に収める**（ご指示：段落ちは見栄えが悪い）。`fitInRow` の既定を1行にした。
+   * 併せて、1行に入る幅の式を実測に合わせ直した（`14 ÷ n` → `20 ÷ n − 1`）。
+   */
+  const { fitInRow: fr, emWidth: ew, DECOR_PX } = await import("./lib/design/system/typography.ts");
+  for (const [v, n] of [["1個から", 4], ["7日", 4], ["±0.01mm", 4], ["アルミ・ステンレス", 3]]) {
+    const role = fr("numeric", v, n);
+    /** **その段で1行に入っていること**（飾りぶんは `numeric` のときだけ足す） */
+    const px = Math.round(Math.min(Math.max(role.min, role.vw * 14.4), role.max));
+    const width = 1267 / n - 64;
+    const need = ew(v) * px + (role.id === "numeric" ? DECOR_PX : 0);
+    check(`${n}欄の「${v}」が、${role.id}（${px}px）で1行に収まる`, need <= width,
+      `要る幅 ${Math.round(need)}px ／ 欄の中身 ${Math.round(width)}px`);
+  }
+  /** **寸法線も幅を取る**（CSSと2箇所になるので突き合わせる・D-197） */
+  const markW = (/\.figures dd:(?:before|after)\{[^}]*width:(\d+)px/.exec(cssA) ?? [])[1];
+  const markM = (/\.figures dd:(?:before|after)\{[^}]*margin:0 (\d+)px/.exec(cssA) ?? [])[1];
+  check("寸法線の取り分が、書き出したCSSと合っている",
+    markW === undefined || DECOR_PX === (Number(markW) + Number(markM) * 2) * 2,
+    `CSS ${markW}px＋余白${markM}px×2 の両端 → ${(Number(markW) + Number(markM) * 2) * 2}px ／ 見積もり ${DECOR_PX}px`);
+  /**
+   * **D-460 ロゴの横に会社名を出す。**
+   * ロゴ画像だけだと、図像を知らない人には会社名が読めない。
+   * 画像があるときは `alt` を空にする（名前は隣に文字で出ているので、二度言わせない）。
+   */
+  const head = (/<header[\s\S]*?<\/header>/.exec(before.html["index.html"] ?? "") ?? [""])[0];
+  check("ヘッダーに、会社名が文字で出ている", /class="logo-name"/.test(head), head.slice(0, 160));
+  check("ロゴ画像があるときは、代替テキストを空にする",
+    !/<img[^>]*class="logo"/.test(head) && (!/<a class="logo"[^>]*>\s*<img/.test(head) || /<img[^>]*alt=""/.test(head)),
+    (/<a class="logo"[\s\S]{0,140}/.exec(head) ?? [])[0] ?? "");
+  /**
+   * **D-461 会社概要の外観は、PCでもう一段大きく。**
+   * 実測：900×900 が PC 480×480px だった。効いていたのは高さの上限のほう。
+   * **スマホは変えない**（`min(…, 100%)` で画面幅に張り付いている）。
+   */
+  const large = (/\.gallery-wrap\[data-photo-size=large\] \.photo:only-child img\{([^}]*)\}/.exec(cssA) ?? [])[1] ?? "";
+  const mh = Number((/max-height:(\d+)px/.exec(large) ?? [])[1] ?? 0);
+  const mw = (/max-width:min\((\d+)px,100%\)/.exec(large) ?? [])[1];
+  check("会社概要の外観の上限が、480pxより大きい", mh > 480, large);
+  /** **D-416（1126×845で「デカすぎる」）には戻さない** */
+  check("それでも、大きすぎた頃（845px）には戻していない", mh < 845, String(mh));
+  check("スマホでは画面幅に張り付いたまま（`min(…, 100%)`）", mw !== undefined, large);
 
   fs.rmSync(dir, { recursive: true, force: true });
 }

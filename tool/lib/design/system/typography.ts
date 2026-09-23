@@ -194,6 +194,51 @@ export const emRun = (text: string): number => {
 };
 
 /**
+ * **n個を横に並べたとき、その段で1行に入る幅**（全角いくつぶんか）。
+ *
+ * 【実測で決めた式】（D-458）
+ * 欄の中身の幅を実際に測って、`numeric`（63px）で1行に入る全角字数を数えた——
+ *
+ * | 欄の数 | 欄の中身 | 1行に入る全角字数 | `20 ÷ n − 1` |
+ * | --- | --- | --- | --- |
+ * | 5 | 189px | 3.0 | 3.0 |
+ * | 4 | 252px | 4.0 | 4.0 |
+ * | 3 | 358px | 5.7 | 5.7 |
+ *
+ * **3点とも合う。** 最初は `14 ÷ n` にしていたが、
+ * **欄の左右の余白は欄の数で変わらない定数**なので、割り算だけでは表せなかった
+ * （n が大きいほど余白の割合が増える）。引き算の項がそれにあたる。
+ * 他の段は**大きさの比**で伸ばす（`numeric.max ÷ その段の max`）。
+ * **画面の幅(px)そのものは持たない**——CSSの数字を写せば必ずずれる（D-197）。
+ */
+const perLineAt = (columns: number) => {
+  const n = Math.max(1, Math.floor(columns));
+  const base = getTypeRole("numeric");
+  const full = Math.max(1, 20 / n - (n > 1 ? 1 : 0));
+  /**
+   * **寸法線は `numeric` のときだけ引く**（CSSが段の落ちた値からは外している）ので、
+   * 取り分もそのときだけ数える。ここを全段で引いていたとき、
+   * **線を引かない「±0.01mm」まで1段よけいに小さくなっていた**（26px／本来は38pxで1行に入る）。
+   */
+  return (t: TypeRole) => Math.max(0.5,
+    full * (base.max / t.max) - (t.id === "numeric" ? DECOR_PX / sizeAt(t, MEASURED_AT) : 0));
+};
+
+/**
+ * **寸法線も幅を取る**（D-458）。
+ *
+ * ★実装中に落ちた：材質を外して欄を4つ（中身252px）にしたのに、
+ * **「1個から」がまだ2行だった。** 文字は239pxで収まるはずだった——
+ * `.figures dd::before/::after`（幅10px＋左右8pxの余白）が**両端で52px**取っており、
+ * 239＋52＝291px で溢れていた。**飾りも行の幅を使う。**
+ * 値の段が小さいほど、この52pxの重みは相対的に増えるので、**その段の実寸で割る。**
+ * 数字はCSSと2箇所になるので、`webtext.test.mjs` が書き出したCSSと突き合わせる（D-197）。
+ */
+export const DECOR_PX = 52;
+/** 段の実寸を出すときの画面幅。**いちばん厳しいのは列が細くなるPCの広い方ではなく、段が最大になる幅** */
+const MEASURED_AT = 1440;
+
+/**
  * **横に n 個並ぶ欄に、2行までで収まる段を選ぶ**（D-455）。
  *
  * 【なぜ `fit` では足りないか】
@@ -218,13 +263,13 @@ export const emRun = (text: string): number => {
  * 落とし切ると、山の値が本文（17px）と同じ大きさになる。**それは山ではない。**
  * 最初の画面の右列が `numeric` か `lead` の2択なのと揃える（D-451）。
  */
-export function fitInRow(id: TypeRoleId, text: string, columns: number, lines = 2): TypeRole {
+export function fitInRow(id: TypeRoleId, text: string, columns: number, lines = 1): TypeRole {
   const start = TYPE_ROLES.findIndex((t) => t.id === id);
   if (start < 0) return getTypeRole("body");
   const n = Math.max(1, Math.floor(columns));
   const base = getTypeRole("numeric");
   const floor = TYPE_ROLES.findIndex((t) => t.id === "lead");
-  const perLine = (t: TypeRole) => (base.maxChars / n) * (base.max / t.max);
+  const perLine = perLineAt(n);
   const run = emRun(text), all = emWidth(text);
   let i = start;
   while (i < floor && (run > perLine(TYPE_ROLES[i]!) || all > perLine(TYPE_ROLES[i]!) * lines)) i++;
@@ -238,8 +283,5 @@ export function fitInRow(id: TypeRoleId, text: string, columns: number, lines = 
  * **2行に折れると行頭と行末にばらけて浮く**（実測：「1個から」が「-1個／から-」になっていた）。
  * 引いてよいのは1行の値だけ。
  */
-export const fitsOneLine = (role: TypeRole, text: string, columns: number): boolean => {
-  const n = Math.max(1, Math.floor(columns));
-  const base = getTypeRole("numeric");
-  return emWidth(text) <= (base.maxChars / n) * (base.max / role.max);
-};
+export const fitsOneLine = (role: TypeRole, text: string, columns: number): boolean =>
+  emWidth(text) <= perLineAt(columns)(role);
