@@ -12,6 +12,8 @@ import { companyName, tel, telHref, address, nav, headerNav, project, photoOf, p
 import { themeStyle, navId, heroId, sectionsId, headingsId, tablesId, motionId, webfont } from "../lib/theme";
 
 const logo = photoOf("ロゴ");
+/** ロゴの横に社名を文字で出すか（D-460・D-462）。**画像が無ければ名前だけ出す** */
+const showLogoName = !logo || (project as any)?.basics?.logoIncludesName === false;
 
 interface Props {
   title: string;
@@ -78,12 +80,20 @@ const jsonLd = {
       {/**
         * **ロゴの横に会社名を出す**（D-460）。
         * ロゴ画像だけだと、**図像を知らない人には会社名が読めない。**
-        * 画像があるときは `alt` を空にする——**名前は隣に文字で出ている**ので、
-        * 読み上げで二度言わせない。画像が無いときは、いままでどおり名前だけ。
+        *
+        * **ただし、ロゴ画像に社名が入っているなら出さない**（D-462）——
+        * 実測：松原精機のロゴには社名が入っており、画面では
+        * **「松原精機（画像）＋有限会社 松原精機（文字）」と二重に見えていた。**
+        * 画像から社名の有無は判定できないので、**聞き取りで持つ**
+        * （`basics.logoIncludesName`）。**聞けていないうちは出さない**——
+        * 二重に見えるほうが害が大きい。ロゴ画像が無い案件は、いままでどおり名前だけ。
+        *
+        * 文字を出すときは画像の `alt` を空にする。**名前は隣に文字で出ている**ので、
+        * 読み上げで二度言わせない。出さないときは `alt` が名前を持つ。
         */}
       <a class="logo" href="/">
-        {logo && <img src={photoSrc(logo)} alt="" />}
-        <span class="logo-name">{companyName}</span>
+        {logo && <img src={photoSrc(logo)} alt={showLogoName ? "" : companyName} />}
+        {showLogoName && <span class="logo-name">{companyName}</span>}
       </a>
       <div class="head-contact">
         {tel && (

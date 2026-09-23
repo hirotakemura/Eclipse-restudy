@@ -46,6 +46,12 @@ export interface CompanyBasics {
   /** 電話の受付時間。BtoBは電話で相談が来る（D-173） */
   receptionHours?: string;
   currentUrl?: string;
+  /**
+   * **ロゴ画像に社名が入っているか**（D-462）。
+   * 入っていなければ、ヘッダーでロゴの横に会社名を文字で出す（D-460）。
+   * **聞けていないうちは出さない**——入っているロゴで出すと、社名が二重に見える。
+   */
+  logoIncludesName?: boolean;
   /** 主力事業と売上比率。自由記述 */
   businessSummary: string;
   /** 主要取引先の「業界」。社名が出せなくても業界は聞く */

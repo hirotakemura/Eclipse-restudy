@@ -835,11 +835,43 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
    * ロゴ画像だけだと、図像を知らない人には会社名が読めない。
    * 画像があるときは `alt` を空にする（名前は隣に文字で出ているので、二度言わせない）。
    */
-  const head = (/<header[\s\S]*?<\/header>/.exec(before.html["index.html"] ?? "") ?? [""])[0];
-  check("ヘッダーに、会社名が文字で出ている", /class="logo-name"/.test(head), head.slice(0, 160));
-  check("ロゴ画像があるときは、代替テキストを空にする",
-    !/<img[^>]*class="logo"/.test(head) && (!/<a class="logo"[^>]*>\s*<img/.test(head) || /<img[^>]*alt=""/.test(head)),
-    (/<a class="logo"[\s\S]{0,140}/.exec(head) ?? [])[0] ?? "");
+  /**
+   * **ロゴ画像に社名が入っているなら、文字は出さない**（D-462）。
+   * 実測：松原精機は「松原精機（画像）＋有限会社 松原精機（文字）」と二重に見えていた。
+   * 画像から社名の有無は判定できないので、聞き取りで持つ（`basics.logoIncludesName`）。
+   * **聞けていないうちは出さない**——二重に見えるほうが害が大きい。
+   */
+  const headOfHtml = (html) => (/<header[\s\S]*?<\/header>/.exec(html ?? "") ?? [""])[0];
+  const logoCase = (v) => ({ ...base, basics: { ...base.basics, logoIncludesName: v },
+    photos: [...(base.photos ?? []), { category: "ロゴ", file: "logo.png" }] });
+  const noName = build(logoCase(true));
+  const yesName = build(logoCase(false));
+  const unasked = build(logoCase(undefined));
+  check("ロゴに社名が入っているなら、文字では出さない",
+    !/class="logo-name"/.test(headOfHtml(noName.html["index.html"])),
+    headOfHtml(noName.html["index.html"]).slice(0, 200));
+  check("ロゴに社名が入っていないなら、文字で出す",
+    /class="logo-name"/.test(headOfHtml(yesName.html["index.html"])),
+    headOfHtml(yesName.html["index.html"]).slice(0, 200));
+  check("聞けていないうちは、文字を出さない",
+    !/class="logo-name"/.test(headOfHtml(unasked.html["index.html"])));
+  /** **ロゴ画像が無い案件は、いままでどおり名前だけ出す**（消し過ぎていないこと） */
+  check("ロゴ画像が無ければ、会社名だけを出す",
+    /class="logo-name"/.test(headOfHtml(before.html["index.html"])));
+  /** 文字を出すときだけ `alt` を空にする。**出さないときは `alt` が名前を持つ** */
+  /** **書き出しは `alt=""` を `alt` に縮める。** 空の属性も受ける（★これで一度赤くなった） */
+  const imgAlt = (html) => {
+    const m = /<a class="logo"[^>]*>\s*<img[^>]*?\salt(="([^"]*)")?[\s/>]/.exec(headOfHtml(html));
+    return m ? (m[2] ?? "") : undefined;
+  };
+  check("文字を出すときは、画像の代替テキストを空にする", imgAlt(yesName.html["index.html"]) === "",
+    String(imgAlt(yesName.html["index.html"])));
+  check("文字を出さないときは、画像の代替テキストが会社名を持つ",
+    (imgAlt(noName.html["index.html"]) ?? "").length > 0, String(imgAlt(noName.html["index.html"])));
+  /** **聞き取りの欄になっていること**（画面だけ直して聞かないと、案件ごとに直せない） */
+  const { FORM_SETS: FS2 } = await import("./lib/form-definition.ts");
+  check("ロゴに社名が入っているかを、聞き取りで聞く",
+    FS2.manufacturing.blocks.flatMap((b) => b.fields).some((f) => f.path === "basics.logoIncludesName"));
   /**
    * **D-461 会社概要の外観は、PCでもう一段大きく。**
    * 実測：900×900 が PC 480×480px だった。効いていたのは高さの上限のほう。

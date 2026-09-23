@@ -41,6 +41,22 @@ export const BLOCKS: Block[] = [
       { path: "basics.receptionHours", label: "電話の受付時間", type: "text", placeholder: "平日 8:00〜17:00" },
       { path: "basics.currentUrl", label: "現在のサイトURL", type: "text" },
       {
+        /**
+         * **ロゴ画像に社名が入っているか**（D-462）。
+         *
+         * ヘッダーではロゴの横に社名を文字で出す（D-460）。図像だけのロゴでは
+         * **その図を知らない人に会社名が読めない**ためである。
+         * ところが松原精機のロゴには社名が入っており、画面では
+         * **「松原精機（画像）＋有限会社 松原精機（文字）」と二重に見えた。**
+         * 画像から社名の有無は判定できない（読み取る手段が無い）ので、**人に聞く。**
+         * **聞けていないうちは文字を出さない**——二重に見えるほうが害が大きい。
+         */
+        path: "basics.logoIncludesName",
+        label: "ロゴ画像に社名が入っているか",
+        type: "boolean",
+        help: "入っていなければ、ヘッダーでロゴの横に会社名を文字で出す。ロゴ画像が無い案件では関係ない",
+      },
+      {
         path: "basics.businessSummary",
         label: "主力の事業と売上比率",
         type: "textarea",
