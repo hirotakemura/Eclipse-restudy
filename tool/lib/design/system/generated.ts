@@ -186,3 +186,15 @@ export const generatedPath = (file: string): string => `/generated/${file}`;
 /** その注文書が、いま画面に出せる状態か */
 export const isReady = (x: GeneratedVisual): boolean =>
   x.status === "ready" && Boolean(x.provenance.file);
+
+/**
+ * **来歴のうち、まだ人が確かめていない欄**（D-465）。
+ *
+ * `assertGenerated` は欄が**空かどうか**しか見ていないので、「未確認」と書けば通ってしまう。
+ * 生成サービス名と商用利用の可否は**人が確かめて入れる欄**で、こちらが騙らない。
+ * 画面の確認のために仮の文字を入れることはあるので、**書き出しは止めずに、公開だけ止める**。
+ */
+export const unconfirmedProvenance = (x: GeneratedVisual): ("provider" | "commercialUse")[] =>
+  (["provider", "commercialUse"] as const).filter((k) =>
+    !String(x.provenance?.[k] ?? "").trim() || /未確認|不明|unknown/i.test(String(x.provenance?.[k] ?? "")));
+

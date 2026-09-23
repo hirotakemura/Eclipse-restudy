@@ -1001,6 +1001,25 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
     /readableAsBackground/.test(buildSrc) && /このままでは背景として見えません/.test(buildSrc)
     && /leaked\.push\(\[`generated\//.test(buildSrc));
 
+  console.log("\n━━━ ㉛ 来歴が「未確認」の絵は、公開しない（D-465）━━━");
+  /**
+   * 社長から生成した絵をいただいた。**どの生成サービスで作ったか・商用利用できるか**は
+   * 人が確かめて入れる欄で、こちらが騙らない。画面の確認のために「未確認」と入れて置いた。
+   * ★`assertGenerated` は**欄が空かどうか**しか見ていないので、**「未確認」と書けば通ってしまう。**
+   */
+  const { unconfirmedProvenance: up } = await import("./lib/design/system/generated.ts");
+  const withProv = (prov) => ({ provenance: prov });
+  check("「未確認」と書いてある欄を、確かめていない欄として数える",
+    up(withProv({ provider: "未確認（受領）", commercialUse: "未確認", file: "a.png" })).length === 2);
+  check("空の欄も、確かめていない欄として数える",
+    up(withProv({ provider: "", file: "a.png" })).join() === "provider,commercialUse");
+  check("確かめた欄は、数えない",
+    up(withProv({ provider: "Midjourney v7", commercialUse: "可（有料プランの規約 2026-09 時点）", file: "a.png" })).length === 0);
+  /** **書き出しが、これを実際に使って公開を止めていること** */
+  const src2 = fs.readFileSync("build-site.mjs", "utf8");
+  check("書き出しが、来歴の未確認で公開を止める",
+    /unconfirmedProvenance\(v\)/.test(src2) && /まだ確かめていません/.test(src2));
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 

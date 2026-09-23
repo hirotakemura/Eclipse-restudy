@@ -38,6 +38,7 @@ import { projectHashOf } from "./lib/design/brief.ts";
 import { resolveTheme } from "./lib/theme.ts";
 import { DIRECTIONS } from "./lib/design/direction.ts";
 import { toneOf, readableAsBackground, READABLE_AS_BACKGROUND } from "./lib/png-tone.ts";
+import { unconfirmedProvenance } from "./lib/design/system/generated.ts";
 
 // npm run dev:site -- <案件ID> の形でも、順番が入れ替わっても拾えるようにする
 const args = process.argv.slice(2);
@@ -527,6 +528,20 @@ if (project.visualPlan?.visuals?.length) {
    * ここまでは「絵が届いたか」しか見ておらず、**淡い絵がそのまま画面に出ていた。**
    */
   for (const v of placed) {
+    /**
+     * **来歴が「未確認」のままなら公開しない**（D-465）。
+     * `assertGenerated` は欄が空かどうかしか見ていない。**「未確認」と書けば通ってしまう。**
+     * 生成サービス名と商用利用の可否は**人が確かめて入れる欄**で、こちらが騙らない。
+     * 画面の確認のために仮の文字を入れることはあるので、**書き出しは止めずに公開だけ止める。**
+     */
+    for (const k of unconfirmedProvenance(v)) {
+      {
+        leaked.push([`generated/${v.provenance.file}`,
+          k === "provider"
+            ? "どの生成サービスで作った絵か、まだ確かめていません（provenance.provider）"
+            : "生成サービスの規約で商用利用できるか、まだ確かめていません（provenance.commercialUse）"]);
+      }
+    }
     const f = path.join(genSrc, v.provenance.file);
     const tone = fs.existsSync(f) ? toneOf(fs.readFileSync(f)) : null;
     if (!tone) {
