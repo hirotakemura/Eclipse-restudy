@@ -566,8 +566,18 @@ console.log("\n━━━ 文字の場所と、絵の場所を分ける（第9段
   check("すべての mask-image に -webkit- 版が対になっている",
     (decl.match(/-webkit-mask-image:/g) ?? []).length === (decl.match(/(?:^|[^-])mask-image:/gm) ?? []).length,
     `-webkit- ${(decl.match(/-webkit-mask-image:/g) ?? []).length}件 / 無印 ${(decl.match(/(?:^|[^-])mask-image:/gm) ?? []).length}件`);
-  check("マスクが効かない環境では、いままでの敷き方のまま（@supports の外は変えていない）",
-    /\.hero\[data-asset-source="generated"\]::before \{ opacity: \.28; \}/.test(css));
+  /**
+   * ★この検査は `opacity: .28` という**数字をそのまま写して**いた（D-197 の形）。
+   * D-463 で濃さを `.45` に上げたら、実装は正しいのに落ちた。
+   * 見るべきは**「@supports の外にも既定の敷き方があること」**であって、値そのものではない。
+   * 値の上限（地の色を55%残す＝ `.45`）だけ、別に押さえる。
+   */
+  const heroOpacity = /\.hero\[data-asset-source="generated"\]::before \{ opacity: (\.\d+|1|0); \}/.exec(css);
+  check("マスクが効かない環境でも、既定の敷き方がある（@supports の外）",
+    heroOpacity !== null, "見つからない");
+  check("最初の画面の覆いが、地の色を半分以上残す濃さに収まっている",
+    heroOpacity !== null && Number("0" + heroOpacity[1]) > 0 && Number("0" + heroOpacity[1]) <= 0.45,
+    heroOpacity?.[0] ?? "");
 
   /** ⑤ 絵が無い帯には、何も足していない */
   /** 袖やマスクを持つ規則は、**すべて生成の帯に限定されていること** */

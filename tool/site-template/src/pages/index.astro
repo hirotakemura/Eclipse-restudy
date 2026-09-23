@@ -18,7 +18,7 @@ import { composeTop, resolveHero } from "../../../lib/design/sections.ts";
 import { composeVisual } from "../../../lib/design/visual.ts";
 import { composeAssets, willDraw, assetImageOf } from "../../../lib/design/assets.ts";
 /** **見出しの大きさは、中身の長さで決める**（D-277）。長文を巨大に組まない */
-import { fit } from "../../../lib/design/system/typography.ts";
+import { fit, fitInRow } from "../../../lib/design/system/typography.ts";
 /** **大きく出すのは最初の一文だけ**（D-452）。残りは対応可能範囲の表にそのまま出る */
 import { leadValue } from "../../../lib/design/materials.ts";
 import { project, designBrief, companyName, cases, photoOf, realPhotoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen, webOf } from "../lib/site";
@@ -121,12 +121,16 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
      * 実装は**全面に薄く敷く覆い**で、絵は列になっていなかった。
      *
      * 右に置けるものを、材料のある順に選ぶ。**無ければ1列のまま**（いままでと1pxも変わらない）：
-     *   visual … 生成ビジュアル（会社ごとに違う絵）
      *   spec   … 対応できる条件（材質・加工・ロット・納期）
      * **数字（figure）は左の主役なので右には出さない**——同じものを2か所に置かない
+     *
+     * 【生成ビジュアルは、ここには置かない】（D-463）
+     * 社長のご指示——「生成した画像は**あくまでも背景として扱う**」。
+     * 帯は D-459 で背景に戻した。**最初の画面も同じ扱いに揃える。**
+     * 右の列に置くと、**見出しの横に画像を1枚貼り付けたように見える。**
+     * 絵は最初の画面の地に敷き、右の列は「見て判断させる値の面」（D-451）に譲る。
      */
     const aside = s.kind !== "hero" ? null
-      : s.asset?.generated ? "visual"
       : hero === "spec" && specs.length >= 3 ? "spec"
       : facts.length >= 3 ? "facts"
       : specs.length >= 3 ? "spec"
@@ -190,7 +194,6 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
           */}
           </div>
           {/* 右の列。**材料が無ければ、この要素ごと出ない** */}
-          {aside === "visual" && <div class="hero-aside"><div class="hero-visual" role="presentation"></div></div>}
           {/**
             * **右の列は、読ませるものではなく、見て判断させるもの**（D-451）。
             *
@@ -217,7 +220,15 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
                       * **24字の値まで49pxになった**（実測）。値は文ではないので、そこまで大きくしない。
                       * 短く言い切れないものは導入の段（18〜25px）——本文より大きいが、数字ではない
                       */}
-                    <dd data-role={fit("numeric", leadValue(v)).id === "numeric" ? "numeric" : "lead"}>{leadValue(v)}</dd>
+                    {/**
+                      * **右の列の幅で段を決める**（D-463）。
+                      * ★これまで `fit()`（文字数の上限だけ）で見ていたので、
+                      * **「アルミ・ステンレス」が63pxで2行に折れていた**（実測：列520px・文字514px・枠164px）。
+                      * 帯と同じ `fitInRow` に替える。渡す欄の数は **2**——
+                      * 右の列（実測520px）は、**帯の1行（同1267px）を2つに割ったのとほぼ同じ幅**である。
+                      * 実測の1行あたり 8.25字に対し、この式は 8.17字。合っている
+                      */}
+                    <dd data-role={fitInRow("numeric", leadValue(v), 2).id}>{leadValue(v)}</dd>
                   </div>
                 ))}
               </dl>

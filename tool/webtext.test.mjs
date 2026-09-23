@@ -885,6 +885,39 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   check("それでも、大きすぎた頃（845px）には戻していない", mh < 845, String(mh));
   check("スマホでは画面幅に張り付いたまま（`min(…, 100%)`）", mw !== undefined, large);
 
+  console.log("\n━━━ ㉙ 最初の画面も、絵は背景（D-463。D-448 の列を撤回）━━━");
+  /**
+   * 社長のご指示——「生成した画像は**あくまでも背景として扱う**」。
+   * 帯は D-459 で背景に戻した。**最初の画面も同じ扱いに揃える。**
+   * 右の列は「見て判断させる値の面」（D-451）に譲る。
+   */
+  const cssH = Object.values(before.html)[0] ?? "";
+  const topHtml = before.html["index.html"] ?? "";
+  check("最初の画面に、絵の列そのものが無い",
+    !/hero-visual/.test(topHtml) && !/\.hero-visual/.test(cssH),
+    (/hero-visual[^"']{0,60}/.exec(topHtml + cssH) ?? [])[0] ?? "");
+  /** **列をやめたときに覆いまで消していないこと**（D-448 は列にする代わりに覆いを消していた） */
+  check("最初の画面の絵を、背景として敷いている",
+    /\.hero\[data-asset-source=generated\]:before\{[^}]*background-image:var\(--asset-image\)/.test(cssH));
+  check("「列のときは覆いを消す」規則が残っていない",
+    !/hero\[data-hero-aside=visual\]/.test(cssH) && !/hero\[data-hero-aside="visual"\]/.test(cssH));
+  /**
+   * **右の列の段も、列の幅で決める**（D-463）。
+   * ★これまで `fit()`（文字数の上限だけ）だったので、
+   * **「アルミ・ステンレス」が63pxで2行に折れていた**（実測：列520px・枠164px）。
+   */
+  const { fitInRow: fr2 } = await import("./lib/design/system/typography.ts");
+  check("右の列で、長い値が「値」の段のままにならない",
+    fr2("numeric", "アルミ・ステンレス", 2).id !== "numeric",
+    fr2("numeric", "アルミ・ステンレス", 2).id);
+  check("右の列でも、短い値は「値」の段のまま", fr2("numeric", "3日", 2).id === "numeric");
+  /** 画面に出ている `data-role` が、実際にその式の答えになっていること（写していない） */
+  const heroDl = (/<dl class="hero-figures">([\s\S]*?)<\/dl>/.exec(topHtml) ?? [])[1] ?? "";
+  const pairs = [...heroDl.matchAll(/<dd data-role="([^"]+)">([^<]*)</g)];
+  const wrong = pairs.filter(([, role, v]) => fr2("numeric", v, 2).id !== role).map(([, r, v]) => `${v}→${r}`);
+  check(`最初の画面の右の列が、その式どおりに組まれている（${pairs.length}件）`,
+    pairs.length === 0 || wrong.length === 0, wrong.join(" ／ "));
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 

@@ -1117,14 +1117,14 @@ html[data-hero="spec"] .hero .lead { font-size: var(--t-quote); margin-top: 20px
 }
 /** 白抜きの地では、絵をさらに沈める（白い文字を守る） */
 .band:is([data-surface="accent"],[data-surface="dark"])[data-asset-source="generated"]::before { opacity: .14; }
-/** 最初の画面は主役なので、少しだけ強く出す。**それでも文字の下は地の色のまま** */
-.hero[data-asset-source="generated"]::before { opacity: .28; }
 /**
- * **絵を列にしたときは、覆いをやめる**（D-448）。
- * 薄い覆いは「絵を置く場所が無い」ときの逃げ道だった。
- * 右の列に**そのままの濃さで**置けるなら、沈める理由が無い
+ * **最初の画面も、絵は背景**（D-463。D-448 の列を撤回）。
+ * 社長のご指示——「生成した画像はあくまでも背景として扱う」。
+ * 帯は D-459 で背景に戻した。**最初の画面も同じ扱いに揃える。**
+ * 濃さは帯と同じ `.45` まで上げる（`.28` では絵が見えない）。
+ * **上限も帯と同じ**——地の色を55%必ず残すので、文字の読みやすさを絵に預けない
  */
-.hero[data-hero-aside="visual"]::before { display: none; }
+.hero[data-asset-source="generated"]::before { opacity: .45; }
 @media (max-width: 720px) {
   /**
    * **スマホでは薄くする。** 画面に対して絵が大きくなり、文字に近づくため。
@@ -1587,12 +1587,7 @@ html[data-hero="motif"] .hero {
 html[data-tables="horizontal"] .hero-figures > div { border-top-width: var(--line-width); }
 html[data-tables="stripe"] .hero-figures > div { border-top: 0; background: var(--bg-soft); padding: 14px 16px; }
 html[data-tables="all"] .hero-figures > div { border: var(--line-width) solid var(--line); padding: 14px 16px; }
-.hero-visual {
-  aspect-ratio: 16 / 9; border-radius: var(--radius);
-  background-image: var(--asset-image);
-  background-size: cover; background-position: var(--asset-focal, 70% 45%);
-  background-repeat: no-repeat;
-}
+/** ★`.hero-visual`（絵の列）は D-463 で無くした。絵は最初の画面の背景に敷く */
 .spec-aside { margin: 26px 0 0; grid-template-columns: 1fr 1fr; }
 /** 右の列に置いた札は、縦に積む（横に流すと文字の列と背比べにならない） */
 .facts-aside { margin-top: 26px; }
@@ -1604,8 +1599,6 @@ html[data-tables="all"] .hero-figures > div { border: var(--line-width) solid va
     display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
     gap: 64px; align-items: center;
   }
-  /** 絵は縦に伸ばして、文字の列と背比べさせる */
-  .hero-visual { aspect-ratio: 4 / 3; }
   .spec-aside { margin: 0; grid-template-columns: 1fr; }
   .facts-aside { margin-top: 0; flex-direction: column; align-items: flex-start; gap: 12px; }
   .facts-aside span { font-size: 16px; padding: 12px 18px; }
