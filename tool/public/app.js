@@ -210,7 +210,7 @@ function renderBlock() {
   if (block.note) {
     const note = document.createElement("div");
     note.className = "note";
-    note.textContent = block.note;
+    setRichText(note, block.note);
     form.append(note);
   }
 
@@ -231,7 +231,7 @@ function renderBlock() {
       trig.textContent = f.trigger;
       const ask = document.createElement("span");
       ask.className = "fu-ask";
-      ask.textContent = f.ask;
+      setRichText(ask, f.ask);
       row.append(trig, ask);
       box.append(row);
     }
@@ -239,6 +239,28 @@ function renderBlock() {
   }
 
   for (const field of block.fields) form.append(renderField(field));
+}
+
+/**
+ * **説明文の `**…**` を太字にする**（D-470 で気づいた）。
+ *
+ * フォームの説明文は、強調したい所を `**…**` で書いている（43か所）。ところが画面は
+ * `textContent` で出していたので、**取材中の画面に「**」がそのまま出ていた。**
+ * HTMLとしては解釈しない——文字の並びを切って、太字の部分だけ `<strong>` にする。
+ */
+function setRichText(el, text) {
+  el.replaceChildren();
+  const parts = String(text ?? "").split(/\*\*(.+?)\*\*/g);
+  parts.forEach((part, i) => {
+    if (!part) return;
+    if (i % 2 === 1) {
+      const b = document.createElement("strong");
+      b.textContent = part;
+      el.append(b);
+    } else {
+      el.append(document.createTextNode(part));
+    }
+  });
 }
 
 function renderField(field) {
@@ -276,7 +298,7 @@ function renderField(field) {
   if (field.help) {
     const help = document.createElement("div");
     help.className = "help";
-    help.textContent = field.help;
+    setRichText(help, field.help);
     wrap.append(help);
   }
 
@@ -428,42 +450,9 @@ function renderTheme(field, read, write) {
   const current = () => normalize(read());
 
   /**
-   * 「写真を大きく」は写真が要る。「対応範囲を先に」は対応材質などが要る。
-   * **材料が無いまま選ぶと、間延びした最初の画面になる。**
+   * ★「最初の画面」の軸は D-470 で取材から外したので、材料で選べるかの判定（写真・数字・地紋・対応範囲）は
+   * ここでは使わない。**最初の画面は、書き出したサイトを見てこちらで決める。**
    */
-  const withAvailability = (h) => {
-    const p = state.project ?? {};
-    if (h.needs === "photo") {
-      const has = (p.photos ?? []).some((x) => x.category === "外観");
-      return has ? h : { ...h, disabled: true, note: "外観の写真を預かってから選べます" };
-    }
-    if (h.needs === "figure") {
-      // 「数字を大きく」は、大きく出せる数字が1つ以上要る
-      const cap = p.capability ?? {};
-      // **一言で言い切れる値でなければ、大きく出さない**（lib/design/analysis.ts と同じ判定・D-203）
-      // **短く言い切れること＋数字を含むこと**（lib/design/analysis.ts と同じ判定・D-214）
-      const short = (v) => typeof v === "string" && v.trim().length > 0 && v.trim().length <= 14
-        && !/[。、]/.test(v) && /\d/.test(v);
-      const has = short(cap.tolerance) || short(cap.shortestLeadTime) || short(cap.lotSize);
-      return has ? h : { ...h, disabled: true, note: "「±0.01mm」「最短3日」のように短く数字で言い切れる値を聞き取ってから選べます" };
-    }
-    if (h.needs === "motif") {
-      // 「技術の地紋」は、地紋の根拠になる聞き取りが要る
-      const cap = p.capability ?? {};
-      const st = p.strengths ?? {};
-      const has = cap.tolerance || st.followUpFindings || st.wonAfterOthersDeclined || (cap.materials ?? []).length >= 3;
-      return has ? h : { ...h, disabled: true, note: "精度・工程の工夫・材質のどれかを聞き取ってから選べます" };
-    }
-    if (h.needs === "spec") {
-      const cap = p.capability ?? {};
-      const gen = p.general ?? {};
-      const has = cap.materials?.length || cap.processes?.length || cap.lotSize ||
-        gen.serviceArea || (gen.offerings ?? []).length;
-      return has ? h : { ...h, disabled: true, note: "対応範囲を聞き取ってから選べます" };
-    }
-    return h;
-  };
-
   const preview = document.createElement("div");
   preview.className = "theme-preview";
 
@@ -499,7 +488,12 @@ function renderTheme(field, read, write) {
      */
     choiceRow("preset", "型から選ぶ", presetsForPlan(opts.presets, state.project?.formSet), (id) => {
       const preset = (opts.presets ?? []).find((p) => p.id === id);
-      if (preset) { write({ ...preset.theme, direction: id }); sync(); }
+      /**
+       * **型を押しても、文字の大きさは消さない**（D-470）。
+       * 文字の大きさは社長ご本人の目で選んでいただくもの（D-153）で、型の好みとは別の話。
+       * 型の見本は文字の大きさも持っているので、先に文字の大きさを選ぶと上書きされていた。
+       */
+      if (preset) { write({ ...preset.theme, direction: id, textSize: current().textSize }); sync(); }
     }, (p) => {
       const sw = document.createElement("span");
       sw.className = "swatch";
@@ -508,35 +502,17 @@ function renderTheme(field, read, write) {
     }),
   );
 
+  /**
+   * **取材で選んでいただくのは、型（ご希望）と文字の大きさだけ**（D-470）。
+   * 配色・書体・雰囲気・メニュー・最初の画面・章の区切り・見出し・表は、
+   * 書き出したサイトを見てこちらで決める。**小さな見本では、御社のサイトの見た目は決められない。**
+   */
   const sep = document.createElement("div");
   sep.className = "theme-sep";
-  sep.textContent = "1つずつ選ぶ";
+  sep.textContent = "文字の大きさ（社長ご本人の目で）";
   rows.append(sep);
-
-  rows.append(
-    choiceRow("palette", "配色", opts.palettes, (v) => set("palette", v), (p) => {
-      const sw = document.createElement("span");
-      sw.className = "swatch";
-      sw.style.background = p.accent;
-      return sw;
-    }),
-    choiceRow("font", "書体", opts.fonts, (v) => set("font", v), (f) => {
-      const sample = document.createElement("span");
-      sample.className = "font-sample";
-      sample.style.fontFamily = f.body;
-      sample.textContent = "御社の強み";
-      return sample;
-    }),
-    choiceRow("mood", "雰囲気", opts.moods, (v) => set("mood", v)),
-    // **第2回取材で、実物を並べて社長ご本人に選んでいただく項目**（D-153）
-    choiceRow("textSize", "本文の文字サイズ", opts.textSizes, (v) => set("textSize", v)),
-    choiceRow("nav", "メニューの位置", opts.navs, (v) => set("nav", v)),
-    // 最初の画面の型は、材料が無いと成立しない。無いものは選ばせない
-    choiceRow("hero", "最初の画面", opts.heroes.map(withAvailability), (v) => set("hero", v)),
-    choiceRow("sections", "章の区切り", opts.sections, (v) => set("sections", v)),
-    choiceRow("headings", "見出しの飾り", opts.headings, (v) => set("headings", v)),
-    choiceRow("tables", "表の罫線", opts.tables, (v) => set("tables", v)),
-  );
+  // **第2回取材で、実物を並べて社長ご本人に選んでいただく項目**（D-153）
+  rows.append(choiceRow("textSize", "本文の文字サイズ", opts.textSizes, (v) => set("textSize", v)));
 
   box.append(rows, preview);
   sync();
@@ -866,7 +842,7 @@ function renderList(field, read, write) {
         const sf = document.createElement("div");
         sf.className = "sub-field";
         const label = document.createElement("label");
-        label.textContent = sub.help ? `${sub.label}　— ${sub.help}` : sub.label;
+        setRichText(label, sub.help ? `${sub.label}　— ${sub.help}` : sub.label);
         sf.append(label, renderInput(sub, sub.path, item, sub.path));
         card.append(sf);
       }
@@ -1113,15 +1089,16 @@ function renderReviewField(field, blockTitle) {
   if (field.type === "theme") {
     const t = { ...(state.theme?.default ?? {}), ...(raw ?? {}) };
     const name = (list, id) => (state.theme?.[list] ?? []).find((x) => x.id === id)?.label ?? "";
+    /**
+     * **お客様にお見せするのは、選んでいただいた2つだけ**（D-470）。
+     * 配色や書体を並べると「それで決まった」と受け取られるが、そこはこちらが決め直す。
+     */
+    const look = (state.theme?.presets ?? []).find((p) => p.id === t.direction)?.label ?? "（お選びいただいていません）";
     const text = [
-      `配色：${name("palettes", t.palette)}`,
-      `書体：${name("fonts", t.font)}`,
-      `雰囲気：${name("moods", t.mood)}`,
+      `近い見た目：${look}`,
       `文字の大きさ：${name("textSizes", t.textSize)}`,
-      `最初の画面：${name("heroes", t.hero)}`,
-      `メニュー：${name("navs", t.nav)}`,
     ].join("　／　");
-    return reviewRow(label, text);
+    return reviewRow(label, `${text}\n※ 見た目はご希望として伺いました。原稿のご確認のときに、実際のサイトでお見せします`);
   }
 
   // 写真は、お預かりしたものをそのままお見せして「これを載せてよいか」を確認いただく。

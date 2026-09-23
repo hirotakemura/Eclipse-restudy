@@ -97,6 +97,73 @@ if (browser && list.length) {
   await browser.close();
 }
 
+console.log("\n━━━ ⑤ 見た目は、クロージングの中で2つだけ伺う（D-470）━━━");
+{
+  const { FORM_SETS } = await import("./lib/form-definition.ts");
+  for (const [plan, set] of Object.entries(FORM_SETS)) {
+    const blocks = set.blocks;
+    check(`${plan}：「サイトの見た目」のタブが無い`, !blocks.some((b) => b.id === "design" || b.title === "サイトの見た目"));
+    const terms = blocks.find((b) => b.id === "terms");
+    const paths = (terms?.fields ?? []).map((f) => f.path);
+    check(`${plan}：見た目のご希望と色のご希望が、制作条件・クロージングの中にある`,
+      paths.includes("theme") && paths.includes("terms.colorRequest"), paths.join("・"));
+    /** **外した欄**：どのコードも読まず、足りない写真は書き出しが置き場所ごとに名指しする */
+    check(`${plan}：「使える写真があるか」を聞かない`, !paths.includes("terms.photo.hasExisting"));
+    const theme = terms?.fields.find((f) => f.path === "theme");
+    check(`${plan}：見た目は「ご希望」として伺う（決定ではないと説明にある）`, /ご希望として記録/.test(theme?.help ?? ""));
+  }
+}
+if (browser === null) {
+  unverified++;
+  console.log("  △ 未確認：playwright が無いので、クロージングの画面は測っていません");
+} else if (list.some((p) => p.formSet === "manufacturing")) {
+  const b2 = await (await import("./lib/browser.mjs")).launchChromium();
+  const ctx = await b2.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: "reduce" });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  /** **案件データを書き換えない。** 保存の通信は差し止めて、成功したことにする */
+  await page.route("**/api/projects/*", (route) => route.request().method() === "PUT"
+    ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ completion: null, savedAt: new Date().toISOString() }) })
+    : route.continue());
+  const target = list.find((p) => p.formSet === "manufacturing").id;
+  await page.goto(base + "/", { waitUntil: "networkidle" });
+  await page.click(`#home-table tbody tr[data-id="${target}"]`);
+  await page.waitForSelector("#main:not([hidden])");
+  const titles = await page.evaluate(() => [...document.querySelectorAll("#blocks *")].filter((x) => x.onclick).map((x) => x.textContent));
+  check("画面のタブにも「サイトの見た目」が無い", !titles.some((t) => /サイトの見た目/.test(t)), titles.length + "タブ");
+  /** **説明文の `**` をそのまま出さない**（★取材中の画面に「**」が出ていた。43か所） */
+  let stars = 0;
+  for (let i = 0; i < titles.length; i++) {
+    await page.evaluate((i) => [...document.querySelectorAll("#blocks *")].filter((x) => x.onclick)[i].click(), i);
+    await page.waitForTimeout(80);
+    stars += await page.evaluate(() => (document.querySelector("#form").innerText.match(/\*\*/g) ?? []).length);
+  }
+  check("どのブロックの説明文にも「**」がそのまま出ていない", stars === 0, `${stars}か所`);
+  await page.evaluate(() => [...document.querySelectorAll("#blocks *")].find((x) => x.onclick && /制作条件/.test(x.textContent))?.click());
+  await page.waitForSelector(".theme-picker");
+  const rows = await page.evaluate(() => [...document.querySelectorAll(".theme-picker .theme-row")].map((r) => r.dataset.key));
+  check("取材で選ぶのは、型と文字の大きさの2つだけ", JSON.stringify(rows) === JSON.stringify(["preset", "textSize"]), rows.join("・"));
+  /** **型を押しても、文字の大きさは消さない**（型の見本も文字の大きさを持っているので、上書きされていた） */
+  const sizes = await page.$$('.theme-row[data-key="textSize"] .theme-choice');
+  await sizes[sizes.length - 1].click();
+  const bigger = await sizes[sizes.length - 1].getAttribute("data-value");
+  const presets = await page.$$('.theme-row[data-key="preset"] .theme-choice');
+  await presets[0].click();
+  await presets[presets.length - 1].click();
+  const kept = await page.evaluate(() => document.querySelector('.theme-row[data-key="textSize"] .theme-choice[aria-pressed="true"]')?.dataset.value);
+  check("型を押しても、選んだ文字の大きさが残る", kept === bigger, `${bigger} → ${kept}`);
+  /** **お客様の確認画面にも、2つだけ**（配色や書体を並べると「それで決まった」と受け取られる） */
+  await page.click("#close-project");
+  await page.click("#review-open");
+  await page.waitForSelector("#review:not([hidden])");
+  const review = await page.evaluate(() => document.querySelector("#review-body").innerText);
+  check("お客様の確認画面には、近い見た目と文字の大きさだけを出す",
+    /近い見た目/.test(review) && /文字の大きさ/.test(review) && !/配色：|書体：|雰囲気：/.test(review));
+  check("クロージングの画面のエラーが無い", errors.length === 0, errors.join(" / "));
+  await b2.close();
+}
+
 stop();
 console.log(`\n━━━ 結果 ━━━\n  ${ok}/${ok + ng} 通過${unverified ? `　（未確認 ${unverified}件）` : ""}\n`);
 process.exit(ng ? 1 : 0);
