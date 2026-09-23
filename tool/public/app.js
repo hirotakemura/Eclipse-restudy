@@ -1249,6 +1249,7 @@ async function showHome(status) {
   $("#followup-open").hidden = true;
   $("#main").hidden = true;
   $("#empty").hidden = false;
+  $("#to-list").hidden = true;
   $("#close-project").hidden = true;
   $("#delete-project").hidden = true;
   $("#project-select").value = "";
@@ -1291,7 +1292,99 @@ async function loadProjectList(selectId) {
     sel.append(g);
   }
   if (selectId) sel.value = selectId;
+  state.projectList = list;
+  renderHome();
   return list;
+}
+
+// ── 案件一覧（D-469）─────────────────────────────────────────
+const PLAN_LABEL = { manufacturing: "製造業向け", general: "汎用ベーシック" };
+
+/** `2026-09-13` → `2026/09/13`。**取材日は日付だけ**なので、時刻に直さない */
+const ymd = (v) => (/^\d{4}-\d{2}-\d{2}/.test(v ?? "") ? v.slice(0, 10).replace(/-/g, "/") : "—");
+/** 最終更新・確認日は時刻まで出す。**同じ日に何度も触る**ので、日付だけでは区別できない */
+const stamp = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+};
+
+/**
+ * **案件IDをコピーできるようにする。** IDは `npm run build:site -- <ID>` のように道具へ渡す名前で、
+ * 手で打つと取り違える（`demo-2kai` と `demo-industrial` など、似た名前が並ぶ）。
+ */
+async function copyId(id, button) {
+  try {
+    await navigator.clipboard.writeText(id);
+    button.textContent = "コピーしました";
+  } catch {
+    /** クリップボードが使えない環境（http で開いた別の端末など）では、選んで見せる */
+    const r = document.createRange();
+    r.selectNodeContents(button.previousElementSibling);
+    getSelection().removeAllRanges();
+    getSelection().addRange(r);
+    button.textContent = "選択しました";
+  }
+  setTimeout(() => { button.textContent = "コピー"; }, 1500);
+}
+
+function renderHome() {
+  const list = state.projectList ?? [];
+  const q = ($("#home-filter")?.value ?? "").trim().toLowerCase();
+  const rows = q ? list.filter((p) => `${p.name} ${p.id}`.toLowerCase().includes(q)) : list;
+  const body = $("#home-table tbody");
+  if (!body) return;
+  body.replaceChildren();
+  for (const p of rows) {
+    const tr = document.createElement("tr");
+    tr.tabIndex = 0;
+    tr.dataset.id = p.id;
+    const cell = (label, content, cls = "") => {
+      const td = document.createElement("td");
+      td.dataset.label = label;
+      if (cls) td.className = cls;
+      if (content instanceof Node) td.append(content); else td.textContent = content;
+      tr.append(td);
+      return td;
+    };
+    cell("会社名", p.name || "（会社名なし）", "home-name");
+    const idBox = document.createElement("span");
+    idBox.className = "home-id";
+    const code = document.createElement("code");
+    code.textContent = p.id;
+    const copy = document.createElement("button");
+    copy.type = "button";
+    copy.className = "copy-id";
+    copy.textContent = "コピー";
+    copy.setAttribute("aria-label", `案件ID ${p.id} をコピー`);
+    /** **行を押すと案件が開く**ので、コピーのときは開かないようにする */
+    copy.onclick = (e) => { e.stopPropagation(); copyId(p.id, copy); };
+    idBox.append(code, copy);
+    cell("案件ID", idBox);
+    cell("商品", PLAN_LABEL[p.formSet] ?? p.formSet, "home-nowrap");
+    cell("取材日", ymd(p.hearingDate), "home-nowrap");
+    const pct = document.createElement("span");
+    pct.className = "home-pct";
+    pct.innerHTML = `<i style="width:${Math.max(0, Math.min(100, p.filledPct ?? 0))}%"></i>`;
+    const pctText = document.createElement("b");
+    pctText.textContent = `${p.filledPct ?? 0}%`;
+    const pctBox = document.createElement("span");
+    pctBox.className = "home-pct-box";
+    pctBox.append(pct, pctText);
+    cell("充足率", pctBox);
+    /** 確認は「したか・いつか」が分かればよいので、日付だけ（時刻まで出すと列が広がって会社名が折れる） */
+    cell("お客様の確認", p.reviewedAt ? `確認済み ${ymd(p.reviewedAt)}` : "まだ", p.reviewedAt ? "home-ok" : "home-muted");
+    cell("最終更新", stamp(p.updatedAt), "home-muted");
+    const open = () => openProject(p.id);
+    tr.onclick = open;
+    tr.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } };
+    body.append(tr);
+  }
+  $("#home-count").textContent = q
+    ? `${list.length}件中 ${rows.length}件`
+    : `${list.length}件（新しく触った順）`;
+  $("#home-none").hidden = list.length > 0;
+  $("#home-table").hidden = list.length === 0;
 }
 
 /** 案件IDの自動採番。日付＋連番。後から編集できる */
@@ -1317,6 +1410,8 @@ async function openProject(id) {
   document.title = `KOBO — ${set.label}`;
   $("#empty").hidden = true;
   $("#main").hidden = false;
+  $("#to-list").hidden = false;
+  $("#project-select").value = id;
   $("#delete-project").hidden = false;
   $("#close-project").hidden = false;
   $("#followup-open").hidden = false;
@@ -1346,6 +1441,12 @@ async function openProject(id) {
   $("#project-select").onchange = (e) => {
     if (e.target.value) openProject(e.target.value);
   };
+  /** 一覧へ戻る。**書きかけは先に保存する**（戻っただけで取材の入力が消えないように） */
+  $("#to-list").onclick = async () => {
+    if (state.dirty) await save();
+    await showHome("保存しました");
+  };
+  $("#home-filter").oninput = renderHome;
 
   // 新規案件は画面内のダイアログで完結させる。
   // 取材の直前にブラウザのポップアップを3回続けて出されるのは、現場で辛い

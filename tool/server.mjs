@@ -203,6 +203,9 @@ async function listProjects() {
         status: project.status ?? "hearing",
         filledPct: completion.filledPct,
         coveredPct: completion.coveredPct,
+        /** 一覧画面で出す（D-469）。**取材した日**と、**お客様に確認していただいた日** */
+        hearingDate: project.hearingDate ?? "",
+        reviewedAt: project.reviewedAt ?? "",
         updatedAt: mtime.toISOString(),
       });
     } catch {

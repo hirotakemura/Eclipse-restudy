@@ -10,6 +10,7 @@
 <header>
   <div class="brand">KOBO<span>v0.2</span></div>
   <div class="project">
+    <button id="to-list" type="button" hidden>← 案件一覧</button>
     <select id="project-select" aria-label="案件"></select>
     <button id="new-project" type="button">＋ 新規案件</button>
   </div>
@@ -28,10 +29,36 @@
   <div id="save-status" class="save-status">—</div>
 </header>
 
-<div id="empty" class="empty">
-  <p>案件を選ぶか、新規に作成してください。</p>
-  <button id="new-project-empty" type="button" class="primary">＋ 新規案件をつくる</button>
-</div>
+<!--
+  案件一覧（D-469）。最初に開く画面。
+  **案件IDを見えるように出す。** IDはフォルダ名で、`npm run build:site -- <ID>` など
+  道具に渡す名前でもある。上のドロップダウンは、取材中に案件を切り替えるときのために残す。
+-->
+<section id="empty" class="home">
+  <div class="home-head">
+    <h1>案件一覧</h1>
+    <input id="home-filter" type="search" placeholder="会社名・案件IDで絞り込む" aria-label="会社名・案件IDで絞り込む" autocomplete="off">
+    <button id="new-project-empty" type="button" class="primary">＋ 新規案件</button>
+  </div>
+  <p id="home-count" class="home-count"></p>
+  <div class="home-table-wrap">
+    <table id="home-table">
+      <thead>
+        <tr>
+          <th scope="col">会社名</th>
+          <th scope="col">案件ID</th>
+          <th scope="col">商品</th>
+          <th scope="col">取材日</th>
+          <th scope="col">充足率</th>
+          <th scope="col">お客様の確認</th>
+          <th scope="col">最終更新</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <p id="home-none" class="home-none" hidden>まだ案件がありません。「＋ 新規案件」から作成してください。</p>
+</section>
 
 <main id="main" hidden>
   <nav id="blocks"></nav>

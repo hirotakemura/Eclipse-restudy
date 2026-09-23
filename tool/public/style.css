@@ -52,8 +52,68 @@ header {
 /* ── レイアウト ───────────────────────────── */
 main { display: grid; grid-template-columns: 290px minmax(0, 1fr); align-items: start; }
 main > * { min-width: 0; }
-.empty { padding: 60px 16px; text-align: center; color: var(--muted); }
-.empty button { margin-top: 14px; }
+/* ── 案件一覧（D-469）────────────────────────
+   **案件IDを見えるように出す。** 行を押すと開く。IDはコピーできる。
+   タブレットを縦に持つ幅では、表を1件ずつのカードにする（横スクロールさせない） */
+.home { max-width: 1180px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-left)) 40px; }
+.home-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.home-head h1 { font-size: 22px; margin: 0 auto 0 0; }
+#home-filter {
+  flex: 1 1 260px; max-width: 360px; min-height: var(--tap);
+  font: inherit; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+}
+#new-project-empty { min-height: var(--tap); }
+.home-count { color: var(--muted); font-size: 14px; margin: 14px 0 8px; }
+.home-none { color: var(--muted); padding: 40px 0; text-align: center; }
+.home-table-wrap { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+#home-table { width: 100%; border-collapse: collapse; font-size: 15px; }
+#home-table th {
+  text-align: left; font-size: 13px; font-weight: 600; color: var(--muted);
+  padding: 10px 14px; border-bottom: 1px solid var(--line); background: #fbfbf9; white-space: nowrap;
+}
+#home-table td { padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+#home-table tbody tr:last-child td { border-bottom: 0; }
+#home-table tbody tr { cursor: pointer; }
+#home-table tbody tr:hover, #home-table tbody tr:focus-visible { background: var(--accent-soft); outline: none; }
+.home-name { font-weight: 600; }
+.home-muted { color: var(--muted); white-space: nowrap; }
+/** ★最初は折り返しを許していて、「汎用ベ／ーシッ／ク」「コピ／ー」と1文字ずつ折れた */
+.home-nowrap { white-space: nowrap; }
+.home-ok { color: var(--accent); white-space: nowrap; }
+.home-id { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.home-id code {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: 14px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 2px 6px; white-space: nowrap;
+}
+.copy-id {
+  white-space: nowrap; flex: none;
+  font: inherit; font-size: 13px; min-height: 32px; padding: 4px 10px; cursor: pointer;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); color: inherit;
+}
+.copy-id:hover { border-color: var(--accent); color: var(--accent); }
+.home-pct-box { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.home-pct { display: inline-block; width: 64px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.home-pct i { display: block; height: 100%; background: var(--accent); }
+#to-list {
+  background: var(--panel); border: 1px solid var(--line); color: inherit;
+  border-radius: var(--radius); padding: 9px 14px; cursor: pointer; min-height: var(--tap); white-space: nowrap;
+}
+/**
+ * **カードにする幅は 900px 以下。**
+ * ★最初は 760px にしていて、タブレット縦（768px）で7列が入りきらず、
+ * **会社名が2文字幅に潰れ、右の2列が枠の外で切れていた。** しかも枠が `overflow: hidden` なので、
+ * ページの横スクロールを測っても出ない（**測り方の誤り**。枠の中のはみ出しを測るように直した）。
+ */
+@media (max-width: 900px) {
+  #home-table thead { display: none; }
+  #home-table, #home-table tbody, #home-table tr, #home-table td { display: block; width: 100%; }
+  #home-table tr { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  #home-table tbody tr:last-child { border-bottom: 0; }
+  #home-table td { border: 0; padding: 2px 0; display: flex; gap: 10px; align-items: center; }
+  #home-table td::before { content: attr(data-label); flex: 0 0 96px; font-size: 13px; color: var(--muted); font-weight: 400; }
+  #home-table td.home-name { font-size: 17px; padding-bottom: 6px; }
+  #home-table td.home-name::before { display: none; }
+}
 
 nav {
   position: sticky; top: 57px;

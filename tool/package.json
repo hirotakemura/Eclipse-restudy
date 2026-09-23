@@ -28,7 +28,7 @@
     "dns": "node dns-snapshot.mjs",
     "check:inquiry": "node check-inquiry.mjs",
     "test:contrast": "node contrast.test.mjs",
-    "test": "npm run test:verify && npm run test:internal && npm run test:design && npm run test:presentation && npm run test:prompt && npm run test:brief && npm run test:inquiry && npm run test:visual && npm run test:architecture && npm run test:asset && npm run test:generated && npm run test:webtext && npm run test:contrast",
+    "test": "npm run test:verify && npm run test:internal && npm run test:design && npm run test:presentation && npm run test:prompt && npm run test:brief && npm run test:inquiry && npm run test:visual && npm run test:architecture && npm run test:asset && npm run test:generated && npm run test:webtext && npm run test:kobo && npm run test:contrast",
     "check:api": "node check-api.mjs",
     "gaps": "node gaps.mjs",
     "test:visual": "node visual.test.mjs",
@@ -38,6 +38,7 @@
     "qa:assets": "node qa-assets.mjs",
     "qa:contrast": "node qa-contrast.mjs",
     "test:architecture": "node architecture.test.mjs",
+    "test:kobo": "node kobo.test.mjs",
     "test:webtext": "node webtext.test.mjs",
     "qa:visible": "node qa-visible.mjs"
   },
