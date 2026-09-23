@@ -24,6 +24,8 @@
  * 使うのは Visual QA 専用の架空データ（`fixtures/design-diversity/`）。
  * **実案件には使わない。**
  */
+/** **キーを `tool/.env` から読む。** ほかの import より先に置く（D-468） */
+import "./lib/env.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";

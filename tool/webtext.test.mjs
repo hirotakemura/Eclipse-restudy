@@ -1147,6 +1147,40 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
     refusedApply.status === 1 && /0\.0003/.test(refusedApply.stderr), refusedApply.stderr.slice(0, 160));
 
   }
+  {
+  console.log("\n━━━ ㉝ キーは tool/.env に置ける（D-468）━━━");
+  /**
+   * 以前はターミナルの環境変数からしか読まず、開き直すたびに入れ直す必要があった。
+   * **本物の `tool/.env` は触らない**——一時フォルダに同じ並び（lib/env.mjs と .env）を作って確かめる。
+   */
+  const tmpRoot = fs.mkdtempSync("/tmp/kobo-env-");
+  fs.mkdirSync(`${tmpRoot}/lib`);
+  fs.copyFileSync("lib/env.mjs", `${tmpRoot}/lib/env.mjs`);
+  const probe = `import("${tmpRoot}/lib/env.mjs").then(() => console.log(process.env.KOBO_ENV_PROBE ?? "（無し）"))`;
+  const run = (extra = {}) => childProcess.spawnSync("node", ["-e", probe],
+    { encoding: "utf8", env: { ...process.env, KOBO_ENV_PROBE: "", ...extra } }).stdout.trim();
+  check(".env が無ければ、何も入らない（止めるのはキーが要る道具のほう）",
+    childProcess.spawnSync("node", ["-e", probe], { encoding: "utf8",
+      env: Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== "KOBO_ENV_PROBE")) }).stdout.trim() === "（無し）");
+  fs.writeFileSync(`${tmpRoot}/.env`, "KOBO_ENV_PROBE=from-file\n");
+  const fromFile = childProcess.spawnSync("node", ["-e", probe], { encoding: "utf8",
+    env: Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== "KOBO_ENV_PROBE")) }).stdout.trim();
+  check(".env に書いた値を読む", fromFile === "from-file", fromFile);
+  check("ターミナルで入れた値のほうが優先される", run({ KOBO_ENV_PROBE: "from-terminal" }) === "from-terminal");
+  fs.rmSync(tmpRoot, { recursive: true, force: true });
+  /** **キーが要る道具は、ほかの import より先に読む**（先に読まないと値が入る前に見てしまう） */
+  const late = ["generate.mjs", "brief.mjs", "webtext.mjs", "check-api.mjs", "qa-companies.mjs"].filter((f) => {
+    const firstImport = (/^import .*$/m.exec(fs.readFileSync(f, "utf8")) ?? [""])[0];
+    return firstImport !== 'import "./lib/env.mjs";';
+  });
+  check("キーを使う道具は、いちばん最初に .env を読む（5つ）", late.length === 0, late.join("・"));
+  /** **.env は Git に載らない**（キーを公開しない） */
+  const ignored = childProcess.spawnSync("git", ["check-ignore", "-q", ".env"]).status === 0;
+  check(".env は Git に載らない", ignored);
+  check("見本（.env.example）に、本物らしいキーが書かれていない",
+    !/sk-ant-[a-z0-9]{2,}-[A-Za-z0-9_-]{10,}/.test(fs.readFileSync(".env.example", "utf8")));
+  }
+
   fs.rmSync(dir, { recursive: true, force: true });
 }
 

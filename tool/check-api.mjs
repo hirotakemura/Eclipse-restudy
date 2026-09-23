@@ -14,6 +14,8 @@
  *
  * **費用は1円未満。** 出力を数トークンに絞ってある。
  */
+/** **キーを `tool/.env` から読む。** ほかの import より先に置く（D-468） */
+import "./lib/env.mjs";
 import process from "node:process";
 
 const key = process.env.ANTHROPIC_API_KEY ?? process.env.ANTHROPIC_AUTH_TOKEN ?? "";

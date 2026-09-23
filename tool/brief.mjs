@@ -20,6 +20,8 @@
  * **検査を1つも引っかからずに通った。** 止める仕組みは、いまも人の目しかない。
  * **その目を通る場所を、コマンドの形で作る。**
  */
+/** **キーを `tool/.env` から読む。** ほかの import より先に置く（D-468） */
+import "./lib/env.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import url from "node:url";

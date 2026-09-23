@@ -6,6 +6,8 @@
  * 生成結果は projects/<案件ID>/draft/ に書き出す（Git管理外）。
  * **生成物は原稿の第1稿であって、商品ではない。** 必ず人間が読んでから先に進むこと。
  */
+/** **キーを `tool/.env` から読む。** ほかの import より先に置く（D-468） */
+import "./lib/env.mjs";
 import fs from "node:fs";
 import path from "node:path";
 

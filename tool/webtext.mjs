@@ -25,6 +25,8 @@
  *   ③ 人が書いた文を、印つきで取り込む
  * の3つだけである。
  */
+/** **キーを `tool/.env` から読む。** ほかの import より先に置く（D-468） */
+import "./lib/env.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { webTextFields, rawFields, duplicateBlocks, internalIn } from "./lib/webtext-review.ts";
