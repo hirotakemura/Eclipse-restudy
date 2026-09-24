@@ -490,8 +490,8 @@ function renderTheme(field, read, write) {
       const preset = (opts.presets ?? []).find((p) => p.id === id);
       /**
        * **型を押しても、文字の大きさは消さない**（D-470）。
-       * 文字の大きさは社長ご本人の目で選んでいただくもの（D-153）で、型の好みとは別の話。
-       * 型の見本は文字の大きさも持っているので、先に文字の大きさを選ぶと上書きされていた。
+       * 文字の大きさは、原稿のご確認のときに**社長ご本人の目で**選んでいただくもの（D-153・D-471）で、
+       * 型の好みとは別の話。型の見本は文字の大きさも持っているので、押し直すと上書きされていた。
        */
       if (preset) { write({ ...preset.theme, direction: id, textSize: current().textSize }); sync(); }
     }, (p) => {
@@ -503,16 +503,11 @@ function renderTheme(field, read, write) {
   );
 
   /**
-   * **取材で選んでいただくのは、型（ご希望）と文字の大きさだけ**（D-470）。
-   * 配色・書体・雰囲気・メニュー・最初の画面・章の区切り・見出し・表は、
-   * 書き出したサイトを見てこちらで決める。**小さな見本では、御社のサイトの見た目は決められない。**
+   * **取材で伺うのは「どれが御社らしいですか」の1問だけ**（D-470・D-471）。
+   * 配色・書体・雰囲気・メニュー・最初の画面・章の区切り・見出し・表・**文字の大きさ**は、
+   * 書き出したサイトを見てこちらが決め、原稿のご確認のときに実物でお見せして選んでいただく。
+   * **小さな見本では、御社のサイトの見た目は決められない。**
    */
-  const sep = document.createElement("div");
-  sep.className = "theme-sep";
-  sep.textContent = "文字の大きさ（社長ご本人の目で）";
-  rows.append(sep);
-  // **第2回取材で、実物を並べて社長ご本人に選んでいただく項目**（D-153）
-  rows.append(choiceRow("textSize", "本文の文字サイズ", opts.textSizes, (v) => set("textSize", v)));
 
   box.append(rows, preview);
   sync();
@@ -1090,15 +1085,11 @@ function renderReviewField(field, blockTitle) {
     const t = { ...(state.theme?.default ?? {}), ...(raw ?? {}) };
     const name = (list, id) => (state.theme?.[list] ?? []).find((x) => x.id === id)?.label ?? "";
     /**
-     * **お客様にお見せするのは、選んでいただいた2つだけ**（D-470）。
+     * **お客様にお見せするのは、選んでいただいた1つだけ**（D-470・D-471）。
      * 配色や書体を並べると「それで決まった」と受け取られるが、そこはこちらが決め直す。
      */
     const look = (state.theme?.presets ?? []).find((p) => p.id === t.direction)?.label ?? "（お選びいただいていません）";
-    const text = [
-      `近い見た目：${look}`,
-      `文字の大きさ：${name("textSizes", t.textSize)}`,
-    ].join("　／　");
-    return reviewRow(label, `${text}\n※ 見た目はご希望として伺いました。原稿のご確認のときに、実際のサイトでお見せします`);
+    return reviewRow(label, `近い見た目：${look}\n※ ご希望として伺いました。原稿のご確認のときに、御社の中身が入ったサイトを2〜3通りお見せして選んでいただきます`);
   }
 
   // 写真は、お預かりしたものをそのままお見せして「これを載せてよいか」を確認いただく。

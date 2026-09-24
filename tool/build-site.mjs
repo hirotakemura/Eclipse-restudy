@@ -262,7 +262,7 @@ if (ngItems.length) {
 }
 /**
  * **見た目のご希望を、毎回見せる**（D-470）。
- * 取材で伺うのは「どの見本が近いか（型）」と「色のご希望」だけで、**決定ではない。**
+ * 取材で伺うのは「どの見本が近いか（型）」の1問だけで、**決定ではない**（D-471）。
  * 配色・書体・最初の画面などは、書き出したこのサイトを見てこちらで決める。
  * そのとき**お客様が何とおっしゃったか**が手元に無いと、ご希望を踏み外す。
  */
@@ -270,10 +270,8 @@ if (ngItems.length) {
   const r = resolveTheme(project.theme, project.formSet === "general" ? "general" : "manufacturing");
   const dir = DIRECTIONS.find((d) => d.id === r.direction);
   const asked = Boolean(project.theme?.direction);
-  const color = String(project.terms?.colorRequest ?? "").trim();
   console.log(`  見た目　型「${dir?.label ?? r.direction}」${asked ? "（お客様のご希望）" : "（ご希望を伺っていないので既定）"}`
-    + `　文字 ${r.textSize.label}`);
-  if (color) console.log(`      色のご希望：${color}　（**配色は人が合わせる**。いまの配色「${r.palette.label}」）`);
+    + `　配色「${r.palette.label}」　文字 ${r.textSize.label}`);
 }
 const unplaced = (project.photos ?? []).filter((p) => !p.category || p.category === "その他").length;
 console.log(`  写真 ${photoCount}枚${unplaced ? `（うち置き場所が未定 ${unplaced}枚。サイトには出ません）` : ""}`);

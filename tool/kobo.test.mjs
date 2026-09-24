@@ -97,7 +97,7 @@ if (browser && list.length) {
   await browser.close();
 }
 
-console.log("\n━━━ ⑤ 見た目は、クロージングの中で2つだけ伺う（D-470）━━━");
+console.log("\n━━━ ⑤ 見た目は、クロージングの中で1問だけ伺う（D-470・D-471）━━━");
 {
   const { FORM_SETS } = await import("./lib/form-definition.ts");
   for (const [plan, set] of Object.entries(FORM_SETS)) {
@@ -105,8 +105,9 @@ console.log("\n━━━ ⑤ 見た目は、クロージングの中で2つだ�
     check(`${plan}：「サイトの見た目」のタブが無い`, !blocks.some((b) => b.id === "design" || b.title === "サイトの見た目"));
     const terms = blocks.find((b) => b.id === "terms");
     const paths = (terms?.fields ?? []).map((f) => f.path);
-    check(`${plan}：見た目のご希望と色のご希望が、制作条件・クロージングの中にある`,
-      paths.includes("theme") && paths.includes("terms.colorRequest"), paths.join("・"));
+    check(`${plan}：見た目のご希望が、制作条件・クロージングの中にある`, paths.includes("theme"), paths.join("・"));
+    /** **色のご希望は聞かない**（D-471）。会社の色はロゴから読め、ずれていれば実物で分かる */
+    check(`${plan}：色のご希望を聞かない`, !paths.includes("terms.colorRequest"));
     /** **外した欄**：どのコードも読まず、足りない写真は書き出しが置き場所ごとに名指しする */
     check(`${plan}：「使える写真があるか」を聞かない`, !paths.includes("terms.photo.hasExisting"));
     const theme = terms?.fields.find((f) => f.path === "theme");
@@ -143,23 +144,17 @@ if (browser === null) {
   await page.evaluate(() => [...document.querySelectorAll("#blocks *")].find((x) => x.onclick && /制作条件/.test(x.textContent))?.click());
   await page.waitForSelector(".theme-picker");
   const rows = await page.evaluate(() => [...document.querySelectorAll(".theme-picker .theme-row")].map((r) => r.dataset.key));
-  check("取材で選ぶのは、型と文字の大きさの2つだけ", JSON.stringify(rows) === JSON.stringify(["preset", "textSize"]), rows.join("・"));
-  /** **型を押しても、文字の大きさは消さない**（型の見本も文字の大きさを持っているので、上書きされていた） */
-  const sizes = await page.$$('.theme-row[data-key="textSize"] .theme-choice');
-  await sizes[sizes.length - 1].click();
-  const bigger = await sizes[sizes.length - 1].getAttribute("data-value");
-  const presets = await page.$$('.theme-row[data-key="preset"] .theme-choice');
-  await presets[0].click();
-  await presets[presets.length - 1].click();
-  const kept = await page.evaluate(() => document.querySelector('.theme-row[data-key="textSize"] .theme-choice[aria-pressed="true"]')?.dataset.value);
-  check("型を押しても、選んだ文字の大きさが残る", kept === bigger, `${bigger} → ${kept}`);
-  /** **お客様の確認画面にも、2つだけ**（配色や書体を並べると「それで決まった」と受け取られる） */
+  check("取材で選ぶのは、型（どれが御社らしいか）の1つだけ", JSON.stringify(rows) === JSON.stringify(["preset"]), rows.join("・"));
+  /** 見本は残す（**言葉ではなく見本で選ぶ**・D-139） */
+  check("型を選ぶ見本が出ている", await page.evaluate(() => !!document.querySelector(".theme-picker .theme-preview")));
+  /** **お客様の確認画面にも、1つだけ**（配色や書体を並べると「それで決まった」と受け取られる） */
   await page.click("#close-project");
   await page.click("#review-open");
   await page.waitForSelector("#review:not([hidden])");
   const review = await page.evaluate(() => document.querySelector("#review-body").innerText);
-  check("お客様の確認画面には、近い見た目と文字の大きさだけを出す",
-    /近い見た目/.test(review) && /文字の大きさ/.test(review) && !/配色：|書体：|雰囲気：/.test(review));
+  check("お客様の確認画面には、近い見た目だけを出す",
+    /近い見た目/.test(review) && !/文字の大きさ|配色：|書体：|雰囲気：/.test(review));
+  check("確認画面で、原稿のご確認のときに実物でお見せすると伝えている", /2〜3通りお見せして/.test(review));
   check("クロージングの画面のエラーが無い", errors.length === 0, errors.join(" / "));
   await b2.close();
 }

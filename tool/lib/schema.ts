@@ -241,11 +241,6 @@ export interface ProductionTerms {
   targetLaunchDate?: string;
   /** 出せない情報。取引先名/価格/特定の技術など */
   ngItems: string[];
-  /**
-   * **色のご希望**（D-470）。会社の色（ロゴ・看板・制服）や避けたい色。
-   * 配色はこちらが合わせるので、**画面には出さず、書き出しのときに人に見せる**。
-   */
-  colorRequest?: string;
   photo: {
     /**
      * ★「既存の使える写真があるか」（`hasExisting`）は D-470 で外した。
