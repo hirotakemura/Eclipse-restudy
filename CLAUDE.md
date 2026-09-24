@@ -50,7 +50,7 @@
 
 ## Git とセッション
 
-- 作業ブランチは `claude/kobo-progress-check-yxaly7`（全担当で同じ・D-474）。ほかのブランチに push しない。
+- 作業ブランチは `claude/web-production-company-advisory-5ael1c`（全担当で同じ）。ほかのブランチに push しない。
 - **同じ時間に2つのセッションで作業するなら、触るファイルが重ならない組み合わせだけ**にする。
   `docs/04-意思決定ログ.md`・`docs/README.md`・`tool/package.json` はどの担当も書くので、**始める前に `git pull`、書いたらすぐ commit・push** する。
   D番号がぶつかったら、後から push する側が番号を振り直す（`npm run test:skills` が重複を見つける）。
