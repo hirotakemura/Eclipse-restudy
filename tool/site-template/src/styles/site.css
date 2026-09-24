@@ -1577,10 +1577,16 @@ html[data-hero="motif"] .hero {
   letter-spacing: .08em; margin: 0 0 6px; font-weight: var(--tw-label);
 }
 .hero-figures dd { margin: 0; font-family: var(--font-head); font-weight: 700; line-height: 1.3; }
-.hero-figures dd[data-role="numeric"] { font-size: var(--t-numeric); letter-spacing: 0; }
-.hero-figures dd[data-role="statement"] { font-size: var(--t-statement); }
-.hero-figures dd[data-role="sectionTitle"] { font-size: var(--t-sectionTitle); }
-.hero-figures dd[data-role="quote"] { font-size: var(--t-quote); }
+/**
+ * **列の実幅でも上限をかける**（D-472）。`fitInRow` は列の数しか知らないので、
+ * 側面に目次を置く型（右の列 424px・PC 1280px）で「アルミ・ステンレス」が2行に折れていた。
+ * 格（段）はそのまま、**入らないときだけ** `100cqi ÷ 値の幅` まで縮める。1.04 は太字の字幅の余裕
+ */
+.hero-figures > div { container-type: inline-size; }
+.hero-figures dd[data-role="numeric"] { font-size: min(var(--t-numeric), 100cqi / (var(--ch, 1) * 1.04)); letter-spacing: 0; }
+.hero-figures dd[data-role="statement"] { font-size: min(var(--t-statement), 100cqi / (var(--ch, 1) * 1.04)); }
+.hero-figures dd[data-role="sectionTitle"] { font-size: min(var(--t-sectionTitle), 100cqi / (var(--ch, 1) * 1.04)); }
+.hero-figures dd[data-role="quote"] { font-size: min(var(--t-quote), 100cqi / (var(--ch, 1) * 1.04)); }
 .hero-figures dd[data-role="lead"] { font-size: var(--t-lead); font-weight: 400; }
 .hero-figures dd[data-role="body"] { font-size: var(--t-body); font-weight: 400; line-height: 1.7; }
 /** 型ごとの引き方に合わせる（D-449と同じ考え方）。**罫で示す型は、ここも罫で示す** */

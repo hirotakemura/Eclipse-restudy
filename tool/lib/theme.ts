@@ -272,7 +272,8 @@ export const DEFAULT_THEME: Theme = {
  * 次の行の頭を見失う。60代の読み手ではとくに起きる。
  * 1行の長さは em で持つので、**文字を大きくしたら行も長くなる、を避けられる。**
  */
-const TEXT_SIZE_VALUES: Record<string, { size: string; measure: string }> = {
+/** 見比べの画面（`variants.mjs`）が文字の大きさを切り替えるときにも使う。**同じ表を2つ持たない**（D-197） */
+export const TEXT_SIZE_VALUES: Record<string, { size: string; measure: string }> = {
   normal: { size: "17px", measure: "40em" },
   large: { size: "18px", measure: "38em" },
   xlarge: { size: "20px", measure: "34em" },

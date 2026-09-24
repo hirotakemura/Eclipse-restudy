@@ -2,6 +2,7 @@
  * KOBO — 案件データからサイトを書き出す
  *
  *   node build-site.mjs <案件ID> [--dev]
+ *   node build-site.mjs <案件ID> --theme <型> --out <書き出し先>   … 見比べ用（`npm run variants` が使う・D-472）
  *
  *     --dev  　書き出さずに開発サーバーを起動する
  *
@@ -36,7 +37,7 @@ import { composeTop, composePage, explain, traceOf } from "./lib/design/sections
 import { composeVisual } from "./lib/design/visual.ts";
 import { composeAssets, explainGenerated } from "./lib/design/assets.ts";
 import { projectHashOf } from "./lib/design/brief.ts";
-import { resolveTheme } from "./lib/theme.ts";
+import { resolveTheme, PRESETS } from "./lib/theme.ts";
 import { DIRECTIONS } from "./lib/design/direction.ts";
 import { toneOf, readableAsBackground, READABLE_AS_BACKGROUND } from "./lib/png-tone.ts";
 import { unconfirmedProvenance } from "./lib/design/system/generated.ts";
@@ -44,7 +45,11 @@ import { unconfirmedProvenance } from "./lib/design/system/generated.ts";
 // npm run dev:site -- <案件ID> の形でも、順番が入れ替わっても拾えるようにする
 const args = process.argv.slice(2);
 const dev = args.includes("--dev");
-const id = args.find((a) => !a.startsWith("--"));
+/** `--theme <型>` / `--out <書き出し先>`。値を取る引数は、案件IDと取り違えないように先に抜く */
+const valueOf = (flag) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : undefined; };
+const themeArg = valueOf("--theme");
+const outArg = valueOf("--out");
+const id = args.find((a, i) => !a.startsWith("--") && !["--theme", "--out"].includes(args[i - 1]));
 
 if (!id) {
   console.error("\n  使い方: npm run build:site -- <案件ID>\n");
@@ -60,6 +65,36 @@ if (!fs.existsSync(projectFile)) {
 }
 
 const project = JSON.parse(fs.readFileSync(projectFile, "utf8"));
+
+/** **書き出し先は、書き出す前に確かめる**（消す先を取り違えないよう、案件フォルダの中の別のフォルダだけ） */
+if (outArg) {
+  const to = path.resolve(outArg);
+  const inside = to.startsWith(path.resolve(projectDir) + path.sep);
+  const reserved = ["site", "site-draft", ".build", "photos", "generated", "draft"].map((d) => path.resolve(projectDir, d));
+  if (!inside || reserved.some((r) => to === r || to.startsWith(r + path.sep))) {
+    console.error(`\n  書き出し先は projects/${id}/ の中の別のフォルダにしてください`
+      + `（site/・site-draft/・photos/・generated/・draft/ は使えません）: ${outArg}\n`);
+    process.exit(1);
+  }
+}
+
+/**
+ * **型を差し替えて書き出す**（D-472・見比べ用）。
+ *
+ * 取材では見た目を決めず、**原稿のご確認で中身の入ったサイトを2〜3通りお見せして選んでいただく**（D-471）。
+ * そのために、案件データは書き換えずに**このときだけ**型を差し替える。
+ * 文字の大きさは差し替えない——型とは別に、お客様ご本人の目で選んでいただくものだから（D-153）。
+ */
+if (themeArg) {
+  const plan = project.formSet === "general" ? "general" : "manufacturing";
+  const presets = PRESETS.filter((p) => (DIRECTIONS.find((d) => d.id === p.id)?.plan ?? "manufacturing") === plan);
+  const preset = presets.find((p) => p.id === themeArg);
+  if (!preset) {
+    console.error(`\n  型「${themeArg}」はこの案件（${plan}）では選べません。選べる型：${presets.map((p) => p.id).join("・")}\n`);
+    process.exit(1);
+  }
+  project.theme = { ...preset.theme, direction: preset.id, textSize: project.theme?.textSize ?? preset.theme.textSize };
+}
 
 /**
  * **掲載文は、持ってよい欄にしか持てない**（第10段階①）。
@@ -270,7 +305,11 @@ if (ngItems.length) {
   const r = resolveTheme(project.theme, project.formSet === "general" ? "general" : "manufacturing");
   const dir = DIRECTIONS.find((d) => d.id === r.direction);
   const asked = Boolean(project.theme?.direction);
-  console.log(`  見た目　型「${dir?.label ?? r.direction}」${asked ? "（お客様のご希望）" : "（ご希望を伺っていないので既定）"}`
+  /** 見比べ用に差し替えたときは、ご希望とも決定とも書かない（D-472） */
+  const why = themeArg ? "（見比べ用に差し替え）"
+    : project.themeDecidedAt ? `（原稿のご確認で決定 ${String(project.themeDecidedAt).slice(0, 10)}）`
+    : asked ? "（お客様のご希望）" : "（ご希望を伺っていないので既定）";
+  console.log(`  見た目　型「${dir?.label ?? r.direction}」${why}`
     + `　配色「${r.palette.label}」　文字 ${r.textSize.label}`);
 }
 const unplaced = (project.photos ?? []).filter((p) => !p.category || p.category === "その他").length;
@@ -629,6 +668,21 @@ const move = (to) => {
   fs.rmSync(to, { recursive: true, force: true });
   fs.renameSync(outDir, to);
 };
+
+/**
+ * **見比べ用は、指定の場所に必ず書き出す**（D-472）。
+ * 公開判定で止まっていても出す——**見比べるのは原稿のご確認の前**で、まだ公開できないのが普通だから。
+ * `site/` と `site-draft/` には触らない。**消す先を取り違えないよう、案件フォルダの中しか受けない。**
+ */
+if (outArg) {
+  const to = path.resolve(outArg);
+  fs.mkdirSync(path.dirname(to), { recursive: true });
+  move(to);
+  const blocked = leaked.length + missing.length;
+  console.log(`\n  見比べ用に書き出しました： ${path.relative(process.cwd(), to)}`
+    + (blocked ? `（公開できない項目 ${blocked}件のまま・確認用）` : ""));
+  process.exit(0);
+}
 
 if (leaked.length || missing.length) {
   // 公開できるものだけを site/ に置く。**中身は消さず、確認用として site-draft/ に回す**

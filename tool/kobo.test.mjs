@@ -156,6 +156,32 @@ if (browser === null) {
     /近い見た目/.test(review) && !/文字の大きさ|配色：|書体：|雰囲気：/.test(review));
   check("確認画面で、原稿のご確認のときに実物でお見せすると伝えている", /2〜3通りお見せして/.test(review));
   check("クロージングの画面のエラーが無い", errors.length === 0, errors.join(" / "));
+
+  /**
+   * **原稿のご確認で決めたあと**（D-472）。見比べ画面の「この見た目に決める」が `themeDecidedAt` を書く。
+   * 決めたものを「ご希望」と言い続けると、お客様に「まだ決まっていない」と伝わる。
+   * 案件データは書き換えず、読み込んだ値にだけ日時を足して測る
+   */
+  const p2 = await ctx.newPage();
+  await p2.route("**/api/projects/*", async (route) => {
+    const req = route.request();
+    if (req.method() === "PUT") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ completion: null, savedAt: new Date().toISOString() }) });
+    if (req.method() !== "GET" || !req.url().endsWith(`/api/projects/${target}`)) return route.continue();
+    const res = await route.fetch();
+    const data = await res.json();
+    data.project.themeDecidedAt = "2026-09-20T01:00:00.000Z";
+    return route.fulfill({ response: res, json: data });
+  });
+  await p2.goto(base + "/", { waitUntil: "networkidle" });
+  await p2.click(`#home-table tbody tr[data-id="${target}"]`);
+  await p2.waitForSelector("#main:not([hidden])");
+  await p2.click("#close-project");
+  await p2.click("#review-open");
+  await p2.waitForSelector("#review:not([hidden])");
+  const decided = await p2.evaluate(() => document.querySelector("#review-body").innerText);
+  check("決めたあとの確認画面は「決定した見た目」と言い、ご希望とは言わない",
+    /決定した見た目/.test(decided) && /2026\/09\/20/.test(decided) && !/ご希望として伺いました/.test(decided),
+    /決定した見た目[^\n]*|近い見た目[^\n]*/.exec(decided)?.[0]);
   await b2.close();
 }
 

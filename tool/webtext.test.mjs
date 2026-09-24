@@ -589,8 +589,9 @@ console.log("\n━━━ ①②③ 画面（書き出したHTML）━━━");
   const roles = [...fig.matchAll(/data-role="([^"]+)"/g)].map((m) => m[1]);
   check("値の段は「値」か「導入」の2つだけ（一言の段に落とさない）",
     roles.length > 0 && roles.every((r) => r === "numeric" || r === "lead"), roles.join(" "));
-  const longOne = /<dd data-role="lead">[^<]{15,}</.test(fig);
-  const shortOne = /<dd data-role="numeric">[^<]{1,14}</.test(fig);
+  /** `dd` には列の幅の上限のための `style="--ch:…"` も付く（D-472）。属性の並びに頼らない */
+  const longOne = /<dd data-role="lead"[^>]*>[^<]{15,}</.test(fig);
+  const shortOne = /<dd data-role="numeric"[^>]*>[^<]{1,14}</.test(fig);
   check("長い値は導入の段に落ちる", longOne, fig.slice(0, 160));
   check("短い値は値の段で大きく組む", shortOne, fig.slice(0, 160));
   /** 型ごとの引き方（D-449と同じ考え方） */

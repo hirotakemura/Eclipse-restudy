@@ -18,7 +18,7 @@ import { composeTop, resolveHero } from "../../../lib/design/sections.ts";
 import { composeVisual } from "../../../lib/design/visual.ts";
 import { composeAssets, willDraw, assetImageOf } from "../../../lib/design/assets.ts";
 /** **見出しの大きさは、中身の長さで決める**（D-277）。長文を巨大に組まない */
-import { fit, fitInRow } from "../../../lib/design/system/typography.ts";
+import { emWidth, fit, fitInRow } from "../../../lib/design/system/typography.ts";
 /** **大きく出すのは最初の一文だけ**（D-452）。残りは対応可能範囲の表にそのまま出る */
 import { leadValue } from "../../../lib/design/materials.ts";
 import { project, designBrief, companyName, cases, photoOf, realPhotoOf, photosOf, isGeneral, offerings, serviceArea, reasonChosen, webOf } from "../lib/site";
@@ -228,7 +228,15 @@ const desc = [basics.address, cap.processes?.join("・"), cap.materials?.join("�
                       * 右の列（実測520px）は、**帯の1行（同1267px）を2つに割ったのとほぼ同じ幅**である。
                       * 実測の1行あたり 8.25字に対し、この式は 8.17字。合っている
                       */}
-                    <dd data-role={fitInRow("numeric", leadValue(v), 2).id}>{leadValue(v)}</dd>
+                    {/**
+                      * **列の実幅でも上限をかける**（D-472）。
+                      * ★型を並べて見たときに落ちた：側面に目次を置く型（精密加工・技術系）は
+                      * **右の列が424px**（上に目次を置く型は481px・PC 1280px）で、
+                      * 「アルミ・ステンレス」が **48.8pxで2行**になった。`fitInRow` は列の数しか知らない。
+                      * 段（大きさの格）は `fitInRow` のまま、**入らないときだけ列の幅まで縮める**——
+                      * `--ch` は値の幅（全角＝1）。CSSが `100cqi ÷ --ch` と比べる
+                      */}
+                    <dd data-role={fitInRow("numeric", leadValue(v), 2).id} style={`--ch:${emWidth(leadValue(v)).toFixed(2)}`}>{leadValue(v)}</dd>
                   </div>
                 ))}
               </dl>

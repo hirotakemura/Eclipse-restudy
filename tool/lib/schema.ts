@@ -375,6 +375,11 @@ export interface Project {
    * 書き写した型は、必ず本体から遅れる。
    */
   theme?: Partial<Theme>;
+  /**
+   * **見た目を決めた日時**（D-472）。原稿のご確認で、見比べ画面の「この見た目に決める」が書く。
+   * 無ければ `theme.direction` は取材で伺った**ご希望**のまま（D-471）。
+   */
+  themeDecidedAt?: string;
 
   /**
    * 情報の見せ方の判断（Design Brief）。**あれば使い、無ければ規則版で決まる。**

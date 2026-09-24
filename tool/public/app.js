@@ -493,7 +493,11 @@ function renderTheme(field, read, write) {
        * 文字の大きさは、原稿のご確認のときに**社長ご本人の目で**選んでいただくもの（D-153・D-471）で、
        * 型の好みとは別の話。型の見本は文字の大きさも持っているので、押し直すと上書きされていた。
        */
-      if (preset) { write({ ...preset.theme, direction: id, textSize: current().textSize }); sync(); }
+      if (preset) {
+        /** 決めたあとに型を選び直したら、それはもう決定ではない（D-472） */
+        delete state.project.themeDecidedAt;
+        write({ ...preset.theme, direction: id, textSize: current().textSize }); sync();
+      }
     }, (p) => {
       const sw = document.createElement("span");
       sw.className = "swatch";
@@ -1089,6 +1093,12 @@ function renderReviewField(field, blockTitle) {
      * 配色や書体を並べると「それで決まった」と受け取られるが、そこはこちらが決め直す。
      */
     const look = (state.theme?.presets ?? []).find((p) => p.id === t.direction)?.label ?? "（お選びいただいていません）";
+    /** 原稿のご確認で決めたあと（D-472）は、ご希望ではなく決定として見せる */
+    const decided = state.project.themeDecidedAt;
+    if (decided) {
+      const size = (state.theme?.textSizes ?? []).find((x) => x.id === t.textSize)?.label;
+      return reviewRow(label, `決定した見た目：${look}${size ? `・文字 ${size}` : ""}\n※ 原稿のご確認（${ymd(decided)}）で選んでいただきました`);
+    }
     return reviewRow(label, `近い見た目：${look}\n※ ご希望として伺いました。原稿のご確認のときに、御社の中身が入ったサイトを2〜3通りお見せして選んでいただきます`);
   }
 
